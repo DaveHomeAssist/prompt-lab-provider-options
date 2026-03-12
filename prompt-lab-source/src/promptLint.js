@@ -1,134 +1,129 @@
-const DEFAULT_COMPLEX_THRESHOLD = 420;
+const COMPLEX_THRESHOLD = 420;
 
-export const LINT_RULES = Object.freeze({
-  GOAL: 'goal-intent',
-  ROLE: 'role-definition',
-  CONSTRAINTS: 'constraints',
-  OUTPUT_FORMAT: 'output-format',
-  EXAMPLE_IO: 'example-io',
-});
+export const LINT_FIXES = {
+  role_section: '\nRole:\nYou are an expert assistant for this task.\n',
+  goal_section: '\nGoal:\nState the exact outcome you want in one sentence.\n',
+  constraints_section: '\nConstraints:\n- Keep response concise.\n- Follow user tone.\n- Include only relevant details.\n',
+  output_format_section: '\nOutput Format:\n- Use markdown headings.\n- Provide bullets for key points.\n',
+  example_block: '\nExample:\nInput: <short sample input>\nOutput: <short sample output>\n',
+};
 
-export const LINT_QUICK_FIXES = Object.freeze([
-  {
-    id: 'role-section',
-    label: 'Insert role section',
-    snippet: 'Role:\nYou are a precise assistant specialized in this task.\n\n',
-    placement: 'top',
-  },
-  {
-    id: 'constraints-section',
-    label: 'Insert constraints section',
-    snippet: '\nConstraints:\n- Keep response under 200 words.\n- Use concise, plain language.\n- Include only relevant details.\n',
-    placement: 'bottom',
-  },
-  {
-    id: 'output-format-section',
-    label: 'Insert output format section',
-    snippet: '\nOutput format:\n- Use markdown headings.\n- Include a short summary, then bullet points.\n',
-    placement: 'bottom',
-  },
-  {
-    id: 'example-io-block',
-    label: 'Insert example I/O block',
-    snippet: '\nExample:\nInput: "Summarize this release note for executives."\nOutput:\n## Executive Summary\n- Key outcome...\n- Risks...\n',
-    placement: 'bottom',
-  },
-]);
-
-function lineFromIndex(text, index) {
-  if (index <= 0) return 1;
-  return text.slice(0, index).split('\n').length;
+function lineFromIndex(text, idx) {
+  if (typeof text !== 'string' || idx <= 0) return 1;
+  return text.slice(0, idx).split('\n').length;
 }
 
-function findInTopLines(lines, regex, maxLines = 4) {
-  return lines.slice(0, maxLines).some((line) => regex.test(line));
+function hasGoalNearTop(text) {
+  const top = text.split('\n').slice(0, 6).join(' ').toLowerCase();
+  return /\b(goal|intent|objective|task|outcome|i need|i want|please|create|generate|write|explain|analyze)\b/.test(top);
 }
 
-function findMatchMeta(text, regex, fallbackLine = 1) {
-  const match = text.match(regex);
-  if (!match || typeof match.index !== 'number') {
-    return {
-      line: fallbackLine,
-      range: { start: 0, end: 0 },
-    };
-  }
+function hasRole(text) {
+  return /\b(you are|act as|your role|persona|as an expert|as a)\b/i.test(text);
+}
+
+function hasConstraints(text) {
+  return /\b(constraints?|must|must not|do not|don't|avoid|limit|max(?:imum)?|minimum|exactly|only|never|always)\b/i.test(text);
+}
+
+function hasOutputFormat(text) {
+  return /\b(output format|respond with|return as|json|markdown|table|list|bullet points|sections?)\b/i.test(text);
+}
+
+function hasExample(text) {
+  return /\b(example|sample input|sample output|few-shot|input:\s|output:\s)\b/i.test(text);
+}
+
+function issue(id, message, severity, text, idx = 0) {
+  const line = lineFromIndex(text, idx);
   return {
-    line: lineFromIndex(text, match.index),
-    range: { start: match.index, end: match.index + match[0].length },
+    id,
+    message,
+    severity,
+    line,
+    range: { start: idx, end: idx },
   };
 }
 
-export function lintPrompt(prompt, options = {}) {
-  const text = String(prompt || '');
+export function lintPrompt(prompt, opts = {}) {
+  const text = typeof prompt === 'string' ? prompt : '';
   const trimmed = text.trim();
   if (!trimmed) return [];
 
-  const complexThreshold = Number(options.complexThreshold || DEFAULT_COMPLEX_THRESHOLD);
-  const lines = text.split('\n').map((line) => line.trim()).filter(Boolean);
+  const complexityThreshold = Number.isFinite(opts.complexityThreshold)
+    ? Math.max(180, opts.complexityThreshold)
+    : COMPLEX_THRESHOLD;
+
   const issues = [];
 
-  const hasGoalNearTop = findInTopLines(
-    lines,
-    /\b(goal|objective|task|you will|please|need to|generate|create|write|analyze|summarize)\b/i
-  );
-  if (!hasGoalNearTop) {
-    issues.push({
-      id: LINT_RULES.GOAL,
-      message: 'Add an explicit goal/intent sentence near the top.',
-      severity: 'warning',
-      ...findMatchMeta(text, /^[^\n]+/m),
-    });
+  if (!hasGoalNearTop(text)) {
+    issues.push(issue(
+      'goal_near_top',
+      'Add an explicit goal/intent sentence near the top.',
+      'warning',
+      text,
+      0,
+    ));
   }
 
-  const needsRole = trimmed.length > 140;
-  const hasRole = /\b(you are|act as|your role|role:)\b/i.test(text);
-  if (needsRole && !hasRole) {
-    issues.push({
-      id: LINT_RULES.ROLE,
-      message: 'Consider defining a role ("You are ...") for complex tasks.',
-      severity: 'info',
-      ...findMatchMeta(text, /^[^\n]+/m),
-    });
+  const nonTrivial = text.length > 140 || text.split('\n').length > 4;
+  if (nonTrivial && !hasRole(text)) {
+    issues.push(issue(
+      'role_definition',
+      'Consider defining a role (for example: "You are ...") for this task.',
+      'info',
+      text,
+      0,
+    ));
   }
 
-  const hasConstraints = /\b(must|should|do not|don't|avoid|at most|no more than|exactly|limit|constraint)\b/i.test(text);
-  if (!hasConstraints) {
-    issues.push({
-      id: LINT_RULES.CONSTRAINTS,
-      message: 'Add constraints (length, style, exclusions, or boundaries).',
-      severity: 'info',
-      ...findMatchMeta(text, /^[^\n]+/m),
-    });
+  if (!hasConstraints(text)) {
+    issues.push(issue(
+      'constraints',
+      'Add constraints (length, style, guardrails, or required/forbidden content).',
+      'info',
+      text,
+      0,
+    ));
   }
 
-  const hasFormat = /\b(output|format|respond in|json|yaml|xml|markdown|table|bullet|list|sections?)\b/i.test(text);
-  if (!hasFormat) {
-    issues.push({
-      id: LINT_RULES.OUTPUT_FORMAT,
-      message: 'Specify the desired output format (e.g., JSON, list, markdown sections).',
-      severity: 'warning',
-      ...findMatchMeta(text, /^[^\n]+/m),
-    });
+  if (!hasOutputFormat(text)) {
+    issues.push(issue(
+      'output_format',
+      'Describe the expected output format (list, JSON, markdown sections, etc.).',
+      'warning',
+      text,
+      0,
+    ));
   }
 
-  const complexTask = trimmed.length > complexThreshold;
-  const hasExample = /\bexample\b/i.test(text) || (/\binput\b/i.test(text) && /\boutput\b/i.test(text));
-  if (complexTask && !hasExample) {
-    issues.push({
-      id: LINT_RULES.EXAMPLE_IO,
-      message: 'For long/complex prompts, include at least one example input/output block.',
-      severity: 'info',
-      ...findMatchMeta(text, /^[^\n]+/m),
-    });
+  if (text.length > complexityThreshold && !hasExample(text)) {
+    issues.push(issue(
+      'example_io',
+      'Complex prompts benefit from at least one example input/output block.',
+      'info',
+      text,
+      text.indexOf('\n') >= 0 ? text.indexOf('\n') : text.length,
+    ));
   }
 
   return issues;
 }
 
-export function applyQuickFix(prompt, fixId) {
-  const text = String(prompt || '');
-  const fix = LINT_QUICK_FIXES.find((entry) => entry.id === fixId);
-  if (!fix) return text;
-  if (fix.placement === 'top') return `${fix.snippet}${text}`.trim();
-  return `${text}${fix.snippet}`.trim();
+export function applyLintQuickFix(text, ruleId) {
+  const base = typeof text === 'string' ? text : '';
+  const map = {
+    goal_near_top: LINT_FIXES.goal_section,
+    role_definition: LINT_FIXES.role_section,
+    constraints: LINT_FIXES.constraints_section,
+    output_format: LINT_FIXES.output_format_section,
+    example_io: LINT_FIXES.example_block,
+  };
+  const patch = map[ruleId];
+  if (!patch) return base;
+
+  if (ruleId === 'goal_near_top' || ruleId === 'role_definition') {
+    return `${patch.trim()}\n\n${base}`.trim();
+  }
+  return `${base.trim()}\n${patch}`.trim();
 }

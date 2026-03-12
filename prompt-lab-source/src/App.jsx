@@ -1,10 +1,36 @@
-import { useState, useEffect, useMemo, useRef } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import Ic from './icons';
 import { callAnthropic } from './api';
-import { applyQuickFix, lintPrompt, LINT_QUICK_FIXES } from './promptLint';
-import { DEFAULT_REDACTION_SETTINGS, redactPayload, scanSensitiveData, summarizeMatches } from './redactionGate';
-import { normalizeModelError } from './errorTaxonomy';
-import { hashText, listExperiments, saveExperiment } from './experimentStore';
+import { lintPrompt, applyLintQuickFix } from './promptLint';
+import {
+  detectSensitiveData,
+  defaultRedactionSettings,
+  loadRedactionSettings,
+  saveRedactionSettings,
+  redactPayloadStrings,
+} from './sensitiveData';
+import { normalizeError } from './errorTaxonomy';
+import {
+  loadExperimentHistory,
+  filterExperimentHistory,
+  createExperimentRecord,
+  addExperimentRecord,
+} from './experimentHistory';
+import {
+  wordDiff,
+  scorePrompt,
+  extractVars,
+  encodeShare,
+  decodeShare,
+  extractTextFromAnthropic,
+  parseEnhancedPayload,
+  ensureString,
+  suggestTitleFromText,
+  normalizeEntry,
+  normalizeLibrary,
+  looksSensitive,
+  isTransientError,
+} from './promptUtils';
 
 // ── Constants ─────────────────────────────────────────────────────────────────
 const TAG_COLORS = {
@@ -24,39 +50,214 @@ const MODES = [
   { id: 'detailed', label: '📝 Detailed', sys: 'Expand with rich context, examples, edge cases, explicit constraints. Make it comprehensive.' },
 ];
 
-const MODEL_OPTIONS = [
-  { id: 'claude-sonnet-4-20250514', label: 'Claude Sonnet 4' },
-  { id: 'claude-3-5-sonnet-20241022', label: 'Claude 3.5 Sonnet' },
-];
+const DEFAULT_LIBRARY_SEEDS = [
+  {
+    title: 'Transcript Summary - Markdown',
+    original: `You are a conversation analyst specializing in context extraction and knowledge transfer.
 
+Task:
+Read the transcript between <transcript> tags and produce a structured context summary so a new assistant can continue seamlessly.
+
+Output requirements:
+- Use markdown headings (##) exactly as section titles.
+- Omit any section with no relevant content.
+- Be concise, but preserve concrete specifics (exact names, versions, values, tools, dates when present).
+- Use the user's terminology.
+- Do not add facts not present in the transcript.
+- Do not speculate or editorialize.
+- Preserve chronology when it affects understanding.
+
+Sections:
+## Identity & Background
+## Project / Topic
+## Key Decisions Made
+## Current State
+## Open Items & Next Steps
+## Preferences & Constraints
+## Important Context & Nuance
+
+For “Key Decisions Made” and “Open Items & Next Steps,” use single-level bullet points.`,
+  },
+  {
+    title: 'Transcript Summary - Strict JSON',
+    original: `You are a conversation analyst specializing in context extraction and knowledge transfer.
+
+Task:
+Read the transcript between <transcript> tags and extract continuation-ready context.
+
+Return ONLY valid JSON with this schema:
+{
+  "identity_background": string | null,
+  "project_topic": string | null,
+  "key_decisions_made": string[] | null,
+  "current_state": string | null,
+  "open_items_next_steps": string[] | null,
+  "preferences_constraints": string | null,
+  "important_context_nuance": string | null
+}
+
+Rules:
+- Use exact terms from the transcript.
+- Include concrete specifics (names, versions, values, tools, dates) when present.
+- No invented facts, no interpretation beyond explicit content.
+- If a section has no content, set it to null.
+- Preserve chronology where relevant.`,
+  },
+  {
+    title: 'Transcript Summary - High Recall',
+    original: `You are a conversation continuity analyst.
+
+Goal:
+Produce a handoff summary that minimizes context loss across sessions.
+
+Input:
+Transcript between <transcript> tags.
+
+Output:
+Use markdown with these headings (omit empty sections):
+## Identity & Background
+## Project / Topic
+## Key Decisions Made
+## Current State
+## Open Items & Next Steps
+## Preferences & Constraints
+## Important Context & Nuance
+
+Priority:
+1) Completeness of actionable context
+2) Exact technical details (names, versions, commands, constraints)
+3) Chronology where decision flow matters
+
+Hard rules:
+- Do not add information not explicitly in the transcript.
+- Do not paraphrase away project-specific terminology.
+- Keep writing concise and professional.`,
+  },
+  {
+    title: 'Transcript Summary - Engineering Brief',
+    original: `You are a conversation analyst creating an engineer-ready continuation brief.
+
+Read <transcript> and produce a structured summary with these sections (omit empty):
+## Identity & Background
+## Project / Topic
+## Key Decisions Made
+## Current State
+## Open Items & Next Steps
+## Preferences & Constraints
+## Important Context & Nuance
+
+Emphasize:
+- Technical stack, files, versions, commands, and architecture details
+- Confirmed decisions vs pending decisions
+- Risks, edge cases, corrected mistakes, and clarified assumptions
+- Exact wording for project-specific terms
+
+Rules:
+- No invented facts
+- No speculation
+- Concise but specific
+- Preserve chronological order when it affects implementation context`,
+  },
+  {
+    title: 'Transcript Summary - Ultra Concise',
+    original: `You are a context-transfer analyst.
+
+From <transcript>, generate a minimal but sufficient bootstrap summary for a new session.
+
+Format:
+## Identity & Background
+## Project / Topic
+## Key Decisions Made
+## Current State
+## Open Items & Next Steps
+## Preferences & Constraints
+## Important Context & Nuance
+
+Constraints:
+- Omit empty sections
+- Keep each section short and dense
+- Include exact names/versions/values
+- Use user terminology
+- No assumptions, no added facts`,
+  },
+].map(seed => ({
+  ...seed,
+  enhanced: seed.original,
+  notes: 'Default PromptLab library seed for transcript/context handoff.',
+  tags: ['Writing', 'System'],
+  collection: 'Handoff Templates',
+  variants: [],
+}));
+
+const ONBOARDING_DONE_KEY = 'pl2-onboarding-complete';
+const LINT_DEBOUNCE_MS = 280;
 const STARTER_TEMPLATES = [
   {
     id: 'coding',
     label: 'Coding',
-    text: 'You are a senior software engineer. Goal: Explain this bug and propose a fix.\n\nConstraints:\n- Keep answer under 250 words.\n- Include root cause and patch steps.\n\nOutput format:\n## Root Cause\n## Patch Plan\n## Test Plan',
+    prompt: `You are a senior software engineer.
+
+Goal:
+Help me implement the requested feature with clear, production-ready code.
+
+Constraints:
+- Keep changes minimal and safe.
+- Explain assumptions briefly.
+
+Output format:
+- Summary
+- Patch plan
+- Updated code snippets`,
   },
   {
     id: 'writing',
     label: 'Writing',
-    text: 'Goal: Rewrite this paragraph for clarity and confidence.\n\nConstraints:\n- Preserve core meaning.\n- Use plain language.\n\nOutput format:\n- Revised paragraph\n- 3 rationale bullets',
+    prompt: `You are an expert editor.
+
+Goal:
+Rewrite the draft for clarity and stronger structure.
+
+Constraints:
+- Preserve original intent.
+- Keep tone professional and concise.
+
+Output format:
+- Revised draft
+- Bullet list of notable changes`,
   },
   {
     id: 'support',
     label: 'Support',
-    text: 'You are a support specialist. Goal: Respond to this customer issue clearly and empathetically.\n\nConstraints:\n- Keep tone calm and specific.\n- Include next steps.\n\nOutput format:\n## Response\n## Internal Notes',
+    prompt: `You are a customer support specialist.
+
+Goal:
+Provide a clear, empathetic response that resolves the issue.
+
+Constraints:
+- Keep it under 180 words.
+- Include one next step.
+
+Output format:
+- Final response
+- Internal notes`,
   },
   {
     id: 'research',
     label: 'Research',
-    text: 'Goal: Summarize the document and identify decisions required.\n\nConstraints:\n- Keep under 8 bullets.\n- Separate facts from assumptions.\n\nOutput format:\n## Summary\n## Decisions Needed\n## Open Questions',
+    prompt: `You are a research assistant.
+
+Goal:
+Summarize the topic and highlight actionable findings.
+
+Constraints:
+- Cite uncertainty where needed.
+- Keep to 5 concise bullets.
+
+Output format:
+- Key findings
+- Risks or open questions`,
   },
 ];
-
-const STORAGE_KEYS = Object.freeze({
-  REDACTION_SETTINGS: 'pl2-redaction-settings',
-  ONBOARDING_DONE: 'pl2-onboarding-complete',
-  ONBOARDING_HIDE: 'pl2-onboarding-hide',
-});
 
 const T = {
   dark: {
@@ -87,86 +288,6 @@ const T = {
   },
 };
 
-// ── Helpers ───────────────────────────────────────────────────────────────────
-function wordDiff(a, b) {
-  const wa = a.split(' ').slice(0, 200), wb = b.split(' ').slice(0, 200);
-  const dp = Array(wa.length + 1).fill(null).map(() => Array(wb.length + 1).fill(0));
-  for (let i = 1; i <= wa.length; i++)
-    for (let j = 1; j <= wb.length; j++)
-      dp[i][j] = wa[i - 1] === wb[j - 1] ? dp[i - 1][j - 1] + 1 : Math.max(dp[i - 1][j], dp[i][j - 1]);
-  const res = [];
-  let i = wa.length, j = wb.length;
-  while (i > 0 || j > 0) {
-    if (i > 0 && j > 0 && wa[i - 1] === wb[j - 1]) { res.unshift({ t: 'eq', v: wa[i - 1] }); i--; j--; }
-    else if (j > 0 && (i === 0 || dp[i][j - 1] >= dp[i - 1][j])) { res.unshift({ t: 'add', v: wb[j - 1] }); j--; }
-    else { res.unshift({ t: 'del', v: wa[i - 1] }); i--; }
-  }
-  return res;
-}
-
-function scorePrompt(text) {
-  if (!text.trim()) return null;
-  return {
-    role: /\b(you are|act as|as a|your role|persona)\b/i.test(text),
-    task: /\b(write|create|generate|explain|analyze|summarize|list|help|please|provide)\b/i.test(text),
-    format: /\b(format|output|respond in|json|list|bullet|markdown|table|return)\b/i.test(text),
-    constraints: /\b(do not|don't|avoid|must|should|limit|max|minimum|only|never|always)\b/i.test(text),
-    context: text.length > 80,
-    tokens: Math.round(text.length / 4),
-  };
-}
-
-function extractVars(text) {
-  return [...new Set([...text.matchAll(/\{\{(\w[\w ]*)\}\}/g)].map(m => m[1]))];
-}
-
-function encodeShare(entry) {
-  try {
-    return btoa(unescape(encodeURIComponent(JSON.stringify({
-      title: entry.title, original: entry.original, enhanced: entry.enhanced,
-      variants: entry.variants, tags: entry.tags, notes: entry.notes,
-    }))));
-  } catch { return null; }
-}
-
-function decodeShare(str) {
-  try { return JSON.parse(decodeURIComponent(escape(atob(str)))); }
-  catch { return null; }
-}
-
-function extractTextFromAnthropic(data) {
-  if (data?.error?.message) {
-    throw new Error(data.error.message);
-  }
-  if (!Array.isArray(data?.content)) {
-    throw new Error('Model returned no content.');
-  }
-  const text = data.content.map(b => (typeof b.text === 'string' ? b.text : '')).join('').trim();
-  if (!text) {
-    throw new Error('Model returned empty content. Try again.');
-  }
-  return text;
-}
-
-function parseEnhancedPayload(rawText) {
-  const cleaned = rawText.replace(/```json|```/g, '').trim();
-  if (!cleaned) {
-    throw new Error('Model returned empty content. Try again.');
-  }
-  try {
-    return JSON.parse(cleaned);
-  } catch {
-    const firstBrace = cleaned.indexOf('{');
-    const lastBrace = cleaned.lastIndexOf('}');
-    if (firstBrace >= 0 && lastBrace > firstBrace) {
-      try {
-        return JSON.parse(cleaned.slice(firstBrace, lastBrace + 1));
-      } catch {}
-    }
-    throw new Error('Model response was not valid JSON. Try again.');
-  }
-}
-
 // ── Sub-components ────────────────────────────────────────────────────────────
 function Toast({ message, onDone }) {
   useEffect(() => { const t = setTimeout(onDone, 2400); return () => clearTimeout(t); }, []);
@@ -188,47 +309,35 @@ function TagChip({ tag, onRemove, onClick, selected }) {
   );
 }
 
-function SeverityPill({ severity }) {
-  const isWarn = severity === 'warning';
+function ErrorPanel({ errorState, showErrorDetails, setShowErrorDetails, onDismiss, onAction }) {
+  if (!errorState) return null;
   return (
-    <span className={`text-[10px] px-1.5 py-0.5 rounded-full font-semibold ${isWarn ? 'bg-amber-500/20 text-amber-300' : 'bg-blue-500/20 text-blue-300'}`}>
-      {isWarn ? 'Warning' : 'Info'}
-    </span>
-  );
-}
-
-function ErrorPanel({ error, onAction, m }) {
-  if (!error) return null;
-  const actionLabel = {
-    open_settings: 'Open provider settings',
-    retry: 'Retry',
-    shorten_request: 'Shorten request',
-  };
-  return (
-    <div className="text-xs bg-red-950/30 border border-red-800/70 rounded-lg p-3 flex flex-col gap-2">
+    <div className="text-xs bg-red-950/40 border border-red-900 rounded-lg p-2.5 flex flex-col gap-2">
       <div className="flex items-center justify-between gap-2">
-        <p className="text-red-300 font-semibold">{error.userMessage}</p>
-        <span className={`font-mono ${m.textMuted}`}>{error.code}</span>
+        <div>
+          <p className="text-red-300 font-semibold">{errorState.userMessage}</p>
+          <p className="text-red-200/80">{errorState.category} · {errorState.code}</p>
+        </div>
+        <button onClick={onDismiss} className="text-red-300 hover:text-red-100">Dismiss</button>
       </div>
-      <p className={m.textAlt}>{error.details}</p>
-      {Array.isArray(error.suggestions) && error.suggestions.length > 0 && (
-        <ul className={`list-disc ml-4 ${m.textBody}`}>
-          {error.suggestions.map((tip, idx) => <li key={`${error.code}-tip-${idx}`}>{tip}</li>)}
-        </ul>
+      {Array.isArray(errorState.suggestions) && errorState.suggestions.length > 0 && (
+        <div className="flex flex-col gap-1">
+          {errorState.suggestions.map(step => <p key={step} className="text-red-100/90">Try this: {step}</p>)}
+        </div>
       )}
-      {Array.isArray(error.actions) && error.actions.length > 0 && (
-        <div className="flex flex-wrap gap-1.5 pt-1">
-          {error.actions.map((action) => (
-            <button
-              key={`${error.code}-${action}`}
-              onClick={() => onAction?.(action)}
-              className="px-2 py-1 rounded-md bg-red-900/60 hover:bg-red-800/70 text-red-100 transition-colors"
-            >
-              {actionLabel[action] || action}
+      {Array.isArray(errorState.actions) && errorState.actions.length > 0 && (
+        <div className="flex flex-wrap gap-2">
+          {errorState.actions.map(action => (
+            <button key={action} onClick={() => onAction(action)} className="px-2 py-1 rounded bg-red-900/70 hover:bg-red-800 text-red-100 transition-colors">
+              {action === 'open_provider_settings' ? 'Open provider settings' : action === 'shorten_request' ? 'Shorten request' : 'Retry'}
             </button>
           ))}
         </div>
       )}
+      <button onClick={() => setShowErrorDetails(p => !p)} className="text-red-200 hover:text-red-50 text-left">
+        {showErrorDetails ? 'Hide details' : 'Show details'}
+      </button>
+      {showErrorDetails && <pre className="whitespace-pre-wrap text-red-100/80">{errorState.details}</pre>}
     </div>
   );
 }
@@ -315,7 +424,9 @@ export default function App() {
   const [notes, setNotes] = useState('');
   const [loading, setLoading] = useState(false);
   const [errorState, setErrorState] = useState(null);
+  const [showErrorDetails, setShowErrorDetails] = useState(false);
   const [showSave, setShowSave] = useState(false);
+  const [editingId, setEditingId] = useState(null);
   const [saveTitle, setSaveTitle] = useState('');
   const [saveTags, setSaveTags] = useState([]);
   const [saveCollection, setSaveCollection] = useState('');
@@ -337,63 +448,126 @@ export default function App() {
   const [expandedId, setExpandedId] = useState(null);
   const [expandedVersionId, setExpandedVersionId] = useState(null);
   const [shareId, setShareId] = useState(null);
+  const [renamingId, setRenamingId] = useState(null);
+  const [renameValue, setRenameValue] = useState('');
+  const [editorLayout, setEditorLayout] = useState('split');
+  const [draggingLibraryId, setDraggingLibraryId] = useState(null);
+  const [dragOverLibraryId, setDragOverLibraryId] = useState(null);
   const [composerBlocks, setComposerBlocks] = useState([]);
   const [dragOverComposer, setDragOverComposer] = useState(false);
   const [draggingLibId, setDraggingLibId] = useState(null);
   const [dragOverBlockIdx, setDragOverBlockIdx] = useState(null);
-  const [abA, setAbA] = useState({ prompt: '', response: '', loading: false, error: null });
-  const [abB, setAbB] = useState({ prompt: '', response: '', loading: false, error: null });
+  const [abA, setAbA] = useState({ prompt: '', response: '', loading: false });
+  const [abB, setAbB] = useState({ prompt: '', response: '', loading: false });
   const [abWinner, setAbWinner] = useState(null);
+  const [abPendingWinner, setAbPendingWinner] = useState(null);
+  const [abNoteDraft, setAbNoteDraft] = useState('');
+  const [showWinnerNoteModal, setShowWinnerNoteModal] = useState(false);
+  const [historyRecords, setHistoryRecords] = useState([]);
+  const [historyQuery, setHistoryQuery] = useState('');
+  const [historyFrom, setHistoryFrom] = useState('');
+  const [historyTo, setHistoryTo] = useState('');
+  const [selectedHistoryId, setSelectedHistoryId] = useState(null);
   const [showSettings, setShowSettings] = useState(false);
   const [showCmdPalette, setShowCmdPalette] = useState(false);
   const [showShortcuts, setShowShortcuts] = useState(false);
-  const [cmdQuery, setCmdQuery] = useState('');
-  const [toast, setToast] = useState(null);
-  const [lintIssues, setLintIssues] = useState([]);
-  const [dismissedLintRules, setDismissedLintRules] = useState([]);
   const [showChecklist, setShowChecklist] = useState(true);
-  const [redactionSettings, setRedactionSettings] = useState(DEFAULT_REDACTION_SETTINGS);
+  const [lintIssues, setLintIssues] = useState([]);
+  const [promptDismissals, setPromptDismissals] = useState({});
+  const [redactionSettings, setRedactionSettings] = useState(() => loadRedactionSettings());
   const [redactionModal, setRedactionModal] = useState(null);
-  const [historyItems, setHistoryItems] = useState([]);
-  const [historySearch, setHistorySearch] = useState('');
-  const [historyDateFrom, setHistoryDateFrom] = useState('');
-  const [historyDateTo, setHistoryDateTo] = useState('');
-  const [historySelectedId, setHistorySelectedId] = useState(null);
-  const [historyLoading, setHistoryLoading] = useState(false);
-  const [winnerNote, setWinnerNote] = useState('');
-  const [showWinnerNoteModal, setShowWinnerNoteModal] = useState(false);
   const [showWizard, setShowWizard] = useState(false);
   const [wizardStep, setWizardStep] = useState(0);
-  const [wizardTemplateId, setWizardTemplateId] = useState(STARTER_TEMPLATES[0].id);
-  const [wizardDraft, setWizardDraft] = useState(STARTER_TEMPLATES[0].text);
-  const [wizardRunOutput, setWizardRunOutput] = useState('');
-  const [wizardModel, setWizardModel] = useState(MODEL_OPTIONS[0].id);
+  const [wizardProvider, setWizardProvider] = useState('anthropic');
+  const [wizardModel, setWizardModel] = useState('claude-sonnet-4-20250514');
+  const [wizardTemplateId, setWizardTemplateId] = useState('coding');
   const [wizardConnectivity, setWizardConnectivity] = useState({ status: 'idle', message: '' });
-  const [showCallouts, setShowCallouts] = useState(false);
-  const lintDebounceRef = useRef(null);
-  const retryActionRef = useRef(null);
-  const winnerSelectionRef = useRef(null);
-  const redactionResolveRef = useRef(null);
+  const [wizardDontShowAgain, setWizardDontShowAgain] = useState(false);
+  const [cmdQuery, setCmdQuery] = useState('');
+  const [toast, setToast] = useState(null);
+  const enhanceReqRef = useRef(0);
+  const abReqRef = useRef({ a: 0, b: 0 });
+  const lintTimerRef = useRef(null);
+  const redactionResolverRef = useRef(null);
   const notify = msg => setToast(msg);
+  const hasSavablePrompt = raw.trim() || enhanced.trim();
+
+  const openSavePanel = (entry = null) => {
+    const source = entry?.enhanced || enhanced || raw;
+    setSaveTitle(entry?.title || suggestTitleFromText(source));
+    if (entry) {
+      setEditingId(entry.id);
+      setSaveTags(entry.tags || []);
+      setSaveCollection(entry.collection || '');
+    } else {
+      setEditingId(null);
+      if (!enhanced.trim()) setSaveTags([]);
+    }
+    setShowSave(true);
+  };
+
+  const clearEditor = () => {
+    enhanceReqRef.current += 1;
+    setLoading(false);
+    setRaw('');
+    setEnhanced('');
+    setVariants([]);
+    setNotes('');
+    setShowSave(false);
+    setEditingId(null);
+    setErrorState(null);
+    setPromptDismissals({});
+  };
+
+  const openOptions = () => {
+    if (typeof chrome !== 'undefined' && chrome.runtime?.openOptionsPage) {
+      chrome.runtime.openOptionsPage();
+    } else {
+      notify('Options page is only available in the extension.');
+    }
+  };
 
   // ── Persistence (localStorage) ────────────────────────────────────────────
   useEffect(() => {
     try {
-      const l = localStorage.getItem('pl2-library'); if (l) setLibrary(JSON.parse(l));
-      const c = localStorage.getItem('pl2-collections'); if (c) setCollections(JSON.parse(c));
-      const md = localStorage.getItem('pl2-mode'); if (md) setColorMode(md);
-      const rs = localStorage.getItem(STORAGE_KEYS.REDACTION_SETTINGS);
-      if (rs) setRedactionSettings({ ...DEFAULT_REDACTION_SETTINGS, ...JSON.parse(rs) });
-      const onboardingDone = localStorage.getItem(STORAGE_KEYS.ONBOARDING_DONE) === 'true';
-      const onboardingHidden = localStorage.getItem(STORAGE_KEYS.ONBOARDING_HIDE) === 'true';
-      if (!onboardingDone && !onboardingHidden) setShowWizard(true);
+      const l = localStorage.getItem('pl2-library');
+      const hasStoredLibrary = Boolean(l);
+      if (l) {
+        setLibrary(normalizeLibrary(JSON.parse(l)));
+      } else {
+        setLibrary(normalizeLibrary(DEFAULT_LIBRARY_SEEDS));
+      }
+      const c = localStorage.getItem('pl2-collections');
+      if (c) {
+        const parsed = JSON.parse(c);
+        setCollections(Array.isArray(parsed) ? parsed.filter(x => typeof x === 'string' && x.trim()) : []);
+      } else if (!hasStoredLibrary) {
+        setCollections(['Handoff Templates']);
+      }
+      const md = localStorage.getItem('pl2-mode');
+      if (md === 'dark' || md === 'light') setColorMode(md);
+      setHistoryRecords(loadExperimentHistory());
+      setRedactionSettings(loadRedactionSettings());
+      const onboardingDone = localStorage.getItem(ONBOARDING_DONE_KEY) === '1';
+      if (!onboardingDone) setShowWizard(true);
       const hash = window.location.hash;
       if (hash.startsWith('#share=')) {
         const d = decodeShare(hash.slice(7));
         if (d) {
-          setRaw(d.original || ''); setEnhanced(d.enhanced || ''); setVariants(d.variants || []);
-          setNotes(d.notes || ''); setSaveTags(d.tags || []); setSaveTitle(d.title || '');
-          setShowSave(true); notify('Shared prompt loaded!');
+          const normalized = normalizeEntry({ ...d, id: crypto.randomUUID() });
+          if (normalized) {
+            setRaw(normalized.original);
+            setEnhanced(normalized.enhanced);
+            setVariants(normalized.variants || []);
+            setNotes(normalized.notes || '');
+            setSaveTags(normalized.tags || []);
+            setPromptDismissals(Object.fromEntries((normalized.lintDismissals || []).map(rule => [rule, true])));
+            setSaveTitle(normalized.title || '');
+            setShowSave(true);
+            notify('Shared prompt loaded!');
+          } else {
+            notify('Shared prompt is invalid.');
+          }
         }
       }
     } catch {}
@@ -402,25 +576,24 @@ export default function App() {
   useEffect(() => { if (libReady) { try { localStorage.setItem('pl2-library', JSON.stringify(library)); } catch {} } }, [library, libReady]);
   useEffect(() => { try { localStorage.setItem('pl2-collections', JSON.stringify(collections)); } catch {} }, [collections]);
   useEffect(() => { try { localStorage.setItem('pl2-mode', colorMode); } catch {} }, [colorMode]);
+  useEffect(() => { saveRedactionSettings(redactionSettings); }, [redactionSettings]);
   useEffect(() => {
-    try { localStorage.setItem(STORAGE_KEYS.REDACTION_SETTINGS, JSON.stringify(redactionSettings)); } catch {}
-  }, [redactionSettings]);
-
-  useEffect(() => {
-    clearTimeout(lintDebounceRef.current);
-    lintDebounceRef.current = setTimeout(() => {
-      const issues = lintPrompt(raw).filter((issue) => !dismissedLintRules.includes(issue.id));
+    clearTimeout(lintTimerRef.current);
+    lintTimerRef.current = setTimeout(() => {
+      const issues = lintPrompt(raw).filter(issue => !promptDismissals[issue.id]);
       setLintIssues(issues);
-    }, 220);
-    return () => clearTimeout(lintDebounceRef.current);
-  }, [raw, dismissedLintRules]);
+    }, LINT_DEBOUNCE_MS);
+    return () => clearTimeout(lintTimerRef.current);
+  }, [raw, promptDismissals]);
 
   // ── Clipboard ─────────────────────────────────────────────────────────────
   const copy = async (text, msg = 'Copied!') => {
-    try { await navigator.clipboard.writeText(text); }
+    const value = ensureString(text);
+    if (!value) { notify('Nothing to copy'); return; }
+    try { await navigator.clipboard.writeText(value); }
     catch {
       try {
-        const el = document.createElement('textarea'); el.value = text;
+        const el = document.createElement('textarea'); el.value = value;
         el.style.cssText = 'position:fixed;top:-9999px;opacity:0';
         document.body.appendChild(el); el.focus(); el.select();
         document.execCommand('copy'); document.body.removeChild(el);
@@ -429,210 +602,247 @@ export default function App() {
     notify(msg);
   };
 
-  const openProviderSettings = () => {
-    if (typeof chrome !== 'undefined' && chrome.runtime?.openOptionsPage) {
-      chrome.runtime.openOptionsPage();
-      return;
-    }
-    setShowSettings(true);
-  };
-
-  const onErrorAction = (action) => {
-    if (action === 'open_settings') {
-      openProviderSettings();
-      return;
-    }
-    if (action === 'retry' && typeof retryActionRef.current === 'function') {
-      retryActionRef.current();
-      return;
-    }
-    if (action === 'shorten_request') {
-      setRaw((prev) => prev.slice(0, Math.max(120, Math.floor(prev.length * 0.7))));
-      notify('Prompt shortened. Review before retrying.');
-    }
-  };
-
-  const askRedactionDecision = (matches) => new Promise((resolve) => {
-    setRedactionModal({ matches: summarizeMatches(matches) });
-    retryActionRef.current = null;
-    redactionResolveRef.current = (decision) => {
-      setRedactionModal(null);
-      resolve(decision);
-    };
-  });
-
-  const runModelRequest = async (payload, context = {}, requestMeta = {}) => {
-    const scan = scanSensitiveData({ prompt: raw, variables: varVals, payload }, redactionSettings);
-    let safePayload = payload;
-    if (scan.matches.length > 0) {
-      const decision = await askRedactionDecision(scan.matches);
-      if (decision === 'edit') {
-        const cancelErr = new Error('Request paused so you can edit sensitive content.');
-        cancelErr.isUserCancel = true;
-        throw cancelErr;
-      }
-      if (decision === 'redact') {
-        safePayload = redactPayload(payload, scan.matches);
-      }
-    }
-    try {
-      return await callAnthropic(safePayload);
-    } catch (err) {
-      const normalized = normalizeModelError(err, context);
-      normalized.requestMeta = requestMeta;
-      throw normalized;
-    }
-  };
-
-  const refreshHistory = async () => {
-    setHistoryLoading(true);
-    try {
-      const rows = await listExperiments({
-        search: historySearch,
-        dateFrom: historyDateFrom,
-        dateTo: historyDateTo,
-      });
-      setHistoryItems(rows);
-      if (rows.length && !historySelectedId) setHistorySelectedId(rows[0].id);
-      if (!rows.length) setHistorySelectedId(null);
-    } finally {
-      setHistoryLoading(false);
-    }
-  };
-
-  useEffect(() => {
-    if (tab !== 'history') return;
-    refreshHistory();
-  }, [tab, historySearch, historyDateFrom, historyDateTo]);
-
-  const selectedWizardTemplate = STARTER_TEMPLATES.find((entry) => entry.id === wizardTemplateId) || STARTER_TEMPLATES[0];
-
-  useEffect(() => {
-    setWizardDraft(selectedWizardTemplate.text);
-  }, [wizardTemplateId]);
-
-  const runWizardConnectivityTest = async () => {
-    setWizardConnectivity({ status: 'loading', message: 'Testing provider connection…' });
+  const runWizardConnectivityCheck = async () => {
+    setWizardConnectivity({ status: 'loading', message: 'Checking provider connectivity…' });
     try {
       const payload = {
         model: wizardModel,
-        max_tokens: 80,
-        messages: [{ role: 'user', content: 'Reply with exactly: OK' }],
+        max_tokens: 16,
+        messages: [{ role: 'user', content: 'Reply with exactly: ok' }],
       };
-      const data = await runModelRequest(payload, { surface: 'wizard', canRetry: true }, { kind: 'wizard-connectivity' });
-      const response = extractTextFromAnthropic(data);
-      setWizardConnectivity({ status: 'ok', message: response.slice(0, 80) });
-    } catch (err) {
-      if (err?.isUserCancel) {
-        setWizardConnectivity({ status: 'idle', message: 'Request cancelled.' });
-      } else {
-        const normalized = err?.category ? err : normalizeModelError(err, { surface: 'wizard' });
-        setWizardConnectivity({ status: 'error', message: normalized.userMessage });
-      }
+      const data = await callAnthropic(payload);
+      const txt = extractTextFromAnthropic(data).toLowerCase();
+      if (!txt.includes('ok')) throw new Error('Unexpected response from provider.');
+      setWizardConnectivity({ status: 'ok', message: 'Provider connectivity verified.' });
+    } catch (e) {
+      const normalized = normalizeError(e);
+      setWizardConnectivity({ status: 'error', message: normalized.userMessage });
     }
   };
 
-  const runWizardFirstPrompt = async () => {
-    if (!wizardDraft.trim()) return;
-    setWizardRunOutput('Running…');
-    try {
-      const data = await runModelRequest(
-        { model: wizardModel, max_tokens: 500, messages: [{ role: 'user', content: wizardDraft }] },
-        { surface: 'wizard', canRetry: true, canShorten: true },
-        { kind: 'wizard-first-run' }
-      );
-      setWizardRunOutput(extractTextFromAnthropic(data).slice(0, 1200));
-    } catch (err) {
-      if (err?.isUserCancel) {
-        setWizardRunOutput('Run cancelled so you can edit sensitive content.');
+  const closeRedactionModal = decision => {
+    const resolve = redactionResolverRef.current;
+    redactionResolverRef.current = null;
+    setRedactionModal(null);
+    if (resolve) resolve(decision);
+  };
+
+  const applySensitiveGate = async (payload, textToScan) => {
+    const matches = detectSensitiveData(textToScan, redactionSettings);
+    if (!redactionSettings.enabled || matches.length === 0) return payload;
+
+    const decision = await new Promise((resolve) => {
+      redactionResolverRef.current = resolve;
+      setRedactionModal({ matches });
+    });
+
+    if (decision === 'edit') {
+      const err = new Error('Request canceled so you can edit the prompt.');
+      err.userCanceled = true;
+      throw err;
+    }
+    if (decision === 'send') return payload;
+
+    const redacted = redactPayloadStrings(payload, redactionSettings);
+    return redacted.payload;
+  };
+
+  const runErrorAction = action => {
+    if (action === 'open_provider_settings') {
+      openOptions();
+      return;
+    }
+    if (action === 'retry') {
+      if (tab === 'abtest') {
+        runAB('a');
+        runAB('b');
       } else {
-        const normalized = err?.category ? err : normalizeModelError(err, { surface: 'wizard' });
-        setWizardRunOutput(`${normalized.userMessage}: ${normalized.details}`);
+        enhance();
       }
+      return;
+    }
+    if (action === 'shorten_request') {
+      if (tab === 'abtest') {
+        setAbA(p => ({ ...p, prompt: p.prompt.slice(0, Math.max(120, Math.floor(p.prompt.length * 0.75))) }));
+        setAbB(p => ({ ...p, prompt: p.prompt.slice(0, Math.max(120, Math.floor(p.prompt.length * 0.75))) }));
+      } else {
+        setRaw(p => p.slice(0, Math.max(140, Math.floor(p.length * 0.75))));
+      }
+      notify('Request shortened.');
     }
   };
 
-  const completeWizard = (hideFuture = false) => {
-    try {
-      localStorage.setItem(STORAGE_KEYS.ONBOARDING_DONE, 'true');
-      localStorage.setItem(STORAGE_KEYS.ONBOARDING_HIDE, hideFuture ? 'true' : 'false');
-    } catch {}
-    setShowWizard(false);
-    setWizardStep(0);
-    setRaw(wizardDraft);
-    setTab('editor');
-    setShowChecklist(true);
-    setShowCallouts(true);
-    notify('Getting started complete.');
+  const finalizeWinner = (noteOverride) => {
+    if (!abPendingWinner) return;
+    const winnerId = abPendingWinner === 'A' ? 'A' : 'B';
+    const labelSource = saveTitle || raw || abA.prompt || abB.prompt;
+    const record = createExperimentRecord({
+      label: suggestTitleFromText(labelSource),
+      winnerId,
+      notes: typeof noteOverride === 'string' ? noteOverride : abNoteDraft,
+      provider: wizardProvider,
+      model: wizardModel,
+      variantA: {
+        name: 'Variant A',
+        prompt: abA.prompt,
+        response: abA.response,
+      },
+      variantB: {
+        name: 'Variant B',
+        prompt: abB.prompt,
+        response: abB.response,
+      },
+    });
+    const saved = addExperimentRecord(record);
+    if (saved) {
+      setHistoryRecords(loadExperimentHistory());
+      setSelectedHistoryId(saved.id);
+      notify('Experiment saved to history.');
+    }
+    setAbWinner(`Variant ${winnerId}`);
+    setShowWinnerNoteModal(false);
+    setAbPendingWinner(null);
+    setAbNoteDraft('');
+  };
+
+  const pickWinner = side => {
+    setAbPendingWinner(side);
+    setAbNoteDraft('');
+    setShowWinnerNoteModal(true);
+  };
+
+  const callAnthropicWithRetry = async (payload, retries = 1) => {
+    let attempt = 0;
+    let lastError = null;
+    while (attempt <= retries) {
+      try {
+        return await callAnthropic(payload);
+      } catch (e) {
+        lastError = e;
+        if (attempt >= retries || !isTransientError(e)) {
+          break;
+        }
+        await new Promise(r => setTimeout(r, 350 * (attempt + 1)));
+      }
+      attempt += 1;
+    }
+    throw lastError || new Error('Request failed.');
   };
 
   // ── Enhance ───────────────────────────────────────────────────────────────
   const enhance = async () => {
     if (!raw.trim()) return;
-    retryActionRef.current = enhance;
-    setLoading(true); setErrorState(null); setEnhanced(''); setVariants([]); setNotes('');
-    setShowSave(false); setShowDiff(false);
+    const reqId = enhanceReqRef.current + 1;
+    enhanceReqRef.current = reqId;
+    setLoading(true); setErrorState(null); setShowErrorDetails(false); setEnhanced(''); setVariants([]); setNotes('');
+    setShowSave(false); setShowDiff(false); setEditingId(null);
     const modeObj = MODES.find(x => x.id === enhMode) || MODES[0];
     const sys = `You are an expert prompt engineer. ${modeObj.sys}\nReturn ONLY valid JSON, no markdown, no backticks:\n{"enhanced":"...","variants":[{"label":"...","content":"..."}],"notes":"...","tags":["..."]}\nProduce 2 variants. Available tags: ${ALL_TAGS.join(', ')}.`;
     try {
-      const data = await runModelRequest({
+      const basePayload = {
         model: 'claude-sonnet-4-20250514', max_tokens: 1500,
         system: sys, messages: [{ role: 'user', content: raw }],
-      }, { surface: 'editor', canRetry: true, canShorten: true });
+      };
+      const payload = await applySensitiveGate(basePayload, `${raw}\n${sys}`);
+      const data = await callAnthropicWithRetry(payload);
+      if (reqId !== enhanceReqRef.current) return;
       const txt = extractTextFromAnthropic(data);
       const p = parseEnhancedPayload(txt);
       setEnhanced(p.enhanced || ''); setVariants(p.variants || []); setNotes(p.notes || '');
-      setSaveTags(p.tags || []); setSaveTitle(''); setShowSave(true);
+      setSaveTags(p.tags || []);
+      setSaveTitle(suggestTitleFromText(p.enhanced || raw));
+      setShowSave(true);
     } catch (e) {
-      if (e?.isUserCancel) {
-        notify('Edit prompt and retry when ready.');
-      } else {
-        setErrorState(e?.category ? e : normalizeModelError(e, { surface: 'editor', canRetry: true, canShorten: true }));
+      if (reqId === enhanceReqRef.current) {
+        if (e?.userCanceled) {
+          notify('Request canceled. Edit prompt and retry.');
+        } else {
+          setErrorState(normalizeError(e));
+        }
       }
     }
-    setLoading(false);
+    if (reqId === enhanceReqRef.current) setLoading(false);
   };
 
   // ── Save ──────────────────────────────────────────────────────────────────
   const doSave = (enh = enhanced, vars = variants, nts = notes, tags = saveTags, title = saveTitle, col = saveCollection) => {
+    const cleanTitle = ensureString(title).trim() || suggestTitleFromText(enh || raw);
+    const normalizedTags = Array.isArray(tags) ? tags.filter(t => typeof t === 'string' && t.trim()) : [];
+    const effectiveEnhanced = ensureString(enh).trim() ? ensureString(enh) : ensureString(raw);
+    const lintDismissalList = Object.keys(promptDismissals).filter(rule => promptDismissals[rule]);
+    const now = new Date().toISOString();
     setLibrary(prev => {
-      const existing = title ? prev.find(e => e.title === title) : null;
-      if (existing) {
-        return prev.map(e => e.id === existing.id ? {
-          ...e, enhanced: enh, variants: vars, notes: nts, tags, collection: col,
-          versions: [...(e.versions || []), { enhanced: e.enhanced, variants: e.variants, savedAt: e.updatedAt || e.createdAt }].slice(-10),
-          lintDismissed: dismissedLintRules,
-          updatedAt: new Date().toISOString(),
-        } : e);
+      if (editingId) {
+        let updated = false;
+        const next = prev.map(e => {
+          if (e.id !== editingId) return e;
+          updated = true;
+          return {
+            ...e,
+            title: cleanTitle,
+            original: ensureString(raw),
+            enhanced: effectiveEnhanced,
+            variants: Array.isArray(vars) ? vars : [],
+            notes: ensureString(nts),
+            tags: normalizedTags,
+            lintDismissals: lintDismissalList,
+            collection: ensureString(col),
+            versions: [...(e.versions || []), { enhanced: e.enhanced, variants: e.variants, savedAt: e.updatedAt || e.createdAt }].slice(-10),
+            updatedAt: now,
+          };
+        });
+        if (updated) return next;
       }
       return [{
-        id: crypto.randomUUID(), title: title || 'Untitled Prompt', original: raw,
-        enhanced: enh, variants: vars, notes: nts, tags, collection: col,
-        lintDismissed: dismissedLintRules,
-        createdAt: new Date().toISOString(), useCount: 0, versions: [],
+        id: crypto.randomUUID(),
+        title: cleanTitle,
+        original: ensureString(raw),
+        enhanced: effectiveEnhanced,
+        variants: Array.isArray(vars) ? vars : [],
+        notes: ensureString(nts),
+        tags: normalizedTags,
+        lintDismissals: lintDismissalList,
+        collection: ensureString(col),
+        createdAt: now,
+        useCount: 0,
+        versions: [],
       }, ...prev];
     });
-    notify('Saved!'); setShowSave(false);
+    notify(editingId ? 'Prompt updated!' : 'Saved!');
+    setShowSave(false);
+    setEditingId(null);
   };
-  const del = id => setLibrary(prev => prev.filter(e => e.id !== id));
+  const del = id => {
+    if (!window.confirm('Delete this prompt?')) return;
+    setLibrary(prev => prev.filter(e => e.id !== id));
+    notify('Prompt deleted.');
+  };
   const bumpUse = id => setLibrary(prev => prev.map(e => e.id === id ? { ...e, useCount: e.useCount + 1 } : e));
 
   const loadEntry = entry => {
-    const vars = extractVars(entry.enhanced);
+    const vars = extractVars(entry?.enhanced);
     if (vars.length > 0) { setPendingTemplate(entry); setVarVals(Object.fromEntries(vars.map(v => [v, '']))); setShowVarForm(true); }
     else applyEntry(entry);
   };
   const applyEntry = entry => {
-    setRaw(entry.original); setEnhanced(entry.enhanced); setVariants(entry.variants || []);
-    setNotes(entry.notes || ''); setSaveTags(entry.tags || []); setSaveTitle(entry.title);
-    setSaveCollection(entry.collection || ''); setShowSave(false); setShowDiff(false);
-    setDismissedLintRules(Array.isArray(entry.lintDismissed) ? entry.lintDismissed : []);
-    setErrorState(null);
-    bumpUse(entry.id); setTab('editor'); notify('Loaded into editor!');
+    const normalized = normalizeEntry(entry);
+    if (!normalized) return;
+    setEditingId(normalized.id);
+    setRaw(normalized.original);
+    setEnhanced(normalized.enhanced);
+    setVariants(normalized.variants || []);
+    setNotes(normalized.notes || '');
+    setPromptDismissals(Object.fromEntries((normalized.lintDismissals || []).map(rule => [rule, true])));
+    setSaveTags(normalized.tags || []);
+    setSaveTitle(normalized.title);
+    setSaveCollection(normalized.collection || '');
+    setShowSave(false);
+    setShowDiff(false);
+    bumpUse(normalized.id); setTab('editor'); notify('Loaded into editor!');
   };
   const applyTemplate = () => {
     if (!pendingTemplate) return;
-    let text = pendingTemplate.enhanced;
+    let text = ensureString(pendingTemplate.enhanced);
     Object.entries(varVals).forEach(([k, v]) => { text = text.replaceAll(`{{${k}}}`, v); });
     applyEntry({ ...pendingTemplate, enhanced: text });
     setShowVarForm(false); setPendingTemplate(null);
@@ -640,22 +850,63 @@ export default function App() {
 
   // ── Export/Import ─────────────────────────────────────────────────────────
   const exportLib = () => {
+    if (library.length === 0) {
+      notify('Library is empty.');
+      return;
+    }
+    if (library.some(e => looksSensitive(e.original) || looksSensitive(e.enhanced) || looksSensitive(e.notes))
+      && !window.confirm('Export may include sensitive prompt content. Continue?')) {
+      return;
+    }
+    const url = URL.createObjectURL(new Blob([JSON.stringify(library, null, 2)], { type: 'application/json' }));
     const a = Object.assign(document.createElement('a'), {
-      href: URL.createObjectURL(new Blob([JSON.stringify(library, null, 2)], { type: 'application/json' })),
+      href: url,
       download: 'prompt-library.json',
     });
     a.click();
+    setTimeout(() => URL.revokeObjectURL(url), 0);
   };
   const importLib = e => {
     const file = e.target.files[0]; if (!file) return;
+    if (file.size > 2 * 1024 * 1024) {
+      notify('Import failed: file is too large.');
+      e.target.value = '';
+      return;
+    }
     const r = new FileReader();
     r.onload = ev => {
-      try { const d = JSON.parse(ev.target.result); if (Array.isArray(d)) { setLibrary(prev => [...d, ...prev]); notify(`Imported ${d.length} prompts!`); } }
+      try {
+        const d = JSON.parse(ev.target.result);
+        const normalized = normalizeLibrary(d);
+        if (!normalized.length) {
+          notify('Import failed: no valid prompts found.');
+          return;
+        }
+        setLibrary(prev => normalizeLibrary([...normalized, ...prev]));
+        notify(`Imported ${normalized.length} prompts!`);
+      }
       catch { notify('Import failed'); }
     };
     r.readAsText(file); e.target.value = '';
   };
-  const getShareUrl = entry => { const c = encodeShare(entry); return c ? `${window.location.origin}${window.location.pathname}#share=${c}` : null; };
+  const getShareUrl = entry => {
+    if (!entry) return null;
+    const c = encodeShare(entry);
+    return c ? `${window.location.origin}${window.location.pathname}#share=${c}` : null;
+  };
+
+  const moveLibraryEntry = (sourceId, targetId) => {
+    if (!sourceId || !targetId || sourceId === targetId) return;
+    setLibrary(prev => {
+      const from = prev.findIndex(e => e.id === sourceId);
+      const to = prev.findIndex(e => e.id === targetId);
+      if (from < 0 || to < 0 || from === to) return prev;
+      const next = [...prev];
+      const [moved] = next.splice(from, 1);
+      next.splice(to, 0, moved);
+      return next;
+    });
+  };
 
   // ── Composer ──────────────────────────────────────────────────────────────
   const addToComposer = entry => {
@@ -667,115 +918,104 @@ export default function App() {
   // ── A/B Test ──────────────────────────────────────────────────────────────
   const runAB = async side => {
     const state = side === 'a' ? abA : abB, setter = side === 'a' ? setAbA : setAbB;
+    const reqKey = side === 'a' ? 'a' : 'b';
+    const reqId = abReqRef.current[reqKey] + 1;
+    abReqRef.current = { ...abReqRef.current, [reqKey]: reqId };
     if (!state.prompt.trim()) return;
-    retryActionRef.current = () => runAB(side);
-    setter(p => ({ ...p, loading: true, response: '', error: null }));
+    setter(p => ({ ...p, loading: true, response: '' }));
     try {
-      const data = await runModelRequest(
-        { model: 'claude-sonnet-4-20250514', max_tokens: 800, messages: [{ role: 'user', content: state.prompt }] },
-        { surface: 'abtest', canRetry: true, canShorten: true },
-        { kind: 'abtest', side }
-      );
-      setter(p => ({ ...p, response: extractTextFromAnthropic(data), loading: false, error: null }));
+      const basePayload = { model: wizardModel, max_tokens: 800, messages: [{ role: 'user', content: state.prompt }] };
+      const payload = await applySensitiveGate(basePayload, state.prompt);
+      const data = await callAnthropicWithRetry(payload);
+      if (abReqRef.current[reqKey] !== reqId) return;
+      setter(p => ({ ...p, response: extractTextFromAnthropic(data), loading: false }));
     } catch (e) {
-      if (e?.isUserCancel) {
-        notify('Edit prompt and retry when ready.');
+      if (abReqRef.current[reqKey] !== reqId) return;
+      if (e?.userCanceled) {
         setter(p => ({ ...p, loading: false }));
-      } else {
-        const norm = e?.category ? e : normalizeModelError(e, { surface: 'abtest', canRetry: true, canShorten: true });
-        setter(p => ({ ...p, loading: false, response: '', error: norm }));
+        notify('Request canceled. Edit prompt and retry.');
+        return;
       }
+      const normalized = normalizeError(e);
+      setter(p => ({ ...p, response: `${normalized.userMessage}\n\n${normalized.suggestions.map(s => `- ${s}`).join('\n')}`, loading: false }));
+      setErrorState(normalized);
     }
   };
 
-  const persistABExperiment = async (winnerLabel, noteText = winnerNote) => {
-    const winnerId = winnerLabel === 'Variant A' ? 'a' : 'b';
-    const winnerPrompt = winnerId === 'a' ? abA.prompt : abB.prompt;
-    const now = new Date().toISOString();
-    const label = saveTitle?.trim() || raw.split('\n')[0]?.slice(0, 72) || 'A/B Experiment';
-    await saveExperiment({
-      id: crypto.randomUUID(),
-      createdAt: now,
-      label,
-      variants: [
-        {
-          id: 'a',
-          name: 'Variant A',
-          promptHash: hashText(abA.prompt),
-          promptText: abA.prompt,
-          outputPreview: abA.response?.slice(0, 400) || '',
-          model: 'claude-sonnet-4-20250514',
-          provider: 'configured',
-        },
-        {
-          id: 'b',
-          name: 'Variant B',
-          promptHash: hashText(abB.prompt),
-          promptText: abB.prompt,
-          outputPreview: abB.response?.slice(0, 400) || '',
-          model: 'claude-sonnet-4-20250514',
-          provider: 'configured',
-        },
-      ],
-      keyInputSnapshot: raw.slice(0, 700),
-      outcome: { winnerVariantId: winnerId, winnerPromptHash: hashText(winnerPrompt) },
-      notes: String(noteText || '').trim(),
-    });
-    notify('Experiment saved to history.');
-    if (tab === 'history') refreshHistory();
+  const dismissLintRule = ruleId => {
+    if (!ruleId) return;
+    setPromptDismissals(prev => ({ ...prev, [ruleId]: true }));
   };
 
-  const finalizeWinnerSelection = async (noteText = '') => {
-    const selectedWinner = winnerSelectionRef.current || abWinner;
-    if (!selectedWinner) {
-      setShowWinnerNoteModal(false);
-      return;
-    }
-    try {
-      await persistABExperiment(selectedWinner, noteText);
-      setShowWinnerNoteModal(false);
-      setWinnerNote('');
-    } catch {
-      notify('Could not save experiment history.');
-    }
+  const applyLintFix = ruleId => {
+    setRaw(prev => applyLintQuickFix(prev, ruleId));
+  };
+
+  const completeWizard = () => {
+    const selected = STARTER_TEMPLATES.find(t => t.id === wizardTemplateId) || STARTER_TEMPLATES[0];
+    setRaw(selected.prompt);
+    setTab('editor');
+    setShowWizard(false);
+    setWizardStep(0);
+    try { localStorage.setItem(ONBOARDING_DONE_KEY, '1'); } catch {}
+    notify('Onboarding complete.');
+  };
+
+  const relaunchWizard = () => {
+    setWizardStep(0);
+    setShowWizard(true);
+  };
+
+  const filteredHistory = filterExperimentHistory(historyRecords, {
+    query: historyQuery,
+    from: historyFrom,
+    to: historyTo,
+  });
+  const selectedHistory = filteredHistory.find(r => r.id === selectedHistoryId) || filteredHistory[0] || null;
+
+  const loadHistoryWinner = record => {
+    if (!record) return;
+    const winner = (record.variantMetadata || []).find(v => v.id === record.outcome);
+    if (!winner) return;
+    setRaw(winner.promptText || '');
+    setEnhanced(winner.promptText || '');
+    setTab('editor');
+    notify('Winning variant loaded.');
   };
 
   // ── Derived state ─────────────────────────────────────────────────────────
   const allLibTags = [...new Set(library.flatMap(e => e.tags || []))];
-  const filtered = library
+  const filtered = [...library]
     .filter(e => {
       const q = search.toLowerCase();
-      return (!q || e.title.toLowerCase().includes(q) || (e.tags || []).some(t => t.toLowerCase().includes(q)))
+      const title = ensureString(e.title).toLowerCase();
+      return (!q || title.includes(q) || (e.tags || []).some(t => t.toLowerCase().includes(q)))
         && (!activeTag || (e.tags || []).includes(activeTag))
         && (!activeCollection || e.collection === activeCollection);
     })
-    .sort((a, b) => sortBy === 'oldest' ? new Date(a.createdAt) - new Date(b.createdAt)
-      : sortBy === 'most-used' ? b.useCount - a.useCount
-      : new Date(b.createdAt) - new Date(a.createdAt));
-  const quickInject = [...library].sort((a, b) => b.useCount - a.useCount).slice(0, 5);
-  const selectedHistory = historyItems.find((entry) => entry.id === historySelectedId) || null;
-  const winningHistoryVariant = selectedHistory
-    ? (selectedHistory.variants || []).find((variant) => variant.id === selectedHistory?.outcome?.winnerVariantId) || null
-    : null;
-  const score = scorePrompt(raw);
-  const wc = raw.trim() ? raw.trim().split(/\s+/).length : 0;
-  const lintIssuesByLine = useMemo(() => {
-    const grouped = new Map();
-    lintIssues.forEach((issue) => {
-      const line = Number(issue.line) > 0 ? Number(issue.line) : 1;
-      if (!grouped.has(line)) grouped.set(line, []);
-      grouped.get(line).push(issue);
+    .sort((a, b) => {
+      if (sortBy === 'manual') return 0;
+      if (sortBy === 'oldest') return new Date(a.createdAt) - new Date(b.createdAt);
+      if (sortBy === 'most-used') return b.useCount - a.useCount;
+      return new Date(b.createdAt) - new Date(a.createdAt);
     });
-    return grouped;
-  }, [lintIssues]);
+  const quickInject = [...library].sort((a, b) => b.useCount - a.useCount).slice(0, 5);
+  const score = scorePrompt(raw);
+  const wc = typeof raw === 'string' && raw.trim() ? raw.trim().split(/\s+/).length : 0;
   const inp = `w-full ${m.input} border rounded-lg p-3 text-sm resize-none focus:outline-none focus:border-violet-500 transition-colors placeholder-gray-400 ${m.text}`;
+  const showEditorPane = tab !== 'editor' || editorLayout !== 'library';
+  const showLibraryPane = tab !== 'editor' || editorLayout !== 'editor';
 
   // ── Keyboard shortcuts ────────────────────────────────────────────────────
   useEffect(() => {
     const h = e => {
       const mod = e.metaKey || e.ctrlKey;
       if (mod && e.key === 'Enter') { e.preventDefault(); if (!loading && raw.trim()) enhance(); }
-      if (mod && e.key === 's') { e.preventDefault(); if (enhanced && !showSave) setShowSave(true); else if (enhanced && showSave) doSave(); }
+      if (mod && e.key === 's') {
+        e.preventDefault();
+        if (hasSavablePrompt && !showSave) openSavePanel();
+        else if (hasSavablePrompt && showSave) doSave();
+      }
       if (mod && e.key === 'k') { e.preventDefault(); setShowCmdPalette(p => !p); setCmdQuery(''); }
       if (e.key === '?' && !['INPUT', 'TEXTAREA'].includes(e.target.tagName)) setShowShortcuts(p => !p);
       if (e.key === 'Escape') {
@@ -783,20 +1023,18 @@ export default function App() {
         setShowShortcuts(false);
         setShowSettings(false);
         setShareId(null);
-        if (showWinnerNoteModal && (winnerSelectionRef.current || abWinner)) finalizeWinnerSelection('');
-        else setShowWinnerNoteModal(false);
-        if (redactionModal) redactionResolveRef.current?.('edit');
+        if (redactionModal) closeRedactionModal('edit');
       }
     };
     window.addEventListener('keydown', h);
     return () => window.removeEventListener('keydown', h);
-  }, [loading, raw, enhanced, showSave, redactionModal, showWinnerNoteModal, abWinner]);
+  }, [loading, raw, showSave, hasSavablePrompt, redactionModal]);
 
   // ── Command palette actions ───────────────────────────────────────────────
   const CMD_ACTIONS = [
     { label: 'Enhance Prompt', hint: '⌘↵', action: () => { if (!loading && raw.trim()) enhance(); setShowCmdPalette(false); } },
-    { label: 'Save Prompt', hint: '⌘S', action: () => { if (enhanced) setShowSave(true); setShowCmdPalette(false); } },
-    { label: 'Clear Editor', hint: '', action: () => { setRaw(''); setEnhanced(''); setVariants([]); setNotes(''); setShowSave(false); setErrorState(null); setDismissedLintRules([]); setShowCmdPalette(false); } },
+    { label: 'Save Prompt', hint: '⌘S', action: () => { if (hasSavablePrompt) openSavePanel(); setShowCmdPalette(false); } },
+    { label: 'Clear Editor', hint: '', action: () => { clearEditor(); setShowCmdPalette(false); } },
     { label: 'Go to Editor', hint: '', action: () => { setTab('editor'); setShowCmdPalette(false); } },
     { label: 'Go to Composer', hint: '', action: () => { setTab('composer'); setShowCmdPalette(false); } },
     { label: 'Go to A/B Test', hint: '', action: () => { setTab('abtest'); setShowCmdPalette(false); } },
@@ -805,8 +1043,8 @@ export default function App() {
     { label: 'Toggle Light / Dark', hint: '', action: () => { setColorMode(p => p === 'dark' ? 'light' : 'dark'); setShowCmdPalette(false); } },
     { label: 'Export Library', hint: '', action: () => { exportLib(); setShowCmdPalette(false); } },
     { label: 'Open Settings', hint: '', action: () => { setShowSettings(true); setShowCmdPalette(false); } },
-    { label: 'Extension Options (API Key)', hint: '', action: () => { openProviderSettings(); setShowCmdPalette(false); } },
-    { label: 'Getting Started Wizard', hint: '', action: () => { setShowWizard(true); setWizardStep(0); setShowCmdPalette(false); } },
+    { label: 'Extension Options (API Key)', hint: '', action: () => { openOptions(); setShowCmdPalette(false); } },
+    { label: 'Getting Started Wizard', hint: '', action: () => { relaunchWizard(); setShowCmdPalette(false); } },
     { label: 'Show Keyboard Shortcuts', hint: '?', action: () => { setShowShortcuts(true); setShowCmdPalette(false); } },
   ];
   const filteredCmds = CMD_ACTIONS.filter(a => !cmdQuery || a.label.toLowerCase().includes(cmdQuery.toLowerCase()));
@@ -846,118 +1084,66 @@ export default function App() {
       {/* ══ EDITOR TAB ══ */}
       {tab === 'editor' && (
         <div className="flex flex-1 overflow-hidden" style={{ height: 'calc(100vh - 44px)' }}>
-          <div className={`w-1/2 flex flex-col border-r ${m.border} overflow-y-auto`}>
+          {showEditorPane && (
+          <div className={`${showLibraryPane ? `w-1/2 border-r ${m.border}` : 'w-full'} flex flex-col overflow-y-auto`}>
             <div className="p-4 flex flex-col gap-3">
-              {showCallouts && (
-                <div className="bg-violet-500/10 border border-violet-500/40 rounded-lg p-2.5 text-xs text-violet-200 flex items-start justify-between gap-3">
-                  <p>
-                    Tip: Use <strong>Prompt Checklist</strong> for linting, <strong>History</strong> for A/B wins, and structured error cards for guided fixes.
-                  </p>
-                  <button onClick={() => setShowCallouts(false)} className="text-violet-300 hover:text-white transition-colors">Dismiss</button>
-                </div>
-              )}
+              <div className="flex gap-1">
+                {[
+                  ['split', 'Split'],
+                  ['editor', 'Focus Editor'],
+                  ['library', 'Focus Library'],
+                ].map(([id, label]) => (
+                  <button key={id} onClick={() => setEditorLayout(id)}
+                    className={`text-xs px-2 py-1 rounded-lg transition-colors ${editorLayout === id ? 'bg-violet-600 text-white' : `${m.btn} ${m.textAlt}`}`}>
+                    {label}
+                  </button>
+                ))}
+              </div>
               {/* Input */}
               <div>
                 <div className="flex justify-between items-center mb-1.5">
-                  <span className={`text-xs ${m.textSub} uppercase tracking-widest font-semibold`}>Input</span>
                   <div className="flex items-center gap-2">
-                    <button
-                      onClick={() => setShowChecklist((prev) => !prev)}
-                      className={`text-[11px] ${m.btn} ${m.textAlt} px-2 py-1 rounded-md transition-colors`}
-                    >
-                      {showChecklist ? 'Hide Checklist' : 'Prompt Checklist'}
+                    <span className={`text-xs ${m.textSub} uppercase tracking-widest font-semibold`}>Input</span>
+                    <button onClick={() => setShowChecklist(p => !p)} className={`text-xs px-2 py-0.5 rounded ${m.btn} ${m.textAlt} transition-colors`}>
+                      Prompt Checklist {lintIssues.length > 0 ? `(${lintIssues.length})` : ''}
                     </button>
-                    <span className={`text-xs ${m.textMuted}`}>{wc}w · {raw.length}c{score ? ` · ~${score.tokens} tok` : ''}</span>
                   </div>
+                  <span className={`text-xs ${m.textMuted}`}>{wc}w · {raw.length}c{score ? ` · ~${score.tokens} tok` : ''}</span>
                 </div>
-                <div className={`border ${m.border} rounded-lg overflow-hidden flex`}>
-                  <div className={`${m.codeBlock} border-r ${m.border} w-12 shrink-0 p-1.5 flex flex-col gap-1 overflow-y-auto`}>
-                    {lintIssues.length === 0 ? (
-                      <span className="text-[11px] text-green-400 text-center py-1">✓</span>
-                    ) : (
-                      lintIssues.map((issue) => (
-                        <button
-                          key={`gutter-${issue.id}-${issue.line}`}
-                          onClick={() => setShowChecklist(true)}
-                          title={`${issue.id} · line ${issue.line || 1}`}
-                          className={`text-[10px] rounded px-1 py-0.5 text-left truncate transition-colors ${issue.severity === 'warning' ? 'bg-amber-500/20 text-amber-300 hover:bg-amber-500/30' : 'bg-blue-500/20 text-blue-300 hover:bg-blue-500/30'}`}
-                        >
-                          ⚑{issue.line || 1}
-                        </button>
-                      ))
-                    )}
-                  </div>
-                  <textarea
-                    rows={5}
-                    className={`flex-1 ${m.input} p-3 text-sm resize-none focus:outline-none transition-colors placeholder-gray-400 ${m.text}`}
-                    placeholder="Paste or write your prompt here…"
-                    value={raw}
-                    onChange={e => { setRaw(e.target.value); setErrorState(null); }}
-                  />
-                </div>
+                <textarea rows={5} className={inp} placeholder="Paste or write your prompt here…" value={raw} onChange={e => setRaw(e.target.value)} />
                 {lintIssues.length > 0 && (
-                  <div className="mt-2 flex flex-wrap gap-1.5">
-                    {lintIssues.map((issue) => (
-                      <div key={`marker-${issue.id}`} className={`px-2 py-1 rounded-md text-[11px] flex items-center gap-1 ${issue.severity === 'warning' ? 'bg-amber-500/15 text-amber-300' : 'bg-blue-500/15 text-blue-300'}`}>
-                        <span>⚑ Line {issue.line || 1}</span>
-                        <span className="opacity-80">{issue.id}</span>
-                      </div>
-                    ))}
+                  <div className={`mt-2 border ${m.border} rounded-lg p-2 ${m.surface}`}>
+                    <p className={`text-[11px] ${m.textSub} font-semibold uppercase tracking-wider mb-1`}>Inline markers</p>
+                    <div className="flex flex-wrap gap-1">
+                      {lintIssues.map(issue => (
+                        <span key={issue.id} className={`text-[11px] px-2 py-0.5 rounded ${issue.severity === 'warning' ? 'bg-amber-500/20 text-amber-400' : 'bg-blue-500/20 text-blue-400'}`}>
+                          L{issue.line}: {issue.id}
+                        </span>
+                      ))}
+                    </div>
                   </div>
                 )}
                 {showChecklist && (
-                  <div className={`${m.surface} border ${m.border} rounded-lg p-3 mt-2 flex flex-col gap-2`}>
+                  <div className={`mt-2 border ${m.border} rounded-lg p-2 ${m.surface} flex flex-col gap-1.5`}>
                     <div className="flex items-center justify-between">
-                      <span className={`text-xs ${m.textSub} uppercase tracking-wider font-semibold`}>Prompt Checklist</span>
-                      <span className={`text-xs ${m.textMuted}`}>{lintIssues.length === 0 ? 'No issues' : `${lintIssues.length} issues`}</span>
+                      <p className={`text-[11px] ${m.textSub} font-semibold uppercase tracking-wider`}>Prompt Checklist</p>
+                      <button onClick={() => setPromptDismissals({})} className={`text-[11px] ${m.textAlt} hover:text-white transition-colors`}>Reset dismissals</button>
                     </div>
-                    {lintIssues.length === 0 ? (
-                      <p className="text-xs text-green-400">Looks good. Your prompt includes key structure signals.</p>
-                    ) : (
-                      <div className="flex flex-col gap-1.5">
-                        {lintIssues.map((issue) => (
-                          <div key={`issue-${issue.id}`} className={`${m.codeBlock} border ${m.border} rounded-md p-2`}>
-                            <div className="flex items-start justify-between gap-2">
-                              <div className="flex-1">
-                                <div className="flex items-center gap-1.5 mb-1">
-                                  <SeverityPill severity={issue.severity} />
-                                  <span className={`text-[11px] ${m.textMuted}`}>Line {issue.line || 1}</span>
-                                  {lintIssuesByLine.get(issue.line || 1)?.length > 1 && (
-                                    <span className={`text-[11px] ${m.textMuted}`}>
-                                      {lintIssuesByLine.get(issue.line || 1).length} issues on this line
-                                    </span>
-                                  )}
-                                </div>
-                                <p className={`text-xs ${m.textBody}`}>{issue.message}</p>
-                              </div>
-                              <button
-                                onClick={() => setDismissedLintRules((prev) => [...new Set([...prev, issue.id])])}
-                                className={`text-[11px] ${m.textAlt} hover:text-white transition-colors`}
-                              >
-                                Dismiss
-                              </button>
-                            </div>
+                    {lintIssues.length === 0 && <p className={`text-xs ${m.textAlt}`}>No active issues.</p>}
+                    {lintIssues.map(issue => (
+                      <div key={issue.id} className={`border ${m.border} rounded p-2 text-xs flex flex-col gap-1`}>
+                        <div className="flex items-center justify-between gap-2">
+                          <span className={issue.severity === 'warning' ? 'text-amber-400 font-semibold' : 'text-blue-400 font-semibold'}>
+                            {issue.severity.toUpperCase()} · Line {issue.line}
+                          </span>
+                          <div className="flex items-center gap-2">
+                            <button onClick={() => applyLintFix(issue.id)} className="text-violet-400 hover:text-violet-300 transition-colors">Quick fix</button>
+                            <button onClick={() => dismissLintRule(issue.id)} className={`${m.textAlt} hover:text-white transition-colors`}>Dismiss</button>
                           </div>
-                        ))}
+                        </div>
+                        <p className={m.textBody}>{issue.message}</p>
                       </div>
-                    )}
-                    <div className="pt-1 border-t border-dashed border-gray-700">
-                      <p className={`text-[11px] ${m.textMuted} mb-1`}>Quick fixes</p>
-                      <div className="flex flex-wrap gap-1.5">
-                        {LINT_QUICK_FIXES.map((fix) => (
-                          <button
-                            key={fix.id}
-                            onClick={() => {
-                              setRaw((prev) => applyQuickFix(prev, fix.id));
-                              setDismissedLintRules([]);
-                            }}
-                            className={`text-[11px] ${m.btn} ${m.textAlt} px-2 py-1 rounded-md transition-colors`}
-                          >
-                            {fix.label}
-                          </button>
-                        ))}
-                      </div>
-                    </div>
+                    ))}
                   </div>
                 )}
               </div>
@@ -991,10 +1177,18 @@ export default function App() {
                   className="flex-1 flex items-center justify-center gap-2 bg-violet-600 hover:bg-violet-500 disabled:opacity-40 text-white rounded-lg py-2 text-sm font-semibold transition-colors">
                   {loading ? <><span className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin" />Enhancing…</> : <><Ic n="Wand2" size={13} />Enhance ⌘↵</>}
                 </button>
-                <button onClick={() => { setRaw(''); setEnhanced(''); setVariants([]); setNotes(''); setShowSave(false); setErrorState(null); setDismissedLintRules([]); }}
-                  className={`px-3 ${m.btn} rounded-lg ${m.textAlt} transition-colors`}><Ic n="X" size={13} /></button>
+                <button onClick={() => openSavePanel()} disabled={!hasSavablePrompt}
+                  className="px-2.5 bg-green-600 hover:bg-green-500 disabled:opacity-40 text-white rounded-lg text-xs font-semibold transition-colors">Save</button>
+                <button onClick={clearEditor} disabled={loading}
+                  className="px-2.5 bg-red-600 hover:bg-red-500 disabled:opacity-40 text-white rounded-lg text-xs font-semibold transition-colors">Clear</button>
               </div>
-              <ErrorPanel error={errorState} onAction={onErrorAction} m={m} />
+              <ErrorPanel
+                errorState={errorState}
+                showErrorDetails={showErrorDetails}
+                setShowErrorDetails={setShowErrorDetails}
+                onDismiss={() => setErrorState(null)}
+                onAction={runErrorAction}
+              />
               {/* Enhanced */}
               {enhanced && <>
                 <div>
@@ -1028,13 +1222,7 @@ export default function App() {
                             <span className="text-xs font-bold text-violet-400">{v.label}</span>
                             <div className="flex gap-3">
                               <button onClick={() => setEnhanced(v.content)} className={`text-xs ${m.textAlt} hover:text-violet-400 transition-colors`}>Use</button>
-                              <button onClick={() => {
-                                setAbA({ prompt: enhanced, response: '', loading: false, error: null });
-                                setAbB({ prompt: v.content, response: '', loading: false, error: null });
-                                setAbWinner(null);
-                                setTab('abtest');
-                                notify('Loaded into A/B Test!');
-                              }}
+                              <button onClick={() => { setAbA(p => ({ ...p, prompt: enhanced })); setAbB(p => ({ ...p, prompt: v.content })); setAbWinner(null); setTab('abtest'); notify('Loaded into A/B Test!'); }}
                                 className={`text-xs ${m.textAlt} hover:text-violet-400 transition-colors`}>A/B</button>
                               <button onClick={() => copy(v.content)} className={`${m.textAlt} hover:text-white transition-colors`}><Ic n="Copy" size={10} /></button>
                             </div>
@@ -1051,43 +1239,43 @@ export default function App() {
                     <p className={`text-xs ${m.textBody} leading-relaxed`}>{notes}</p>
                   </div>
                 )}
-                {/* Save panel */}
-                {showSave && (
-                  <div className={`${m.surface} border ${m.border} rounded-lg p-3 flex flex-col gap-2`}>
-                    <span className={`text-xs ${m.textAlt} font-semibold uppercase tracking-wider`}>Save to Library</span>
-                    <input className={`${m.input} border rounded-lg px-3 py-1.5 text-sm focus:outline-none focus:border-violet-500 ${m.text}`}
-                      placeholder="Prompt title…" value={saveTitle} onChange={e => setSaveTitle(e.target.value)} />
-                    <div className="flex gap-2">
-                      <select value={saveCollection} onChange={e => setSaveCollection(e.target.value)}
-                        className={`flex-1 ${m.input} border rounded-lg px-2 py-1.5 text-xs ${m.text} focus:outline-none`}>
-                        <option value="">No Collection</option>
-                        {collections.map(c => <option key={c} value={c}>{c}</option>)}
-                      </select>
-                      {showNewColl ? (
-                        <div className="flex gap-1">
-                          <input autoFocus className={`w-28 ${m.input} border rounded-lg px-2 py-1.5 text-xs ${m.text} focus:outline-none focus:border-violet-500`}
-                            placeholder="Name…" value={newCollName} onChange={e => setNewCollName(e.target.value)}
-                            onKeyDown={e => {
-                              if (e.key === 'Enter') { const n = newCollName.trim(); if (n && !collections.includes(n)) { setCollections(p => [...p, n]); setSaveCollection(n); } setNewCollName(''); setShowNewColl(false); }
-                              if (e.key === 'Escape') setShowNewColl(false);
-                            }} />
-                          <button onClick={() => { const n = newCollName.trim(); if (n && !collections.includes(n)) { setCollections(p => [...p, n]); setSaveCollection(n); } setNewCollName(''); setShowNewColl(false); }}
-                            className="px-2 py-1.5 bg-violet-600 hover:bg-violet-500 text-white rounded-lg text-xs transition-colors"><Ic n="Check" size={11} /></button>
-                        </div>
-                      ) : (
-                        <button onClick={() => setShowNewColl(true)} className={`px-2.5 ${m.btn} rounded-lg ${m.textAlt} text-xs transition-colors flex items-center gap-1`}><Ic n="Plus" size={11} /></button>
-                      )}
-                    </div>
-                    <div className="flex flex-wrap gap-1.5">
-                      {ALL_TAGS.map(t => <TagChip key={t} tag={t} selected={saveTags.includes(t)} onClick={() => setSaveTags(prev => prev.includes(t) ? prev.filter(x => x !== t) : [...prev, t])} />)}
-                    </div>
-                    <div className="flex gap-2 pt-1">
-                      <button onClick={() => doSave()} className="flex-1 flex items-center justify-center gap-1.5 bg-green-600 hover:bg-green-500 text-white rounded-lg py-1.5 text-sm font-semibold transition-colors"><Ic n="Save" size={12} />Save ⌘S</button>
-                      <button onClick={() => setShowSave(false)} className={`px-4 ${m.btn} rounded-lg text-sm ${m.textBody} transition-colors`}>Cancel</button>
-                    </div>
-                  </div>
-                )}
               </>}
+              {/* Save panel */}
+              {showSave && (
+                <div className={`${m.surface} border ${m.border} rounded-lg p-3 flex flex-col gap-2`}>
+                  <span className={`text-xs ${m.textAlt} font-semibold uppercase tracking-wider`}>{editingId ? 'Update Prompt' : 'Save to Library'}</span>
+                  <input className={`${m.input} border rounded-lg px-3 py-1.5 text-sm focus:outline-none focus:border-violet-500 ${m.text}`}
+                    placeholder="Prompt title…" value={saveTitle} onChange={e => setSaveTitle(e.target.value)} />
+                  <div className="flex gap-2">
+                    <select value={saveCollection} onChange={e => setSaveCollection(e.target.value)}
+                      className={`flex-1 ${m.input} border rounded-lg px-2 py-1.5 text-xs ${m.text} focus:outline-none`}>
+                      <option value="">No Collection</option>
+                      {collections.map(c => <option key={c} value={c}>{c}</option>)}
+                    </select>
+                    {showNewColl ? (
+                      <div className="flex gap-1">
+                        <input autoFocus className={`w-28 ${m.input} border rounded-lg px-2 py-1.5 text-xs ${m.text} focus:outline-none focus:border-violet-500`}
+                          placeholder="Name…" value={newCollName} onChange={e => setNewCollName(e.target.value)}
+                          onKeyDown={e => {
+                            if (e.key === 'Enter') { const n = newCollName.trim(); if (n && !collections.includes(n)) { setCollections(p => [...p, n]); setSaveCollection(n); } setNewCollName(''); setShowNewColl(false); }
+                            if (e.key === 'Escape') setShowNewColl(false);
+                          }} />
+                        <button onClick={() => { const n = newCollName.trim(); if (n && !collections.includes(n)) { setCollections(p => [...p, n]); setSaveCollection(n); } setNewCollName(''); setShowNewColl(false); }}
+                          className="px-2 py-1.5 bg-violet-600 hover:bg-violet-500 text-white rounded-lg text-xs transition-colors"><Ic n="Check" size={11} /></button>
+                      </div>
+                    ) : (
+                      <button onClick={() => setShowNewColl(true)} className={`px-2.5 ${m.btn} rounded-lg ${m.textAlt} text-xs transition-colors flex items-center gap-1`}><Ic n="Plus" size={11} /></button>
+                    )}
+                  </div>
+                  <div className="flex flex-wrap gap-1.5">
+                    {ALL_TAGS.map(t => <TagChip key={t} tag={t} selected={saveTags.includes(t)} onClick={() => setSaveTags(prev => prev.includes(t) ? prev.filter(x => x !== t) : [...prev, t])} />)}
+                  </div>
+                  <div className="flex gap-2 pt-1">
+                    <button onClick={() => doSave()} disabled={!hasSavablePrompt} className="flex-1 flex items-center justify-center gap-1.5 bg-green-600 hover:bg-green-500 disabled:opacity-40 text-white rounded-lg py-1.5 text-sm font-semibold transition-colors"><Ic n="Save" size={12} />Save ⌘S</button>
+                    <button onClick={() => { setShowSave(false); setEditingId(null); }} className={`px-4 ${m.btn} rounded-lg text-sm ${m.textBody} transition-colors`}>Cancel</button>
+                  </div>
+                </div>
+              )}
               {/* Quick Inject */}
               {quickInject.length > 0 && (
                 <div>
@@ -1105,9 +1293,11 @@ export default function App() {
               )}
             </div>
           </div>
+          )}
 
           {/* Right — Library */}
-          <div className="w-1/2 flex flex-col overflow-hidden">
+          {showLibraryPane && (
+          <div className={`${showEditorPane ? 'w-1/2' : 'w-full'} flex flex-col overflow-hidden`}>
             <div className={`p-3 border-b ${m.border} flex flex-col gap-2 shrink-0`}>
               <div className="flex gap-2">
                 <div className="relative flex-1">
@@ -1117,8 +1307,9 @@ export default function App() {
                 </div>
                 <select value={sortBy} onChange={e => setSortBy(e.target.value)}
                   className={`${m.input} border rounded-lg px-2 py-1.5 text-xs ${m.textBody} focus:outline-none`}>
-                  <option value="newest">Newest</option><option value="oldest">Oldest</option><option value="most-used">Most Used</option>
+                  <option value="newest">Newest</option><option value="oldest">Oldest</option><option value="most-used">Most Used</option><option value="manual">Manual</option>
                 </select>
+                <button onClick={exportLib} className={`px-2.5 rounded-lg text-xs ${m.btn} ${m.textAlt} transition-colors`}>Export</button>
               </div>
               {collections.length > 0 && (
                 <div className="flex gap-1 flex-wrap">
@@ -1144,78 +1335,115 @@ export default function App() {
                   <p className={`text-sm ${m.textSub}`}>{library.length === 0 ? 'No saved prompts yet.' : 'No results found.'}</p>
                 </div>
               )}
-              {filtered.map(entry => (
-                <div key={entry.id} className={`${m.surface} border ${m.border} ${m.borderHov} rounded-lg overflow-hidden transition-colors`}>
-                  <div className="flex items-start justify-between px-3 py-2.5 gap-2">
-                    <div className="flex-1 min-w-0">
-                      <p className={`text-sm font-semibold ${m.text} truncate`}>{entry.title}</p>
-                      <div className={`flex items-center gap-2 text-xs ${m.textMuted} mt-0.5 flex-wrap`}>
-                        {entry.collection && <span className="flex items-center gap-1"><Ic n="FolderOpen" size={8} />{entry.collection}</span>}
-                        <span>{new Date(entry.createdAt).toLocaleDateString()}</span>
-                        {entry.useCount > 0 && <span className="text-violet-400">{entry.useCount}×</span>}
-                        {(entry.versions || []).length > 0 && <span className="flex items-center gap-0.5 text-blue-400"><Ic n="Clock" size={8} />{entry.versions.length}v</span>}
-                        {extractVars(entry.enhanced).length > 0 && <span className="text-amber-400">{'{{vars}}'}</span>}
+              {filtered.map(entry => {
+                const manual = sortBy === 'manual';
+                const shareUrl = shareId === entry.id ? getShareUrl(entry) : null;
+                return (
+                  <div key={entry.id}
+                    draggable={manual}
+                    onDragStart={e => { if (!manual) return; e.dataTransfer.setData('libraryEntryId', entry.id); setDraggingLibraryId(entry.id); }}
+                    onDragEnd={() => { setDraggingLibraryId(null); setDragOverLibraryId(null); }}
+                    onDragOver={e => { if (!manual) return; e.preventDefault(); setDragOverLibraryId(entry.id); }}
+                    onDrop={e => { if (!manual) return; e.preventDefault(); moveLibraryEntry(e.dataTransfer.getData('libraryEntryId'), entry.id); setDragOverLibraryId(null); }}
+                    className={`${m.surface} border ${m.border} ${m.borderHov} rounded-lg overflow-hidden transition-colors ${manual ? 'cursor-grab active:cursor-grabbing' : ''} ${dragOverLibraryId === entry.id ? 'border-violet-500' : ''} ${draggingLibraryId === entry.id ? 'opacity-50' : ''}`}>
+                    <div className="flex items-start justify-between px-3 py-2.5 gap-2">
+                      <div className="flex-1 min-w-0">
+                        {renamingId === entry.id ? (
+                          <div className="flex gap-1.5">
+                            <input autoFocus value={renameValue} onChange={e => setRenameValue(e.target.value)}
+                              className={`flex-1 ${m.input} border rounded-lg px-2 py-1 text-xs focus:outline-none focus:border-violet-500 ${m.text}`} />
+                            <button onClick={() => {
+                              const nextTitle = renameValue.trim();
+                              if (!nextTitle) return;
+                              setLibrary(prev => prev.map(e => e.id === entry.id ? { ...e, title: nextTitle } : e));
+                              if (editingId === entry.id) setSaveTitle(nextTitle);
+                              setRenamingId(null);
+                              setRenameValue('');
+                              notify('Renamed.');
+                            }} className="px-2 py-1 text-xs bg-violet-600 hover:bg-violet-500 text-white rounded-lg transition-colors">Save</button>
+                            <button onClick={() => { setRenamingId(null); setRenameValue(''); }} className={`px-2 py-1 text-xs ${m.btn} ${m.textAlt} rounded-lg transition-colors`}>Cancel</button>
+                          </div>
+                        ) : (
+                          <p className={`text-sm font-semibold ${m.text} truncate`}>{entry.title}</p>
+                        )}
+                        <div className={`flex items-center gap-2 text-xs ${m.textMuted} mt-0.5 flex-wrap`}>
+                          {entry.collection && <span className="flex items-center gap-1"><Ic n="FolderOpen" size={8} />{entry.collection}</span>}
+                          <span>{new Date(entry.createdAt).toLocaleDateString()}</span>
+                          {entry.useCount > 0 && <span className="text-violet-400">{entry.useCount}×</span>}
+                          {(entry.versions || []).length > 0 && <span className="flex items-center gap-0.5 text-blue-400"><Ic n="Clock" size={8} />{entry.versions.length}v</span>}
+                          {extractVars(entry.enhanced).length > 0 && <span className="text-amber-400">{'{{vars}}'}</span>}
+                        </div>
+                      </div>
+                      <div className="flex items-center gap-0.5 shrink-0">
+                        {manual && <Ic n="GripVertical" size={12} className={m.textMuted} />}
+                        <button onClick={() => { copy(entry.enhanced); bumpUse(entry.id); }} className={`p-1.5 rounded ${m.btn} ${m.textSub} hover:text-violet-400 transition-colors`}><Ic n="Copy" size={12} /></button>
+                        <button onClick={() => loadEntry(entry)} className={`px-2 py-1 rounded ${m.btn} text-violet-400 text-xs font-semibold transition-colors`}>Load</button>
+                        <button onClick={() => addToComposer(entry)} className={`p-1.5 rounded ${m.btn} ${m.textSub} hover:text-violet-400 transition-colors`}><Ic n="Layers" size={12} /></button>
+                        <button onClick={() => {
+                          if ((looksSensitive(entry.original) || looksSensitive(entry.enhanced) || looksSensitive(entry.notes))
+                            && !window.confirm('This shared link may include sensitive content. Continue?')) {
+                            return;
+                          }
+                          setShareId(p => p === entry.id ? null : entry.id);
+                        }} className={`p-1.5 rounded ${m.btn} ${m.textSub} hover:text-violet-400 transition-colors`}><Ic n="Share2" size={12} /></button>
+                        <button onClick={() => openSavePanel(entry)} className={`px-2 py-1 rounded ${m.btn} ${m.textAlt} text-xs transition-colors`}>Edit</button>
+                        <button onClick={() => { setRenamingId(entry.id); setRenameValue(entry.title); }} className={`px-2 py-1 rounded ${m.btn} ${m.textAlt} text-xs transition-colors`}>Rename</button>
+                        <button onClick={() => setExpandedId(p => p === entry.id ? null : entry.id)} className={`p-1.5 rounded ${m.btn} ${m.textSub} transition-colors`}>
+                          {expandedId === entry.id ? <Ic n="ChevronUp" size={12} /> : <Ic n="ChevronDown" size={12} />}
+                        </button>
+                        <button onClick={() => del(entry.id)} className="p-1.5 rounded bg-red-600 hover:bg-red-500 text-white transition-colors"><Ic n="Trash2" size={12} /></button>
                       </div>
                     </div>
-                    <div className="flex items-center gap-0.5 shrink-0">
-                      <button onClick={() => { copy(entry.enhanced); bumpUse(entry.id); }} className={`p-1.5 rounded ${m.btn} ${m.textSub} hover:text-violet-400 transition-colors`}><Ic n="Copy" size={12} /></button>
-                      <button onClick={() => loadEntry(entry)} className={`px-2 py-1 rounded ${m.btn} text-violet-400 text-xs font-semibold transition-colors`}>Load</button>
-                      <button onClick={() => addToComposer(entry)} className={`p-1.5 rounded ${m.btn} ${m.textSub} hover:text-violet-400 transition-colors`}><Ic n="Layers" size={12} /></button>
-                      <button onClick={() => setShareId(p => p === entry.id ? null : entry.id)} className={`p-1.5 rounded ${m.btn} ${m.textSub} hover:text-violet-400 transition-colors`}><Ic n="Share2" size={12} /></button>
-                      <button onClick={() => setExpandedId(p => p === entry.id ? null : entry.id)} className={`p-1.5 rounded ${m.btn} ${m.textSub} transition-colors`}>
-                        {expandedId === entry.id ? <Ic n="ChevronUp" size={12} /> : <Ic n="ChevronDown" size={12} />}
-                      </button>
-                      <button onClick={() => del(entry.id)} className={`p-1.5 rounded ${m.btn} ${m.textMuted} hover:text-red-400 transition-colors`}><Ic n="Trash2" size={12} /></button>
-                    </div>
-                  </div>
-                  {(entry.tags || []).length > 0 && <div className="flex flex-wrap gap-1 px-3 pb-2">{entry.tags.map(t => <TagChip key={t} tag={t} />)}</div>}
-                  {shareId === entry.id && (
-                    <div className={`border-t ${m.border} px-3 py-2 flex gap-2`}>
-                      <input readOnly className={`flex-1 ${m.input} border rounded-lg px-2 py-1 text-xs focus:outline-none ${m.text} font-mono`} value={getShareUrl(entry) || 'Error'} />
-                      <button onClick={() => copy(getShareUrl(entry) || '')} className="px-2 py-1 bg-violet-600 hover:bg-violet-500 text-white rounded-lg text-xs font-medium transition-colors">Copy URL</button>
-                    </div>
-                  )}
-                  {expandedId === entry.id && (
-                    <div className={`border-t ${m.border} px-3 py-3 flex flex-col gap-3`}>
-                      {[['Original', m.textSub, entry.original], ['Enhanced', 'text-violet-400', entry.enhanced]].map(([lbl, col, txt]) => (
-                        <div key={lbl}><p className={`text-xs ${col} font-semibold mb-1 uppercase tracking-wider`}>{lbl}</p><p className={`text-xs ${m.textBody} leading-relaxed ${m.codeBlock} rounded-lg p-2`}>{txt}</p></div>
-                      ))}
-                      {entry.notes && <div><p className={`text-xs ${m.notesText} font-semibold mb-1 uppercase tracking-wider`}>Notes</p><p className={`text-xs ${m.textAlt} leading-relaxed`}>{entry.notes}</p></div>}
-                      {(entry.variants || []).length > 0 && (
-                        <div><p className={`text-xs ${m.textSub} font-semibold mb-1.5 uppercase tracking-wider`}>Variants</p>
-                          {entry.variants.map((v, i) => <div key={i} className="mb-1.5"><span className="text-xs text-violet-400 font-bold">{v.label}: </span><span className={`text-xs ${m.textAlt}`}>{v.content}</span></div>)}
-                        </div>
-                      )}
-                      {(entry.versions || []).length > 0 && (
-                        <div>
-                          <div className="flex items-center justify-between mb-1">
-                            <p className="text-xs text-blue-400 font-semibold uppercase tracking-wider flex items-center gap-1"><Ic n="Clock" size={9} />Version History ({entry.versions.length})</p>
-                            <button onClick={() => setExpandedVersionId(p => p === entry.id ? null : entry.id)} className={`text-xs ${m.textSub} hover:text-white transition-colors`}>
-                              {expandedVersionId === entry.id ? 'Collapse' : 'Expand'}
-                            </button>
+                    {(entry.tags || []).length > 0 && <div className="flex flex-wrap gap-1 px-3 pb-2">{entry.tags.map(t => <TagChip key={t} tag={t} />)}</div>}
+                    {shareId === entry.id && (
+                      <div className={`border-t ${m.border} px-3 py-2 flex gap-2`}>
+                        <input readOnly className={`flex-1 ${m.input} border rounded-lg px-2 py-1 text-xs focus:outline-none ${m.text} font-mono`} value={shareUrl || 'Unable to create share URL'} />
+                        <button onClick={() => copy(shareUrl || '')} className="px-2 py-1 bg-violet-600 hover:bg-violet-500 text-white rounded-lg text-xs font-medium transition-colors">Copy URL</button>
+                      </div>
+                    )}
+                    {expandedId === entry.id && (
+                      <div className={`border-t ${m.border} px-3 py-3 flex flex-col gap-3`}>
+                        {[['Original', m.textSub, entry.original], ['Enhanced', 'text-violet-400', entry.enhanced]].map(([lbl, col, txt]) => (
+                          <div key={lbl}><p className={`text-xs ${col} font-semibold mb-1 uppercase tracking-wider`}>{lbl}</p><p className={`text-xs ${m.textBody} leading-relaxed ${m.codeBlock} rounded-lg p-2`}>{txt}</p></div>
+                        ))}
+                        {entry.notes && <div><p className={`text-xs ${m.notesText} font-semibold mb-1 uppercase tracking-wider`}>Notes</p><p className={`text-xs ${m.textAlt} leading-relaxed`}>{entry.notes}</p></div>}
+                        {(entry.variants || []).length > 0 && (
+                          <div><p className={`text-xs ${m.textSub} font-semibold mb-1.5 uppercase tracking-wider`}>Variants</p>
+                            {entry.variants.map((v, i) => <div key={i} className="mb-1.5"><span className="text-xs text-violet-400 font-bold">{v.label}: </span><span className={`text-xs ${m.textAlt}`}>{v.content}</span></div>)}
                           </div>
-                          {expandedVersionId === entry.id && (
-                            <div className="flex flex-col gap-2 max-h-48 overflow-y-auto">
-                              {[...entry.versions].reverse().map((v, i) => (
-                                <div key={i} className={`${m.codeBlock} border ${m.border} rounded-lg p-2`}>
-                                  <div className="flex justify-between items-center mb-1">
-                                    <span className={`text-xs ${m.textMuted}`}>{new Date(v.savedAt).toLocaleString()}</span>
-                                    <button onClick={() => { setLibrary(prev => prev.map(e => e.id === entry.id ? { ...e, enhanced: v.enhanced, variants: v.variants || [] } : e)); notify('Restored!'); }}
-                                      className="flex items-center gap-1 text-xs text-blue-400 hover:text-blue-300 transition-colors"><Ic n="RotateCcw" size={9} />Restore</button>
-                                  </div>
-                                  <p className={`text-xs ${m.textAlt} line-clamp-2`}>{v.enhanced}</p>
-                                </div>
-                              ))}
+                        )}
+                        {(entry.versions || []).length > 0 && (
+                          <div>
+                            <div className="flex items-center justify-between mb-1">
+                              <p className="text-xs text-blue-400 font-semibold uppercase tracking-wider flex items-center gap-1"><Ic n="Clock" size={9} />Version History ({entry.versions.length})</p>
+                              <button onClick={() => setExpandedVersionId(p => p === entry.id ? null : entry.id)} className={`text-xs ${m.textSub} hover:text-white transition-colors`}>
+                                {expandedVersionId === entry.id ? 'Collapse' : 'Expand'}
+                              </button>
                             </div>
-                          )}
-                        </div>
-                      )}
-                    </div>
-                  )}
-                </div>
-              ))}
+                            {expandedVersionId === entry.id && (
+                              <div className="flex flex-col gap-2 max-h-48 overflow-y-auto">
+                                {[...entry.versions].reverse().map((v, i) => (
+                                  <div key={i} className={`${m.codeBlock} border ${m.border} rounded-lg p-2`}>
+                                    <div className="flex justify-between items-center mb-1">
+                                      <span className={`text-xs ${m.textMuted}`}>{new Date(v.savedAt).toLocaleString()}</span>
+                                      <button onClick={() => { setLibrary(prev => prev.map(e => e.id === entry.id ? { ...e, enhanced: v.enhanced, variants: v.variants || [] } : e)); notify('Restored!'); }}
+                                        className="flex items-center gap-1 text-xs text-blue-400 hover:text-blue-300 transition-colors"><Ic n="RotateCcw" size={9} />Restore</button>
+                                    </div>
+                                    <p className={`text-xs ${m.textAlt} line-clamp-2`}>{v.enhanced}</p>
+                                  </div>
+                                ))}
+                              </div>
+                            )}
+                          </div>
+                        )}
+                      </div>
+                    )}
+                  </div>
+                );
+              })}
             </div>
           </div>
+          )}
         </div>
       )}
 
@@ -1310,10 +1538,36 @@ export default function App() {
                 className="flex items-center gap-1.5 bg-violet-600 hover:bg-violet-500 disabled:opacity-40 text-white px-3 py-1.5 rounded-lg text-xs font-semibold transition-colors">
                 <Ic n="FlaskConical" size={12} />Run Both
               </button>
-              <button onClick={() => { setAbA({ prompt: '', response: '', loading: false, error: null }); setAbB({ prompt: '', response: '', loading: false, error: null }); setAbWinner(null); }}
+              <button onClick={() => {
+                abReqRef.current = { a: abReqRef.current.a + 1, b: abReqRef.current.b + 1 };
+                setAbA({ prompt: '', response: '', loading: false });
+                setAbB({ prompt: '', response: '', loading: false });
+                setAbWinner(null);
+                setAbPendingWinner(null);
+                setShowWinnerNoteModal(false);
+              }}
                 className={`px-2 py-1.5 ${m.btn} rounded-lg text-xs ${m.textAlt} transition-colors`}>Reset</button>
             </div>
           </div>
+          <div className={`px-4 py-2 border-b ${m.border}`}>
+            <p className={`text-xs ${m.textAlt}`}>
+              Each side is sent exactly as one isolated user message with no extra context.
+            </p>
+            <p className={`text-xs ${m.textMuted} mt-1 font-mono`}>
+              Payload: <code>{`messages: [{ role: 'user', content: promptVariant }]`}</code>
+            </p>
+          </div>
+          {errorState && (
+            <div className={`px-4 py-2 border-b ${m.border}`}>
+              <ErrorPanel
+                errorState={errorState}
+                showErrorDetails={showErrorDetails}
+                setShowErrorDetails={setShowErrorDetails}
+                onDismiss={() => setErrorState(null)}
+                onAction={runErrorAction}
+              />
+            </div>
+          )}
           <div className="flex flex-1 overflow-hidden">
             {([['A', abA, setAbA], ['B', abB, setAbB]]).map(([side, state, setter]) => (
               <div key={side} className={`flex-1 flex flex-col border-r last:border-r-0 ${m.border} overflow-hidden`}>
@@ -1325,18 +1579,7 @@ export default function App() {
                       {state.loading ? <span className="w-3 h-3 border-2 border-white border-t-transparent rounded-full animate-spin" /> : <Ic n="Wand2" size={10} />}Run {side}
                     </button>
                     {state.response && !abWinner && (
-                      <button
-                        onClick={() => {
-                          const picked = `Variant ${side}`;
-                          setAbWinner(picked);
-                          winnerSelectionRef.current = picked;
-                          setWinnerNote('');
-                          setShowWinnerNoteModal(true);
-                        }}
-                        className="flex items-center gap-1 text-xs bg-green-600 hover:bg-green-500 text-white px-2 py-1 rounded-lg transition-colors"
-                      >
-                        <Ic n="Check" size={10} />Pick {side}
-                      </button>
+                      <button onClick={() => pickWinner(side)} className="flex items-center gap-1 text-xs bg-green-600 hover:bg-green-500 text-white px-2 py-1 rounded-lg transition-colors"><Ic n="Check" size={10} />Pick {side}</button>
                     )}
                   </div>
                 </div>
@@ -1345,7 +1588,7 @@ export default function App() {
                     <span className={`text-xs ${m.textSub} font-semibold uppercase tracking-wider block mb-1.5`}>Prompt</span>
                     <textarea rows={5} className={inp} placeholder={`Prompt variant ${side}…`} value={state.prompt} onChange={e => setter(p => ({ ...p, prompt: e.target.value }))} />
                   </div>
-                  {(state.response || state.loading || state.error) && (
+                  {(state.response || state.loading) && (
                     <div>
                       <div className="flex items-center justify-between mb-1.5">
                         <span className="text-xs text-violet-400 font-semibold uppercase tracking-wider">Response</span>
@@ -1353,9 +1596,7 @@ export default function App() {
                       </div>
                       {state.loading
                         ? <div className={`${m.codeBlock} border ${m.border} rounded-lg p-3 flex items-center gap-2`}><span className="w-3 h-3 border-2 border-violet-500 border-t-transparent rounded-full animate-spin shrink-0" /><span className={`text-xs ${m.textSub}`}>Generating…</span></div>
-                        : state.error
-                          ? <ErrorPanel error={state.error} onAction={onErrorAction} m={m} />
-                          : <div className={`${m.codeBlock} border ${m.border} rounded-lg p-3 text-xs ${m.textBody} leading-relaxed whitespace-pre-wrap max-h-72 overflow-y-auto`}>{state.response}</div>
+                        : <div className={`${m.codeBlock} border ${m.border} rounded-lg p-3 text-xs ${m.textBody} leading-relaxed whitespace-pre-wrap max-h-72 overflow-y-auto`}>{state.response}</div>
                       }
                       {state.response && <button onClick={() => copy(state.response)} className={`flex items-center gap-1 text-xs ${m.textSub} hover:text-white transition-colors mt-1`}><Ic n="Copy" size={10} />Copy response</button>}
                     </div>
@@ -1370,106 +1611,76 @@ export default function App() {
       {/* ══ HISTORY TAB ══ */}
       {tab === 'history' && (
         <div className="flex flex-1 overflow-hidden" style={{ height: 'calc(100vh - 44px)' }}>
-          <div className={`w-2/5 border-r ${m.border} flex flex-col`}>
+          <div className={`w-1/2 border-r ${m.border} flex flex-col overflow-hidden`}>
             <div className={`p-3 border-b ${m.border} flex flex-col gap-2`}>
+              <p className={`text-xs font-semibold ${m.textSub} uppercase tracking-wider`}>Experiment Timeline</p>
               <input
-                className={`${m.input} border rounded-lg px-3 py-1.5 text-xs ${m.text} focus:outline-none focus:border-violet-500`}
-                placeholder="Search label or notes…"
-                value={historySearch}
-                onChange={(e) => setHistorySearch(e.target.value)}
+                className={`${m.input} border rounded-lg px-2 py-1.5 text-xs ${m.text} focus:outline-none`}
+                placeholder="Search label, notes, variant hash…"
+                value={historyQuery}
+                onChange={e => setHistoryQuery(e.target.value)}
               />
               <div className="flex gap-2">
-                <input
-                  type="date"
-                  value={historyDateFrom}
-                  onChange={(e) => setHistoryDateFrom(e.target.value)}
-                  className={`${m.input} border rounded-lg px-2 py-1.5 text-xs ${m.text} focus:outline-none focus:border-violet-500 flex-1`}
-                />
-                <input
-                  type="date"
-                  value={historyDateTo}
-                  onChange={(e) => setHistoryDateTo(e.target.value)}
-                  className={`${m.input} border rounded-lg px-2 py-1.5 text-xs ${m.text} focus:outline-none focus:border-violet-500 flex-1`}
-                />
-                <button onClick={refreshHistory} className={`px-2 py-1.5 ${m.btn} ${m.textAlt} rounded-lg text-xs transition-colors`}>↻</button>
+                <input type="date" className={`${m.input} border rounded-lg px-2 py-1 text-xs ${m.text} focus:outline-none`} value={historyFrom} onChange={e => setHistoryFrom(e.target.value)} />
+                <input type="date" className={`${m.input} border rounded-lg px-2 py-1 text-xs ${m.text} focus:outline-none`} value={historyTo} onChange={e => setHistoryTo(e.target.value)} />
               </div>
             </div>
-            <div className="flex-1 overflow-y-auto p-2 flex flex-col gap-1.5">
-              {historyLoading && <p className={`text-xs ${m.textMuted} p-2`}>Loading experiments…</p>}
-              {!historyLoading && historyItems.length === 0 && <p className={`text-xs ${m.textMuted} p-2`}>No experiments yet.</p>}
-              {historyItems.map((item) => (
+            <div className="flex-1 overflow-y-auto p-3 flex flex-col gap-2">
+              {filteredHistory.length === 0 && <p className={`text-sm ${m.textSub}`}>No experiments yet.</p>}
+              {filteredHistory.map(record => (
                 <button
-                  key={item.id}
-                  onClick={() => setHistorySelectedId(item.id)}
-                  className={`text-left border rounded-lg px-3 py-2 transition-colors ${historySelectedId === item.id ? 'border-violet-500 bg-violet-500/10' : `${m.border} ${m.surface}`}`}
+                  key={record.id}
+                  onClick={() => setSelectedHistoryId(record.id)}
+                  className={`text-left rounded-lg border p-3 transition-colors ${selectedHistoryId === record.id ? 'border-violet-500 bg-violet-500/10' : `${m.border} ${m.surface}`}`}
                 >
-                  <p className={`text-xs font-semibold ${m.text}`}>{item.label}</p>
-                  <p className={`text-[11px] ${m.textMuted}`}>
-                    {new Date(item.createdAt).toLocaleString()} · Winner: {(item?.outcome?.winnerVariantId || '').toUpperCase() || 'n/a'}
-                  </p>
-                  {item.notes && <p className={`text-[11px] ${m.textAlt} line-clamp-2 mt-1`}>{item.notes}</p>}
+                  <p className={`text-sm font-semibold ${m.text}`}>{record.label}</p>
+                  <p className={`text-xs ${m.textMuted}`}>{new Date(record.createdAt).toLocaleString()}</p>
+                  <p className={`text-xs ${m.textAlt} mt-1`}>Winner: {record.outcome || 'n/a'}</p>
                 </button>
               ))}
             </div>
           </div>
-          <div className="flex-1 overflow-y-auto p-4">
-            {!selectedHistory && <p className={`text-sm ${m.textMuted}`}>Select an experiment to view details.</p>}
+          <div className="w-1/2 flex flex-col overflow-hidden p-3">
+            {!selectedHistory && <p className={`text-sm ${m.textSub}`}>Select an experiment to view details.</p>}
             {selectedHistory && (
-              <div className="flex flex-col gap-3">
-                <div className={`${m.surface} border ${m.border} rounded-lg p-3`}>
-                  <p className={`text-xs font-semibold ${m.textSub} uppercase tracking-wider`}>Experiment</p>
-                  <p className={`text-sm ${m.text} mt-1`}>{selectedHistory.label}</p>
-                  <p className={`text-[11px] ${m.textMuted}`}>{new Date(selectedHistory.createdAt).toLocaleString()}</p>
-                  <p className={`text-xs ${m.textAlt} mt-2`}>Winner variant: {(selectedHistory?.outcome?.winnerVariantId || '').toUpperCase() || 'n/a'}</p>
-                  {winningHistoryVariant && (
-                    <button
-                      onClick={() => {
-                        setRaw(winningHistoryVariant.promptText || '');
-                        setTab('editor');
-                        setDismissedLintRules([]);
-                        notify('Loaded winning variant into editor.');
-                      }}
-                      className="mt-2 text-xs text-violet-300 hover:text-violet-200 transition-colors"
-                    >
-                      Load winning variant
-                    </button>
-                  )}
-                  {selectedHistory.notes && <p className={`text-xs ${m.textBody} mt-2`}>Notes: {selectedHistory.notes}</p>}
+              <div className={`flex-1 border ${m.border} rounded-xl p-4 overflow-y-auto ${m.surface} flex flex-col gap-3`}>
+                <div>
+                  <p className={`text-sm font-bold ${m.text}`}>{selectedHistory.label}</p>
+                  <p className={`text-xs ${m.textMuted}`}>{new Date(selectedHistory.createdAt).toLocaleString()}</p>
                 </div>
-                {selectedHistory.keyInputSnapshot && (
-                  <div className={`${m.surface} border ${m.border} rounded-lg p-3`}>
-                    <p className={`text-xs font-semibold ${m.textSub} uppercase tracking-wider mb-2`}>Key input snapshot</p>
-                    <p className={`text-xs ${m.textBody} whitespace-pre-wrap`}>{selectedHistory.keyInputSnapshot}</p>
-                  </div>
-                )}
-                <div className={`${m.surface} border ${m.border} rounded-lg p-3`}>
-                  <p className={`text-xs font-semibold ${m.textSub} uppercase tracking-wider mb-2`}>Variants</p>
+                <div>
+                  <p className={`text-xs ${m.textSub} uppercase tracking-wider font-semibold mb-1`}>Outcome</p>
+                  <p className={`text-xs ${m.textBody}`}>Winner variant id: {selectedHistory.outcome || 'n/a'}</p>
+                </div>
+                <div>
+                  <p className={`text-xs ${m.textSub} uppercase tracking-wider font-semibold mb-1`}>Variants</p>
                   <div className="flex flex-col gap-2">
-                    {(selectedHistory.variants || []).map((variant) => (
-                      <div key={`${selectedHistory.id}-${variant.id}`} className={`${m.codeBlock} border ${m.border} rounded-lg p-2`}>
-                        <div className="flex items-center justify-between gap-2 mb-1">
-                          <p className="text-xs text-violet-400 font-semibold">
-                            {variant.name || variant.id?.toUpperCase()}
-                          </p>
-                          <button
-                            onClick={() => {
-                              setRaw(variant.promptText || '');
-                              setTab('editor');
-                              setDismissedLintRules([]);
-                              notify('Loaded variant into editor.');
-                            }}
-                            className="text-xs text-violet-300 hover:text-violet-200 transition-colors"
-                          >
-                            Replay
-                          </button>
-                        </div>
-                        <p className={`text-[11px] ${m.textMuted} mb-1`}>
-                          {variant.provider || 'provider'} · {variant.model || 'model'} · {variant.promptHash || 'n/a'}
-                        </p>
-                        <p className={`text-xs ${m.textBody} whitespace-pre-wrap line-clamp-4`}>{variant.promptText || 'No prompt saved.'}</p>
+                    {(selectedHistory.variantMetadata || []).map(v => (
+                      <div key={v.id} className={`border ${m.border} rounded-lg p-2`}>
+                        <p className={`text-xs font-semibold ${m.text}`}>{v.name} ({v.id})</p>
+                        <p className={`text-xs ${m.textMuted}`}>{v.provider} · {v.model} · {v.promptHash}</p>
+                        <pre className={`text-xs ${m.textBody} whitespace-pre-wrap mt-1 max-h-28 overflow-y-auto`}>{v.promptText}</pre>
                       </div>
                     ))}
                   </div>
+                </div>
+                <div>
+                  <p className={`text-xs ${m.textSub} uppercase tracking-wider font-semibold mb-1`}>Input Snapshot</p>
+                  <pre className={`text-xs ${m.textBody} whitespace-pre-wrap ${m.codeBlock} border ${m.border} rounded-lg p-2`}>{selectedHistory.keyInputSnapshot}</pre>
+                </div>
+                {selectedHistory.notes && (
+                  <div>
+                    <p className={`text-xs ${m.textSub} uppercase tracking-wider font-semibold mb-1`}>Notes</p>
+                    <p className={`text-xs ${m.textBody}`}>{selectedHistory.notes}</p>
+                  </div>
+                )}
+                <div className="flex gap-2">
+                  <button onClick={() => loadHistoryWinner(selectedHistory)} className="px-3 py-1.5 text-xs bg-violet-600 hover:bg-violet-500 text-white rounded-lg transition-colors">
+                    Load winning variant
+                  </button>
+                  <button onClick={() => { loadHistoryWinner(selectedHistory); setTab('editor'); }} className={`px-3 py-1.5 text-xs ${m.btn} ${m.textAlt} rounded-lg transition-colors`}>
+                    Replay in editor
+                  </button>
                 </div>
               </div>
             )}
@@ -1508,48 +1719,25 @@ export default function App() {
 
       {redactionModal && (
         <div className={`fixed inset-0 ${m.modalBg} flex items-center justify-center z-50 p-4`}>
-          <div className={`${m.modal} border rounded-xl p-5 w-full max-w-lg flex flex-col gap-3`}>
+          <div className={`${m.modal} border rounded-xl p-5 w-full max-w-xl flex flex-col gap-3`}>
             <div className="flex items-center justify-between">
               <h2 className={`font-bold text-sm ${m.text}`}>Sensitive data detected</h2>
-              <button
-                onClick={() => redactionResolveRef.current?.('edit')}
-                className={`${m.textSub} hover:text-white transition-colors`}
-              >
-                <Ic n="X" size={15} />
-              </button>
+              <button onClick={() => closeRedactionModal('edit')} className={`${m.textSub} hover:text-white`}><Ic n="X" size={15} /></button>
             </div>
-            <p className={`text-xs ${m.textAlt}`}>Review detected snippets before sending this request.</p>
-            <div className="max-h-56 overflow-y-auto flex flex-col gap-1.5">
-              {redactionModal.matches.map((match) => (
-                <div key={match.id} className={`${m.codeBlock} border ${m.border} rounded-lg p-2`}>
-                  <div className="flex items-center justify-between">
-                    <span className="text-[11px] text-violet-300 font-semibold">{match.type}</span>
-                    <span className={`text-[11px] ${m.textMuted}`}>Line {match.line || 1}</span>
-                  </div>
-                  <p className={`text-xs ${m.textBody} mt-1`}>{match.preview}</p>
-                  <p className={`text-[11px] ${m.textMuted} mt-1`}>{match.description}</p>
+            <p className={`text-xs ${m.textAlt}`}>Review matches before sending to provider.</p>
+            <div className={`max-h-56 overflow-y-auto border ${m.border} rounded-lg p-2 flex flex-col gap-2`}>
+              {redactionModal.matches.map(match => (
+                <div key={match.id} className={`border ${m.border} rounded p-2`}>
+                  <p className={`text-xs font-semibold ${m.text}`}>{match.label}</p>
+                  <p className={`text-xs ${m.textMuted}`}>{match.description}</p>
+                  <p className={`text-xs ${m.textBody} font-mono mt-1 break-all`}>{match.snippet}</p>
                 </div>
               ))}
             </div>
             <div className="flex gap-2">
-              <button
-                onClick={() => redactionResolveRef.current?.('redact')}
-                className="flex-1 bg-violet-600 hover:bg-violet-500 text-white rounded-lg py-2 text-sm font-semibold transition-colors"
-              >
-                Redact and send
-              </button>
-              <button
-                onClick={() => redactionResolveRef.current?.('send')}
-                className={`flex-1 ${m.btn} ${m.textBody} rounded-lg py-2 text-sm font-semibold transition-colors`}
-              >
-                Send as-is
-              </button>
-              <button
-                onClick={() => redactionResolveRef.current?.('edit')}
-                className={`px-3 ${m.btn} ${m.textAlt} rounded-lg py-2 text-sm transition-colors`}
-              >
-                Edit prompt
-              </button>
+              <button onClick={() => closeRedactionModal('redact')} className="flex-1 bg-violet-600 hover:bg-violet-500 text-white rounded-lg py-2 text-sm font-semibold transition-colors">Redact and send</button>
+              <button onClick={() => closeRedactionModal('send')} className={`px-3 py-2 rounded-lg text-sm ${m.btn} ${m.textBody} transition-colors`}>Send as is</button>
+              <button onClick={() => closeRedactionModal('edit')} className={`px-3 py-2 rounded-lg text-sm ${m.btn} ${m.textBody} transition-colors`}>Edit prompt</button>
             </div>
           </div>
         </div>
@@ -1558,155 +1746,123 @@ export default function App() {
       {showWinnerNoteModal && (
         <div className={`fixed inset-0 ${m.modalBg} flex items-center justify-center z-50 p-4`}>
           <div className={`${m.modal} border rounded-xl p-5 w-full max-w-md flex flex-col gap-3`}>
-            <h2 className={`font-bold text-sm ${m.text}`}>Save experiment rationale</h2>
-            <p className={`text-xs ${m.textAlt}`}>
-              Winner selected: <span className="text-green-400 font-semibold">{winnerSelectionRef.current || abWinner}</span>
-            </p>
+            <div className="flex items-center justify-between">
+              <h2 className={`font-bold text-sm ${m.text}`}>Save experiment result</h2>
+              <button onClick={() => { setShowWinnerNoteModal(false); setAbPendingWinner(null); }} className={`${m.textSub} hover:text-white`}><Ic n="X" size={15} /></button>
+            </div>
+            <p className={`text-xs ${m.textAlt}`}>Winner: Variant {abPendingWinner}</p>
             <textarea
               rows={4}
-              className={`${m.input} border rounded-lg p-3 text-xs ${m.text} focus:outline-none focus:border-violet-500`}
-              placeholder="Optional: Why did this variant win?"
-              value={winnerNote}
-              onChange={(e) => setWinnerNote(e.target.value)}
+              value={abNoteDraft}
+              onChange={e => setAbNoteDraft(e.target.value)}
+              placeholder="Optional rationale / note"
+              className={`${m.input} border rounded-lg px-3 py-2 text-sm ${m.text} focus:outline-none focus:border-violet-500`}
             />
             <div className="flex gap-2">
-              <button
-                onClick={() => finalizeWinnerSelection(winnerNote)}
-                className="flex-1 bg-violet-600 hover:bg-violet-500 text-white rounded-lg py-2 text-sm font-semibold transition-colors"
-              >
-                Save experiment
-              </button>
-              <button
-                onClick={() => finalizeWinnerSelection('')}
-                className={`px-3 ${m.btn} ${m.textAlt} rounded-lg py-2 text-sm transition-colors`}
-              >
-                Skip note
-              </button>
+              <button onClick={() => finalizeWinner()} className="flex-1 bg-green-600 hover:bg-green-500 text-white rounded-lg py-2 text-sm font-semibold transition-colors">Save winner</button>
+              <button onClick={() => finalizeWinner('')} className={`px-3 py-2 rounded-lg text-sm ${m.btn} ${m.textBody} transition-colors`}>Skip note</button>
             </div>
           </div>
         </div>
       )}
 
       {showWizard && (
-        <div className={`fixed inset-0 ${m.modalBg} z-50 p-4 flex items-center justify-center`}>
-          <div className={`${m.modal} border rounded-xl w-full max-w-2xl p-5 flex flex-col gap-4`}>
+        <div className={`fixed inset-0 ${m.modalBg} z-50 p-4 overflow-y-auto`}>
+          <div className={`${m.modal} border rounded-xl p-5 w-full max-w-2xl mx-auto flex flex-col gap-4`}>
             <div className="flex items-center justify-between">
-              <h2 className={`font-bold text-base ${m.text}`}>Getting Started</h2>
-              <span className={`text-xs ${m.textMuted}`}>Step {wizardStep + 1} / 4</span>
+              <h2 className={`font-bold text-base ${m.text}`}>Getting Started ({wizardStep + 1}/4)</h2>
+              <button onClick={() => setShowWizard(false)} className={`${m.textSub} hover:text-white`}><Ic n="X" size={15} /></button>
             </div>
+
             {wizardStep === 0 && (
               <div className="flex flex-col gap-3">
-                <p className={`text-sm ${m.textBody}`}>Pick a provider/model and validate connectivity.</p>
-                <select
-                  value={wizardModel}
-                  onChange={(e) => setWizardModel(e.target.value)}
-                  className={`${m.input} border rounded-lg px-3 py-2 text-sm ${m.text}`}
-                >
-                  {MODEL_OPTIONS.map((option) => (
-                    <option key={option.id} value={option.id}>{option.label}</option>
-                  ))}
-                </select>
-                <button
-                  onClick={runWizardConnectivityTest}
-                  className="bg-violet-600 hover:bg-violet-500 text-white rounded-lg py-2 text-sm font-semibold"
-                >
-                  Test connection
-                </button>
-                <button
-                  onClick={openProviderSettings}
-                  className={`${m.btn} ${m.textBody} rounded-lg py-2 text-sm font-semibold transition-colors`}
-                >
-                  Add or update API key
-                </button>
-                {wizardConnectivity.status !== 'idle' && (
-                  <p className={`text-xs ${wizardConnectivity.status === 'ok' ? 'text-green-400' : wizardConnectivity.status === 'error' ? 'text-red-400' : m.textMuted}`}>
-                    {wizardConnectivity.message}
-                  </p>
-                )}
+                <p className={`text-sm ${m.textBody}`}>Set your provider and verify connectivity.</p>
+                <div className="grid grid-cols-2 gap-2">
+                  <select value={wizardProvider} onChange={e => setWizardProvider(e.target.value)} className={`${m.input} border rounded-lg px-2 py-2 text-sm ${m.text} focus:outline-none`}>
+                    <option value="anthropic">Anthropic</option>
+                  </select>
+                  <input value={wizardModel} onChange={e => setWizardModel(e.target.value)} className={`${m.input} border rounded-lg px-2 py-2 text-sm ${m.text} focus:outline-none`} />
+                </div>
+                <button onClick={runWizardConnectivityCheck} className={`w-fit px-3 py-2 rounded-lg text-sm ${m.btn} ${m.textBody} transition-colors`}>Validate connectivity</button>
+                {wizardConnectivity.status !== 'idle' && <p className={`text-xs ${wizardConnectivity.status === 'ok' ? 'text-green-400' : wizardConnectivity.status === 'error' ? 'text-red-400' : m.textSub}`}>{wizardConnectivity.message}</p>}
               </div>
             )}
+
             {wizardStep === 1 && (
               <div className="flex flex-col gap-3">
-                <p className={`text-sm ${m.textBody}`}>Choose a starter template.</p>
+                <p className={`text-sm ${m.textBody}`}>Choose a starter prompt template.</p>
                 <div className="grid grid-cols-2 gap-2">
-                  {STARTER_TEMPLATES.map((template) => (
+                  {STARTER_TEMPLATES.map(template => (
                     <button
                       key={template.id}
                       onClick={() => setWizardTemplateId(template.id)}
-                      className={`border rounded-lg px-3 py-2 text-sm text-left transition-colors ${wizardTemplateId === template.id ? 'border-violet-500 bg-violet-500/10 text-violet-300' : `${m.border} ${m.textBody}`}`}
+                      className={`border rounded-lg p-3 text-left transition-colors ${wizardTemplateId === template.id ? 'border-violet-500 bg-violet-500/10' : `${m.border} ${m.surface}`}`}
                     >
-                      {template.label}
+                      <p className={`text-sm font-semibold ${m.text}`}>{template.label}</p>
+                      <p className={`text-xs ${m.textAlt} mt-1 line-clamp-3`}>{template.prompt}</p>
                     </button>
                   ))}
                 </div>
               </div>
             )}
+
             {wizardStep === 2 && (
               <div className="flex flex-col gap-3">
-                <p className={`text-sm ${m.textBody}`}>Run your first prompt.</p>
+                <p className={`text-sm ${m.textBody}`}>First run preview.</p>
                 <textarea
-                  rows={6}
-                  className={`${m.input} border rounded-lg p-3 text-sm ${m.text} focus:outline-none focus:border-violet-500`}
-                  value={wizardDraft}
-                  onChange={(e) => setWizardDraft(e.target.value)}
+                  rows={8}
+                  value={(STARTER_TEMPLATES.find(t => t.id === wizardTemplateId) || STARTER_TEMPLATES[0]).prompt}
+                  readOnly
+                  className={`${m.input} border rounded-lg px-3 py-2 text-xs ${m.text}`}
                 />
-                <button onClick={runWizardFirstPrompt} className="bg-violet-600 hover:bg-violet-500 text-white rounded-lg py-2 text-sm font-semibold">Run</button>
-                {wizardRunOutput && <div className={`${m.codeBlock} border ${m.border} rounded-lg p-3 text-xs ${m.textBody} whitespace-pre-wrap max-h-48 overflow-y-auto`}>{wizardRunOutput}</div>}
-              </div>
-            )}
-            {wizardStep === 3 && (
-              <div className="flex flex-col gap-3">
-                <p className={`text-sm ${m.textBody}`}>Optional: try A/B with pre-made variants.</p>
                 <button
                   onClick={() => {
-                    setAbA({ prompt: `${wizardDraft}\n\nStyle: concise`, response: '', loading: false, error: null });
-                    setAbB({ prompt: `${wizardDraft}\n\nStyle: detailed with bullet points`, response: '', loading: false, error: null });
-                    setTab('abtest');
-                    notify('A/B demo loaded.');
+                    const selected = STARTER_TEMPLATES.find(t => t.id === wizardTemplateId) || STARTER_TEMPLATES[0];
+                    setRaw(selected.prompt);
+                    setTab('editor');
+                    notify('Starter template loaded.');
                   }}
-                  className={`${m.btn} ${m.textBody} rounded-lg py-2 text-sm font-semibold transition-colors`}
+                  className="w-fit px-3 py-2 text-sm bg-violet-600 hover:bg-violet-500 text-white rounded-lg transition-colors"
+                >
+                  Run in editor
+                </button>
+              </div>
+            )}
+
+            {wizardStep === 3 && (
+              <div className="flex flex-col gap-3">
+                <p className={`text-sm ${m.textBody}`}>Optional A/B demo.</p>
+                <button
+                  onClick={() => {
+                    const selected = STARTER_TEMPLATES.find(t => t.id === wizardTemplateId) || STARTER_TEMPLATES[0];
+                    setAbA({ prompt: selected.prompt, response: '', loading: false });
+                    setAbB({ prompt: `${selected.prompt}\n\nOutput format: bullet list with 5 bullets.`, response: '', loading: false });
+                    setAbWinner(null);
+                    setTab('abtest');
+                    notify('A/B demo variants loaded.');
+                  }}
+                  className="w-fit px-3 py-2 text-sm bg-violet-600 hover:bg-violet-500 text-white rounded-lg transition-colors"
                 >
                   Load A/B demo
                 </button>
-                <p className={`text-xs ${m.textMuted}`}>You can skip this and run A/B later from the main tab.</p>
+                <label className={`text-sm ${m.textBody} flex items-center gap-2`}>
+                  <input type="checkbox" checked={wizardDontShowAgain} onChange={e => setWizardDontShowAgain(e.target.checked)} className="accent-violet-500" />
+                  Don’t show again
+                </label>
               </div>
             )}
-            <div className="flex items-center justify-between gap-2 pt-2 border-t border-dashed border-gray-700">
+
+            <div className="flex items-center justify-between pt-2 border-t border-gray-700/50">
+              <button onClick={() => {
+                if (wizardDontShowAgain) {
+                  try { localStorage.setItem(ONBOARDING_DONE_KEY, '1'); } catch {}
+                }
+                setShowWizard(false);
+              }} className={`px-3 py-1.5 rounded-lg text-sm ${m.btn} ${m.textBody} transition-colors`}>Skip for now</button>
               <div className="flex gap-2">
-                <button onClick={() => setShowWizard(false)} className={`text-xs ${m.textSub} hover:text-white`}>Skip for now</button>
-                <button
-                  onClick={() => {
-                    try { localStorage.setItem(STORAGE_KEYS.ONBOARDING_HIDE, 'true'); } catch {}
-                    completeWizard(true);
-                  }}
-                  className={`text-xs ${m.textSub} hover:text-white`}
-                >
-                  Don’t show again
-                </button>
-              </div>
-              <div className="flex gap-2">
-                <button
-                  onClick={() => setWizardStep((prev) => Math.max(0, prev - 1))}
-                  disabled={wizardStep === 0}
-                  className={`px-3 py-1.5 ${m.btn} ${m.textAlt} rounded-lg text-xs disabled:opacity-40`}
-                >
-                  Back
-                </button>
-                {wizardStep < 3 ? (
-                  <button
-                    onClick={() => setWizardStep((prev) => Math.min(3, prev + 1))}
-                    className="px-3 py-1.5 bg-violet-600 hover:bg-violet-500 text-white rounded-lg text-xs font-semibold"
-                  >
-                    Next
-                  </button>
-                ) : (
-                  <button
-                    onClick={() => completeWizard(false)}
-                    className="px-3 py-1.5 bg-green-600 hover:bg-green-500 text-white rounded-lg text-xs font-semibold"
-                  >
-                    Finish
-                  </button>
-                )}
+                {wizardStep > 0 && <button onClick={() => setWizardStep(s => s - 1)} className={`px-3 py-1.5 rounded-lg text-sm ${m.btn} ${m.textBody} transition-colors`}>Back</button>}
+                {wizardStep < 3 && <button onClick={() => setWizardStep(s => s + 1)} className="px-3 py-1.5 rounded-lg text-sm bg-violet-600 hover:bg-violet-500 text-white transition-colors">Next</button>}
+                {wizardStep === 3 && <button onClick={completeWizard} className="px-3 py-1.5 rounded-lg text-sm bg-green-600 hover:bg-green-500 text-white transition-colors">Finish</button>}
               </div>
             </div>
           </div>
@@ -1715,7 +1871,7 @@ export default function App() {
 
       {showSettings && (
         <div className={`fixed inset-0 ${m.modalBg} flex items-center justify-center z-40 p-4`}>
-          <div className={`${m.modal} border rounded-xl p-5 w-full max-w-sm flex flex-col gap-4`}>
+          <div className={`${m.modal} border rounded-xl p-5 w-full max-w-md flex flex-col gap-4`}>
             <div className="flex justify-between items-center">
               <h2 className={`font-bold text-base ${m.text}`}>Settings</h2>
               <button onClick={() => setShowSettings(false)} className={`${m.textSub} hover:text-white`}><Ic n="X" size={15} /></button>
@@ -1725,40 +1881,40 @@ export default function App() {
               <input type="checkbox" checked={showNotes} onChange={e => setShowNotes(e.target.checked)} className="accent-violet-500" />
             </label>
             <div className={`border ${m.border} rounded-lg p-3 flex flex-col gap-2`}>
-              <div className="flex items-center justify-between">
-                <p className={`text-xs font-semibold ${m.textSub} uppercase tracking-wider`}>Sensitive Data Redaction</p>
-                <label className="text-xs flex items-center gap-2">
-                  <span className={m.textAlt}>Enabled</span>
-                  <input
-                    type="checkbox"
-                    checked={redactionSettings.enabled}
-                    onChange={(e) => setRedactionSettings((prev) => ({ ...prev, enabled: e.target.checked }))}
-                    className="accent-violet-500"
-                  />
-                </label>
-              </div>
-              <div className="grid grid-cols-2 gap-1.5">
-                {Object.keys(redactionSettings.types).map((type) => (
-                  <label key={`redaction-${type}`} className={`text-xs flex items-center gap-1.5 ${m.textBody}`}>
+              <label className={`flex items-center justify-between text-sm ${m.textBody} cursor-pointer`}>
+                <span>Sensitive data redaction gate</span>
+                <input
+                  type="checkbox"
+                  checked={redactionSettings.enabled}
+                  onChange={e => setRedactionSettings(prev => ({ ...prev, enabled: e.target.checked }))}
+                  className="accent-violet-500"
+                />
+              </label>
+              <div className="grid grid-cols-2 gap-1">
+                {Object.entries(redactionSettings.patterns || {}).map(([key, enabled]) => (
+                  <label key={key} className={`text-xs ${m.textAlt} flex items-center gap-1 cursor-pointer`}>
                     <input
                       type="checkbox"
-                      checked={!!redactionSettings.types[type]}
-                      onChange={(e) => setRedactionSettings((prev) => ({ ...prev, types: { ...prev.types, [type]: e.target.checked } }))}
+                      checked={Boolean(enabled)}
+                      onChange={e => setRedactionSettings(prev => ({
+                        ...prev,
+                        patterns: { ...(prev.patterns || {}), [key]: e.target.checked },
+                      }))}
                       className="accent-violet-500"
                     />
-                    <span>{type}</span>
+                    {key}
                   </label>
                 ))}
               </div>
               <textarea
-                rows={2}
-                className={`${m.input} border rounded-lg px-2 py-1.5 text-xs ${m.text} focus:outline-none focus:border-violet-500`}
-                placeholder="Custom regex patterns (one per line)"
-                value={redactionSettings.customPatterns.join('\n')}
-                onChange={(e) => setRedactionSettings((prev) => ({
+                rows={3}
+                value={(redactionSettings.customPatterns || []).join('\n')}
+                onChange={e => setRedactionSettings(prev => ({
                   ...prev,
-                  customPatterns: e.target.value.split('\n').map((line) => line.trim()).filter(Boolean),
+                  customPatterns: e.target.value.split('\n').map(v => v.trim()).filter(Boolean),
                 }))}
+                placeholder="Custom regex patterns (one per line)"
+                className={`${m.input} border rounded-lg px-2 py-1 text-xs ${m.text} focus:outline-none`}
               />
             </div>
             {collections.length > 0 && (
@@ -1774,23 +1930,16 @@ export default function App() {
                 </div>
               </div>
             )}
-            <button onClick={openProviderSettings} className={`flex items-center gap-2 text-sm ${m.btn} rounded-lg px-3 py-2 text-violet-400 font-semibold transition-colors`}>
+            <button onClick={openOptions} className={`flex items-center gap-2 text-sm ${m.btn} rounded-lg px-3 py-2 text-violet-400 font-semibold transition-colors`}>
               🔑 Manage API Key (Options)
             </button>
-            <button
-              onClick={() => {
-                setShowSettings(false);
-                setShowWizard(true);
-                setWizardStep(0);
-              }}
-              className={`flex items-center gap-2 text-sm ${m.btn} rounded-lg px-3 py-2 ${m.textBody} transition-colors`}
-            >
-              ✨ Getting started
+            <button onClick={relaunchWizard} className={`flex items-center gap-2 text-sm ${m.btn} rounded-lg px-3 py-2 ${m.textBody} transition-colors`}>
+              🚀 Getting started
             </button>
             <div className={`border-t ${m.border} pt-3 flex flex-col gap-2`}>
               <button onClick={exportLib} className={`flex items-center gap-2 text-sm ${m.btn} rounded-lg px-3 py-2 ${m.textBody} transition-colors`}><Ic n="Download" size={12} />Export Library</button>
               <label className={`flex items-center gap-2 text-sm ${m.btn} rounded-lg px-3 py-2 ${m.textBody} cursor-pointer transition-colors`}><Ic n="Upload" size={12} />Import Library<input type="file" accept=".json" onChange={importLib} className="hidden" /></label>
-              <button onClick={() => { setLibrary([]); notify('Library cleared.'); }} className={`flex items-center gap-2 text-sm ${m.dangerBtn} rounded-lg px-3 py-2 transition-colors`}><Ic n="Trash2" size={12} />Clear All Prompts</button>
+              <button onClick={() => { if (window.confirm('Clear all prompts from the library?')) { setLibrary([]); notify('Library cleared.'); } }} className="flex items-center gap-2 text-sm bg-red-600 hover:bg-red-500 text-white rounded-lg px-3 py-2 transition-colors"><Ic n="Trash2" size={12} />Clear All Prompts</button>
             </div>
           </div>
         </div>
