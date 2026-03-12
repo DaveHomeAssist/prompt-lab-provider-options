@@ -7,7 +7,10 @@ AI prompt enhancer, library, and notepad. Vivaldi/Chrome extension (Manifest V3)
 1. Go to `vivaldi://extensions` (or `chrome://extensions`)
 2. Enable **Developer mode** (top-right toggle)
 3. Click **Load unpacked** → select this folder
-4. Click the extension icon → **Options** → paste your Anthropic API key → Save
+4. Click the extension icon → **Options**
+5. Choose provider:
+   - **Anthropic API**: paste your API key and save
+   - **Ollama (local)**: set base URL (default `http://localhost:11434`) and model (for example `llama3.2:3b`)
 
 ## Add as Vivaldi Web Panel
 
@@ -61,6 +64,7 @@ npm run build
 
 ## Model
 
-Uses `claude-sonnet-4-20250514` via the Anthropic Messages API.
+- Anthropic mode uses `claude-sonnet-4-20250514` via the Messages API
+- Ollama mode uses your configured local model (default `llama3.2:3b`)
 - Enhance: `max_tokens: 1500`
 - A/B Test: `max_tokens: 800`

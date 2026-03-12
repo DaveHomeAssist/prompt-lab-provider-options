@@ -1,17 +1,17 @@
 /**
- * Sends an Anthropic API request through the extension's background service worker.
- * The API key is stored in chrome.storage.local and never touches this page.
+ * Sends a model request through the extension background worker.
+ * The worker routes to the configured provider (Anthropic or Ollama).
  *
- * @param {Object} payload - The request body for /v1/messages
- * @returns {Promise<Object>} - The parsed JSON response
+ * @param {Object} payload - Anthropic-style message payload
+ * @returns {Promise<Object>} - Provider response normalized by background.js
  */
-export function callAnthropic(payload) {
+export function callModel(payload) {
   return new Promise((resolve, reject) => {
     if (typeof chrome === 'undefined' || !chrome.runtime?.sendMessage) {
       return reject(new Error('Not running as an extension. chrome.runtime unavailable.'));
     }
     chrome.runtime.sendMessage(
-      { type: 'ANTHROPIC_REQUEST', payload },
+      { type: 'MODEL_REQUEST', payload },
       (response) => {
         if (chrome.runtime.lastError) {
           return reject(new Error(chrome.runtime.lastError.message));
@@ -29,3 +29,6 @@ export function callAnthropic(payload) {
     );
   });
 }
+
+// Backward-compatible export used by existing App code.
+export const callAnthropic = callModel;
