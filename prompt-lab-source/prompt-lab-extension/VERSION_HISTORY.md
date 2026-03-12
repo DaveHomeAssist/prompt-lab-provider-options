@@ -1,5 +1,53 @@
 # Prompt Lab — Version History
 
+## v1.4.0 — 2026-03-12
+
+Module wiring and stabilization release. All six pure-logic modules that existed as dead code since v1.3.0 are now live in the runtime.
+
+### New runtime features
+
+- **Prompt linting** — debounced `lintPrompt()` runs on every keystroke (300ms). Collapsible panel below the scoring section shows issues with severity badges and one-click "Fix" buttons via `applyLintQuickFix()`. Checks for: missing goal, missing role, missing constraints, missing output format, missing examples.
+- **Structured error handling** — `normalizeError()` from `errorTaxonomy.js` replaces raw `e.message` strings. Error display now shows user-friendly message, categorized suggestions, and action buttons (Retry, Open Settings) based on error type (auth, quota, network, timeout, schema).
+- **PII scanning before send** — `scanSensitiveData()` from `piiScanner.js` runs on the full API payload before any API call. If sensitive data is detected (API keys, emails, credit cards, secrets), a modal shows matched items with type badges and truncated previews. Three options: Redact & Send, Send Anyway, Cancel.
+- **Experiment history persistence** — A/B test winner picks now persist via `experimentStore.js` (IndexedDB with localStorage fallback). Collapsible history panel at bottom of A/B tab shows past experiments with labels, dates, and winner badges.
+
+### File renames (breaking for imports)
+
+- `src/redactionGate.js` → `src/piiScanner.js` (contained PII scanner, not redaction gate)
+- `src/sensitiveData.js` → `src/redactionEngine.js` (contained redaction engine, not sensitive data detector)
+- Intent now matches filename. All test imports updated accordingly.
+
+### Gemini model updates
+
+- `gemini-2.5-flash-preview-04-17` → `gemini-2.5-flash` (preview retired)
+- `gemini-2.5-pro-preview-05-06` → `gemini-2.5-pro` (preview retired)
+- Updated in `background.js`, `options.js`, and `options.html`
+
+### Infrastructure
+
+- **GitHub Pages workflow** fixed to build from canonical `prompt-lab-extension/` path instead of stale outer `prompt-lab-source/`
+- **Duplicate tree frozen** — added `DEPRECATED.md` to outer `prompt-lab-source/` directory
+- **Test suite expanded** — 204 tests across 7 files (up from 9 tests in 1 file):
+  - `promptUtils.test.mjs` (9 tests) — existing
+  - `promptUtils-extended.test.mjs` (55 tests) — new
+  - `errorTaxonomy.test.mjs` (23 tests) — new
+  - `promptLint.test.mjs` (25 tests) — new
+  - `piiScanner.test.mjs` (34 tests) — new
+  - `redactionEngine.test.mjs` (33 tests) — new
+  - `experimentHistory.test.mjs` (25 tests) — new
+
+### Build
+
+- `npm test` — 204/204 pass
+- `npm run build` — 43 modules, assembled to `dist/`
+
+### Commits
+
+- `e954f57` — v1.4.0: Wire dead modules into runtime
+- `9fc2eed` — Fix retired Gemini model IDs
+
+---
+
 ## v1.3.1 — 2026-03-12
 
 Architecture refactor and CWS compliance release.
