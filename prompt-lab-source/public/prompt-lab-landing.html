@@ -9,11 +9,11 @@
 <meta property="og:description" content="A multi-provider prompt engineering workbench for Chromium browsers. Enhance, A/B test, and compose prompts from a single panel.">
 <meta property="og:type" content="website">
 <meta property="og:url" content="https://davehomeassist.github.io/prompt-lab-provider-options/">
-<meta property="og:image" content="https://davehomeassist.github.io/prompt-lab-provider-options/og-image.png">
+<meta property="og:image" content="https://davehomeassist.github.io/prompt-lab-provider-options/og-image.png?v=2">
 <meta name="twitter:card" content="summary_large_image">
 <meta name="twitter:title" content="Prompt Lab — Craft Better Prompts">
 <meta name="twitter:description" content="A multi-provider prompt engineering workbench for Chromium browsers. Enhance, A/B test, and compose prompts from a single panel.">
-<meta name="twitter:image" content="https://davehomeassist.github.io/prompt-lab-provider-options/og-image.png">
+<meta name="twitter:image" content="https://davehomeassist.github.io/prompt-lab-provider-options/og-image.png?v=2">
 <title>Prompt Lab — Craft Better Prompts</title>
 <link rel="canonical" href="https://davehomeassist.github.io/prompt-lab-provider-options/">
 <style>
@@ -107,7 +107,7 @@ body::before {
     radial-gradient(circle at 1px 1px, rgba(124, 58, 237, 0.04) 1px, transparent 0);
   background-size: 48px 48px;
   pointer-events: none;
-  z-index: 9999;
+  z-index: 1;
 }
 
 /* ============================
@@ -206,8 +206,10 @@ body::before {
 .hero-tagline .accent {
   background: linear-gradient(135deg, var(--lab-violet-light), var(--lab-indigo));
   -webkit-background-clip: text;
+  -moz-background-clip: text;
   -webkit-text-fill-color: transparent;
   background-clip: text;
+  color: transparent;
 }
 
 .hero-sub {
@@ -837,6 +839,16 @@ footer .lab-mark {
 @keyframes bondFade {
   0%, 100% { opacity: 0; }
   50% { opacity: 1; }
+}
+
+/* ============================
+   BACKDROP-FILTER FALLBACK
+   ============================ */
+@supports not (backdrop-filter: blur(1px)) {
+  .provider-chip,
+  .feature-card,
+  .btn-secondary,
+  .step-number { background: rgba(15, 23, 42, 0.85); }
 }
 
 /* ============================
