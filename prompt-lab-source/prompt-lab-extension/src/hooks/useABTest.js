@@ -1,8 +1,9 @@
 import { useEffect, useRef, useState } from 'react';
 import { callModel } from '../api.js';
 import { extractTextFromAnthropic, isTransientError } from '../promptUtils.js';
-import { hashText, listEvalRuns, listExperiments, saveEvalRun, saveExperiment } from '../experimentStore.js';
+import { listEvalRuns, listExperiments, saveEvalRun, saveExperiment } from '../experimentStore.js';
 import { logWarn } from '../lib/logger.js';
+import { hashText } from '../lib/utils.js';
 
 const EMPTY_VARIANT = { prompt: '', response: '', loading: false, error: false };
 

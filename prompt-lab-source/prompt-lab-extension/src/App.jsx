@@ -2,7 +2,6 @@ import { useEffect } from 'react';
 import Ic from './icons';
 import {
   wordDiff, scorePrompt, extractVars,
-  ensureString,
   looksSensitive,
 } from './promptUtils';
 import { ALL_TAGS, MODES, T } from './constants';

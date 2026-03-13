@@ -1,7 +1,5 @@
 import { ensureString } from './lib/utils.js';
 
-export { ensureString, safeDate } from './lib/utils.js';
-
 export function wordDiff(a, b) {
   const left = typeof a === 'string' ? a : '';
   const right = typeof b === 'string' ? b : '';

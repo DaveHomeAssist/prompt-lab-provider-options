@@ -3,7 +3,7 @@ import { callModel } from '../api';
 import {
   extractVars, decodeShare,
   extractTextFromAnthropic, parseEnhancedPayload,
-  ensureString, suggestTitleFromText,
+  suggestTitleFromText,
   looksSensitive, isTransientError,
 } from '../promptUtils';
 import { normalizeEntry } from '../lib/promptSchema.js';
@@ -14,6 +14,7 @@ import { ALL_TAGS, MODES } from '../constants';
 import { saveEvalRun } from '../experimentStore';
 import { useSessionRestore, useSessionSave } from './useSessionState.js';
 import { logWarn } from '../lib/logger.js';
+import { ensureString } from '../lib/utils.js';
 import useEvalRuns from './useEvalRuns.js';
 import useTestCases from './useTestCases.js';
 

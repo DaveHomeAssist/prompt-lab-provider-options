@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react';
 import { DEFAULT_LIBRARY_SEEDS } from '../constants.js';
-import { encodeShare, ensureString, looksSensitive } from '../promptUtils.js';
+import { encodeShare, looksSensitive } from '../promptUtils.js';
 import {
   createPromptEntry,
   normalizeLibrary,
@@ -9,6 +9,7 @@ import {
   updatePromptEntry,
 } from '../lib/promptSchema.js';
 import { loadJson, saveJson, storageKeys } from '../lib/storage.js';
+import { ensureString } from '../lib/utils.js';
 
 export default function usePromptLibrary(notify) {
   const [library, setLibrary] = useState([]);

@@ -241,7 +241,6 @@ export async function deleteTestCase(id) {
 
 export {
   filterEvalRuns,
-  hashText,
   normalizeEvalRunRecord,
   normalizeTestCaseRecord,
 };
