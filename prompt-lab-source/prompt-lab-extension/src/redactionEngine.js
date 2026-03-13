@@ -1,28 +1,15 @@
-import { luhnPasses } from './lib/utils.js';
+import { patterns, scanForPII } from './lib/piiEngine.js';
 
 export const REDACTION_SETTINGS_KEY = 'pl2-redaction-settings';
 
 const TYPE_META = {
-  api_key: {
-    label: 'API key / token',
-    description: 'Looks like an API credential or token.',
-    placeholder: 'API_KEY',
-  },
-  email: {
-    label: 'Email address',
-    description: 'Contains an email address.',
-    placeholder: 'EMAIL',
-  },
-  credit_card: {
-    label: 'Credit card',
-    description: 'Looks like a payment card number.',
-    placeholder: 'CARD',
-  },
-  secret_value: {
-    label: 'Secret-looking value',
-    description: 'Looks like a password or secret assignment.',
-    placeholder: 'SECRET',
-  },
+  ...Object.fromEntries(
+    Object.entries(patterns).map(([type, meta]) => [type, {
+      label: meta.label,
+      description: meta.description,
+      placeholder: meta.placeholder,
+    }]),
+  ),
   custom: {
     label: 'Custom pattern',
     description: 'Matched a user-defined sensitive-data pattern.',
@@ -33,13 +20,7 @@ const TYPE_META = {
 export function defaultRedactionSettings() {
   return {
     enabled: true,
-    patterns: {
-      api_key: true,
-      email: true,
-      credit_card: true,
-      secret_value: true,
-      custom: true,
-    },
+    patterns: Object.fromEntries([...Object.keys(patterns), 'custom'].map((type) => [type, true])),
     customPatterns: [],
   };
 }
@@ -73,111 +54,15 @@ export function saveRedactionSettings(settings) {
   }
 }
 
-function makeMatch(type, start, end, value) {
-  const clean = String(value || '').trim();
-  return {
-    id: `${type}:${start}:${end}`,
-    type,
-    label: TYPE_META[type]?.label || 'Sensitive value',
-    description: TYPE_META[type]?.description || 'Potentially sensitive data.',
-    snippet: clean.length > 80 ? `${clean.slice(0, 77)}...` : clean,
-    start,
-    end,
-    value,
-  };
-}
-
-function matchesForRegex(type, regex, text, max = 200) {
-  const out = [];
-  const seen = new Set();
-  regex.lastIndex = 0;
-  let m = regex.exec(text);
-  while (m && out.length < max) {
-    const value = m[0] || '';
-    const start = m.index;
-    const end = start + value.length;
-    const k = `${start}:${end}:${value}`;
-    if (!seen.has(k) && value.trim()) {
-      seen.add(k);
-      out.push(makeMatch(type, start, end, value));
-    }
-    m = regex.exec(text);
-  }
-  return out;
-}
-
-function looksLikeHighEntropyToken(value) {
-  if (!value || value.length < 32) return false;
-  if (!/[A-Za-z]/.test(value) || !/\d/.test(value)) return false;
-  if (/^[0-9]+$/.test(value)) return false;
-  const unique = new Set(value.split('')).size;
-  return unique >= Math.min(16, Math.floor(value.length * 0.45));
-}
-
-function runBuiltInDetectors(text, settings) {
-  const matches = [];
-  const enabled = settings?.patterns || {};
-
-  if (enabled.api_key) {
-    matches.push(...matchesForRegex('api_key', /\bsk-[A-Za-z0-9]{16,}\b/g, text));
-    matches.push(...matchesForRegex('api_key', /\b(?:AKIA|ASIA)[A-Z0-9]{16}\b/g, text));
-    matches.push(...matchesForRegex('api_key', /\bgh[pousr]_[A-Za-z0-9]{20,}\b/g, text));
-    matches.push(...matchesForRegex('api_key', /\bAIza[0-9A-Za-z\-_]{20,}\b/g, text));
-    matches.push(...matchesForRegex('api_key', /\b(?:xoxb|xoxp|xoxa|xoxr|xoxs)-[A-Za-z0-9-]{10,}\b/g, text));
-    const generic = matchesForRegex('api_key', /\b[A-Za-z0-9_\/-]{32,}\b/g, text, 400)
-      .filter(m => looksLikeHighEntropyToken(m.value));
-    matches.push(...generic);
-  }
-
-  if (enabled.email) {
-    matches.push(...matchesForRegex('email', /\b[A-Za-z0-9._%+-]+@[A-Za-z0-9.-]+\.[A-Za-z]{2,}\b/g, text));
-  }
-
-  if (enabled.credit_card) {
-    const cardLike = matchesForRegex('credit_card', /\b(?:\d[ -]*?){13,19}\b/g, text, 200)
-      .filter(m => luhnPasses(m.value));
-    matches.push(...cardLike);
-  }
-
-  if (enabled.secret_value) {
-    matches.push(...matchesForRegex('secret_value', /\b(?:password|passwd|secret|token|api[_-]?key|client[_-]?secret)\s*[:=]\s*[^\s,;]+/gi, text));
-  }
-
-  return matches;
-}
-
-function runCustomDetectors(text, settings) {
-  if (!settings?.patterns?.custom) return [];
-  if (!Array.isArray(settings.customPatterns) || settings.customPatterns.length === 0) return [];
-  const out = [];
-  settings.customPatterns.forEach((pattern) => {
-    try {
-      const re = new RegExp(pattern, 'gi');
-      out.push(...matchesForRegex('custom', re, text, 200));
-    } catch {}
-  });
-  return out;
-}
-
 export function detectSensitiveData(text, settings = defaultRedactionSettings()) {
   if (!settings?.enabled) return [];
   const source = typeof text === 'string' ? text : '';
   if (!source.trim()) return [];
 
-  const all = [
-    ...runBuiltInDetectors(source, settings),
-    ...runCustomDetectors(source, settings),
-  ];
-
-  const seen = new Set();
-  return all
-    .sort((a, b) => a.start - b.start || b.end - a.end)
-    .filter((m) => {
-      const key = `${m.type}:${m.start}:${m.end}:${m.value}`;
-      if (seen.has(key)) return false;
-      seen.add(key);
-      return true;
-    });
+  return scanForPII(source, {
+    patterns: settings.patterns,
+    customPatterns: settings.customPatterns,
+  }).findings;
 }
 
 function placeholderFor(type, index) {

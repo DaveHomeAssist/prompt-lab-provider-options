@@ -1,12 +1,6 @@
-import { luhnPasses } from './lib/utils.js';
+import { patterns, scanForPII, redactText } from './lib/piiEngine.js';
 
-const PLACEHOLDERS = Object.freeze({
-  api_key: '[API_KEY]',
-  email: '[EMAIL]',
-  credit_card: '[CARD_NUMBER]',
-  secret_value: '[SECRET_VALUE]',
-  custom: '[REDACTED]',
-});
+export { patterns, scanForPII, redactText } from './lib/piiEngine.js';
 
 export const DEFAULT_REDACTION_SETTINGS = Object.freeze({
   enabled: true,
@@ -32,49 +26,6 @@ function normalizeSettings(settings) {
       ? next.customPatterns.map((p) => String(p || '')).filter(Boolean)
       : [],
   };
-}
-
-function getBuiltInDetectors() {
-  return [
-    {
-      type: 'api_key',
-      description: 'Potential API key/token-like value.',
-      regex: /\b(sk-[A-Za-z0-9]{16,}|ghp_[A-Za-z0-9]{20,}|AIza[0-9A-Za-z\-_]{20,}|xox[baprs]-[A-Za-z0-9-]{10,}|(?:api|secret|access|private)[_\-\s]?(?:key|token)\s*[:=]\s*["']?[A-Za-z0-9_\-]{12,})\b/gi,
-    },
-    {
-      type: 'email',
-      description: 'Email address.',
-      regex: /\b[A-Z0-9._%+-]+@[A-Z0-9.-]+\.[A-Z]{2,}\b/gi,
-    },
-    {
-      type: 'credit_card',
-      description: 'Credit card-like number.',
-      regex: /\b(?:\d[ -]*?){13,19}\b/g,
-      validate: (value) => luhnPasses(value),
-    },
-    {
-      type: 'secret_value',
-      description: 'Secret/id-looking value.',
-      regex: /\b(?:token|secret|password|passwd|private[_-]?key|client[_-]?secret)\b\s*[:=]\s*["']?([A-Za-z0-9+/_\-]{10,})["']?/gi,
-      extract: (match) => match[1] || match[0],
-    },
-  ];
-}
-
-function buildCustomDetectors(customPatterns = []) {
-  return customPatterns
-    .map((pattern) => {
-      try {
-        return {
-          type: 'custom',
-          description: 'Custom sensitive pattern.',
-          regex: new RegExp(pattern, 'gi'),
-        };
-      } catch {
-        return null;
-      }
-    })
-    .filter(Boolean);
 }
 
 function collectPayloadStrings(value, path = [], out = []) {
@@ -105,41 +56,9 @@ function setByPath(target, path, nextValue) {
   node[path[path.length - 1]] = nextValue;
 }
 
-function runDetectorsOnText(text, detectors, base) {
-  const matches = [];
-  for (const detector of detectors) {
-    detector.regex.lastIndex = 0;
-    let hit;
-    while ((hit = detector.regex.exec(text)) !== null) {
-      const raw = detector.extract ? detector.extract(hit) : hit[0];
-      if (!raw) continue;
-      if (detector.validate && !detector.validate(raw)) continue;
-      matches.push({
-        id: `${base.path.join('.')}:${detector.type}:${hit.index}:${raw}`,
-        type: detector.type,
-        description: detector.description,
-        snippet: raw,
-        path: base.path,
-        line: text.slice(0, hit.index).split('\n').length,
-        start: hit.index,
-        end: hit.index + raw.length,
-      });
-      if (hit.index === detector.regex.lastIndex) detector.regex.lastIndex += 1;
-    }
-  }
-  return matches;
-}
-
 export function scanSensitiveData({ prompt = '', variables = {}, payload = {} }, settingsInput) {
   const settings = normalizeSettings(settingsInput);
   if (!settings.enabled) return { matches: [], settings };
-
-  const detectors = [
-    ...getBuiltInDetectors().filter((d) => settings.types[d.type]),
-    ...(settings.types.custom ? buildCustomDetectors(settings.customPatterns) : []),
-  ];
-
-  if (!detectors.length) return { matches: [], settings };
 
   const sources = [
     { path: ['prompt'], value: String(prompt || '') },
@@ -150,7 +69,18 @@ export function scanSensitiveData({ prompt = '', variables = {}, payload = {} },
     ...collectPayloadStrings(payload),
   ].filter((entry) => typeof entry.value === 'string' && entry.value);
 
-  const all = sources.flatMap((source) => runDetectorsOnText(source.value, detectors, source));
+  const all = sources.flatMap((source) => {
+    const { findings } = scanForPII(source.value, {
+      patterns: settings.types,
+      customPatterns: settings.customPatterns,
+    });
+    return findings.map((finding) => ({
+      ...finding,
+      id: `${source.path.join('.')}:${finding.id}`,
+      path: source.path,
+      line: source.value.slice(0, finding.start).split('\n').length,
+    }));
+  });
   const deduped = [];
   const seen = new Set();
   for (const match of all) {
@@ -161,10 +91,6 @@ export function scanSensitiveData({ prompt = '', variables = {}, payload = {} },
   }
 
   return { matches: deduped, settings };
-}
-
-function escapeRegex(input) {
-  return input.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
 }
 
 export function redactPayload(payload, matches) {
@@ -182,11 +108,7 @@ export function redactPayload(payload, matches) {
     const path = pathKey ? pathKey.split('.').map((p) => (String(Number(p)) === p ? Number(p) : p)) : [];
     const current = getByPath(safePayload, path);
     if (typeof current !== 'string') continue;
-    let next = current;
-    for (const match of pathMatches) {
-      const placeholder = PLACEHOLDERS[match.type] || PLACEHOLDERS.custom;
-      next = next.replace(new RegExp(escapeRegex(match.snippet), 'g'), placeholder);
-    }
+    const next = redactText(current, { findings: pathMatches, placeholderStyle: 'brackets' });
     setByPath(safePayload, path, next);
   }
 
@@ -196,7 +118,7 @@ export function redactPayload(payload, matches) {
 export function summarizeMatches(matches) {
   return (matches || []).map((m) => ({
     ...m,
-    placeholder: PLACEHOLDERS[m.type] || PLACEHOLDERS.custom,
+    placeholder: `[${patterns[m.type]?.placeholder || 'REDACTED'}]`,
     preview: m.snippet.length > 32 ? `${m.snippet.slice(0, 8)}…${m.snippet.slice(-6)}` : m.snippet,
   }));
 }
