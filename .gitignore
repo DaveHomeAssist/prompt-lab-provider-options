@@ -1,3 +1,5 @@
 node_modules/
 .DS_Store
 *.log
+prompt-lab-source/prompt-lab-extension/test-results/
+prompt-lab-source/prompt-lab-extension/playwright-report/

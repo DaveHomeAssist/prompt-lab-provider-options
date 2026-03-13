@@ -223,7 +223,7 @@ export default function App() {
                     className={`${m.input} border rounded-lg px-2 py-1.5 text-xs ${m.text} focus:outline-none shrink-0 ${compact ? 'w-32' : 'max-w-36'}`}>
                     {MODES.map(md => <option key={md.id} value={md.id}>{md.label}</option>)}
                   </select>
-                  <button onClick={enhance} disabled={loading || !raw.trim()}
+                  <button onClick={() => enhance()} disabled={loading || !raw.trim()}
                     className="flex-1 flex items-center justify-center gap-2 bg-violet-600 hover:bg-violet-500 disabled:opacity-40 text-white rounded-lg py-2 text-sm font-semibold transition-colors">
                     {loading ? <><span className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin" />Enhancing…</> : <><Ic n="Wand2" size={13} />Enhance ⌘↵</>}
                   </button>

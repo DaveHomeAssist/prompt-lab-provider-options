@@ -229,9 +229,12 @@ export default function usePromptEditor(ui, lib) {
 
   const enhance = async (overridePayload) => {
     if (!raw.trim()) return;
-    const payload = overridePayload || buildEnhancePayload();
+    const safeOverridePayload = overridePayload && typeof overridePayload === 'object' && 'nativeEvent' in overridePayload
+      ? null
+      : overridePayload;
+    const payload = safeOverridePayload || buildEnhancePayload();
 
-    if (!overridePayload) {
+    if (!safeOverridePayload) {
       const { matches } = scanSensitiveData({ payload });
       if (matches.length > 0) {
         setPiiWarning({ matches, payload });
