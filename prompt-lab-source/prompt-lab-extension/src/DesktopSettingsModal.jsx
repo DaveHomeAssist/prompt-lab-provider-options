@@ -1,37 +1,30 @@
 import { useEffect, useMemo, useState } from 'react';
 import Ic from './icons';
-import { callModelDirect, listOllamaModelsDirect, saveSettings } from './lib/desktopApi.js';
-import { isExtension } from './lib/platform.js';
-
-const STORAGE_KEY = 'pl2-provider-settings';
+import { DEFAULTS } from './lib/providerRegistry.js';
+import {
+  isExtension,
+  listOllamaModels,
+  loadProviderSettings,
+  saveProviderSettings,
+  testProviderConnection,
+} from './lib/platform.js';
 
 const DEFAULT_SETTINGS = {
   provider: 'anthropic',
   apiKey: '',
-  anthropicModel: 'claude-sonnet-4-20250514',
+  anthropicModel: DEFAULTS.anthropicModel,
   openaiApiKey: '',
-  openaiModel: 'gpt-4o',
+  openaiModel: DEFAULTS.openaiModel,
   geminiApiKey: '',
-  geminiModel: 'gemini-2.5-flash',
+  geminiModel: DEFAULTS.geminiModel,
   openrouterApiKey: '',
-  openrouterModel: 'anthropic/claude-sonnet-4-20250514',
-  ollamaBaseUrl: 'http://localhost:11434',
-  ollamaModel: 'llama3.2:3b',
+  openrouterModel: DEFAULTS.openrouterModel,
+  ollamaBaseUrl: DEFAULTS.ollamaBaseUrl,
+  ollamaModel: DEFAULTS.ollamaModel,
 };
 
-function loadStoredSettings() {
-  try {
-    const raw = window.localStorage.getItem(STORAGE_KEY);
-    if (!raw) return { ...DEFAULT_SETTINGS };
-    const parsed = JSON.parse(raw);
-    return { ...DEFAULT_SETTINGS, ...(parsed && typeof parsed === 'object' ? parsed : {}) };
-  } catch {
-    return { ...DEFAULT_SETTINGS };
-  }
-}
-
 export default function DesktopSettingsModal({ show, onClose, m, notify }) {
-  const [settings, setSettings] = useState(() => loadStoredSettings());
+  const [settings, setSettings] = useState(DEFAULT_SETTINGS);
   const [ollamaModels, setOllamaModels] = useState([]);
   const [ollamaStatus, setOllamaStatus] = useState('');
   const [ollamaStatusType, setOllamaStatusType] = useState('neutral');
@@ -45,12 +38,26 @@ export default function DesktopSettingsModal({ show, onClose, m, notify }) {
 
   useEffect(() => {
     if (!show) return;
-    setSettings(loadStoredSettings());
+    let cancelled = false;
     setConnectionStatus('');
     setConnectionStatusType('neutral');
     setOllamaStatus('');
     setOllamaStatusType('neutral');
     setOllamaModels([]);
+    loadProviderSettings()
+      .then((stored) => {
+        if (!cancelled) {
+          setSettings({ ...DEFAULT_SETTINGS, ...(stored && typeof stored === 'object' ? stored : {}) });
+        }
+      })
+      .catch(() => {
+        if (!cancelled) {
+          setSettings(DEFAULT_SETTINGS);
+        }
+      });
+    return () => {
+      cancelled = true;
+    };
   }, [show]);
 
   const currentModel = useMemo(() => {
@@ -77,7 +84,7 @@ export default function DesktopSettingsModal({ show, onClose, m, notify }) {
 
   async function handleSave() {
     try {
-      await saveSettings(settings);
+      await saveProviderSettings(settings);
       setConnectionStatus('Settings saved.');
       setConnectionStatusType('success');
       notify?.('Provider settings saved');
@@ -92,12 +99,13 @@ export default function DesktopSettingsModal({ show, onClose, m, notify }) {
     setOllamaStatus('');
     setOllamaStatusType('neutral');
     try {
-      const models = await listOllamaModelsDirect(settings.ollamaBaseUrl || DEFAULT_SETTINGS.ollamaBaseUrl);
+      const models = await listOllamaModels(settings.ollamaBaseUrl || DEFAULT_SETTINGS.ollamaBaseUrl);
       setOllamaModels(models);
-      if (models.length > 0 && !models.includes(settings.ollamaModel)) {
-        updateSetting('ollamaModel', models[0]);
+      const modelNames = models.map((model) => model.name);
+      if (modelNames.length > 0 && !modelNames.includes(settings.ollamaModel)) {
+        updateSetting('ollamaModel', modelNames[0]);
       }
-      setOllamaStatus(`${models.length} model${models.length === 1 ? '' : 's'} found`);
+      setOllamaStatus(`${modelNames.length} model${modelNames.length === 1 ? '' : 's'} found`);
       setOllamaStatusType('success');
     } catch (error) {
       setOllamaModels([]);
@@ -113,12 +121,11 @@ export default function DesktopSettingsModal({ show, onClose, m, notify }) {
     setConnectionStatus('');
     setConnectionStatusType('neutral');
     try {
-      await saveSettings(settings);
-      await callModelDirect({
+      await testProviderConnection({
         model: currentModel,
         max_tokens: 10,
         messages: [{ role: 'user', content: 'Say "ok"' }],
-      });
+      }, settings);
       setConnectionStatus('Connected!');
       setConnectionStatusType('success');
     } catch (error) {
@@ -310,8 +317,10 @@ export default function DesktopSettingsModal({ show, onClose, m, notify }) {
                     onChange={event => updateSetting('ollamaModel', event.target.value)}
                     className={inputClass}
                   >
-                    {ollamaModels.map(model => (
-                      <option key={model} value={model}>{model}</option>
+                    {ollamaModels.map((model) => (
+                      <option key={model.name} value={model.name}>
+                        {model.paramSize ? `${model.name} (${model.paramSize})` : model.name}
+                      </option>
                     ))}
                   </select>
                 </label>

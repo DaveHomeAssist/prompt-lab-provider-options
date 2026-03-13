@@ -9,7 +9,7 @@ import { normalizeProvider } from './providerRegistry.js';
 
 const SETTINGS_KEY = 'pl2-provider-settings';
 
-function loadSettings() {
+export function loadSettings() {
   try {
     const raw = localStorage.getItem(SETTINGS_KEY);
     return raw ? JSON.parse(raw) : {};
