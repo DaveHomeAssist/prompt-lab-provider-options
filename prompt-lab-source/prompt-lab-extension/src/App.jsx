@@ -1,4 +1,4 @@
-import { useEffect } from 'react';
+import { useEffect, useState } from 'react';
 import Ic from './icons';
 import {
   wordDiff, scorePrompt, extractVars,
@@ -14,10 +14,13 @@ import PadTab from './PadTab';
 import ComposerTab from './ComposerTab';
 import ABTestTab from './ABTestTab';
 import TestCasesPanel from './TestCasesPanel';
+import DesktopSettingsModal from './DesktopSettingsModal';
+import { isExtension } from './lib/platform.js';
 
 // ── Main App ──────────────────────────────────────────────────────────────────
 export default function App() {
   const ui = useUiState();
+  const [showDesktopSettings, setShowDesktopSettings] = useState(false);
   const {
     viewportWidth,
     colorMode,
@@ -93,6 +96,13 @@ export default function App() {
     window.addEventListener('keydown', h);
     return () => window.removeEventListener('keydown', h);
   }, [loading, raw, showSave, hasSavablePrompt]);
+
+  useEffect(() => {
+    if (isExtension) return;
+    const handler = () => setShowDesktopSettings(true);
+    window.addEventListener('pl:open-settings', handler);
+    return () => window.removeEventListener('pl:open-settings', handler);
+  }, []);
 
   // ── Command palette ──
   const CMD_ACTIONS = [
@@ -723,6 +733,14 @@ export default function App() {
       )}
 
       {toast && <Toast message={toast} onDone={() => setToast(null)} />}
+      {!isExtension && (
+        <DesktopSettingsModal
+          show={showDesktopSettings}
+          onClose={() => setShowDesktopSettings(false)}
+          m={m}
+          notify={notify}
+        />
+      )}
     </div>
   );
 }
