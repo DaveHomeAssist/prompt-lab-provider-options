@@ -14,6 +14,7 @@ Updated: 2026-03-13
 | `prompt-lab-extension/VERSION_HISTORY.md` | Release history | Active | Canonical changelog across extension and desktop milestones. |
 | `prompt-lab-extension/VERSION_REPORT.md` | Current release snapshot | Active | High-level technical state for v1.5.0. |
 | `prompt-lab-extension/CHANGELOG_PLAIN_ENGLISH.md` | Non-technical release notes | Active | Product-facing summary of the current release. |
+| `NOTION_DOCS_AGENT.md` | Notion automation setup | Active | Documents the GitHub Actions driven Notion docs sync agent, required secrets, and trigger behavior. |
 | `QA_LANDING_PAGE.md` | Landing page QA pack | Active | Manual QA checklist for the GitHub Pages marketing site. |
 
 ## Historical but retained

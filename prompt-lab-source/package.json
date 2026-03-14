@@ -7,7 +7,9 @@
     "dev": "npm run dev --prefix prompt-lab-extension",
     "build": "npm run build --prefix prompt-lab-extension",
     "test": "npm test --prefix prompt-lab-extension",
+    "test:notion-agent": "node --test scripts/notion-docs-agent.test.mjs",
     "build:landing": "node scripts/publish-landing.mjs",
+    "notion:docs-agent": "node scripts/notion-docs-agent.mjs",
     "publish:landing": "npm run build:landing"
   }
 }
