@@ -88,5 +88,16 @@ jobs:
         with:
           projectPath: prompt-lab-source/prompt-lab-desktop
           args: ${{ matrix.args }}
-          uploadWorkflowArtifacts: true
-          workflowArtifactNamePattern: prompt-lab-[platform]-[arch]-[bundle]
+
+      - name: Upload build artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: prompt-lab-${{ matrix.platform }}
+          path: |
+            prompt-lab-source/prompt-lab-desktop/src-tauri/target/release/bundle/**/*.dmg
+            prompt-lab-source/prompt-lab-desktop/src-tauri/target/release/bundle/**/*.app
+            prompt-lab-source/prompt-lab-desktop/src-tauri/target/release/bundle/**/*.deb
+            prompt-lab-source/prompt-lab-desktop/src-tauri/target/release/bundle/**/*.AppImage
+            prompt-lab-source/prompt-lab-desktop/src-tauri/target/release/bundle/**/*.exe
+            prompt-lab-source/prompt-lab-desktop/src-tauri/target/release/bundle/**/*.msi
+          if-no-files-found: warn

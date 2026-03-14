@@ -36,6 +36,7 @@ These are candidates, not released features:
 2. Broader end-to-end coverage for desktop and cross-platform packaging flows.
 3. More explicit release packaging for public extension builds versus developer-oriented local-provider builds.
 4. Continued cleanup of legacy duplicate trees and archived planning material.
+5. Mobile deployment via a Tauri Mobile shell after desktop CI and packaging stabilize. See `MOBILE_DEPLOYMENT_ROADMAP.md`.
 
 ## Guardrails
 
