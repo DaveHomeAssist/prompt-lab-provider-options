@@ -10,6 +10,8 @@
     "test:notion-agent": "node --test scripts/notion-docs-agent.test.mjs",
     "build:landing": "node scripts/publish-landing.mjs",
     "notion:docs-agent": "node scripts/notion-docs-agent.mjs",
-    "publish:landing": "npm run build:landing"
+    "publish:landing": "npm run build:landing",
+    "preflight": "node scripts/preflight.mjs",
+    "preflight:quick": "node scripts/preflight.mjs --quick"
   }
 }

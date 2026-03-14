@@ -15,6 +15,7 @@ import ComposerTab from './ComposerTab';
 import ABTestTab from './ABTestTab';
 import TestCasesPanel from './TestCasesPanel';
 import DesktopSettingsModal from './DesktopSettingsModal';
+import VersionDiffModal from './VersionDiffModal';
 import { isExtension } from './lib/platform.js';
 
 // ── Main App ──────────────────────────────────────────────────────────────────
@@ -25,6 +26,7 @@ export default function App() {
   const isWeb = !isExtension && import.meta.env?.VITE_WEB_MODE === 'true';
   const {
     viewportWidth,
+    viewportHeight,
     colorMode,
     setColorMode,
     tab,
@@ -55,6 +57,7 @@ export default function App() {
     piiWarning, piiSendAnyway, piiRedactAndSend, piiCancel,
     showSave, setShowSave, editingId, setEditingId, saveTitle, setSaveTitle,
     saveTags, setSaveTags, saveCollection, setSaveCollection,
+    changeNote, setChangeNote,
     showDiff, setShowDiff,
     evalRuns, showEvalHistory, setShowEvalHistory,
     testCasesByPrompt, caseFormPromptId, editingCaseId,
@@ -75,15 +78,21 @@ export default function App() {
   // ── Derived (view-only) ──
   const score = scorePrompt(raw);
   const wc = typeof raw === 'string' && raw.trim() ? raw.trim().split(/\s+/).length : 0;
-  const compact = viewportWidth < 560;
+  const compact = viewportWidth < 720 || viewportHeight < 560;
   const effectiveEditorLayout = compact && editorLayout === 'split' ? 'editor' : editorLayout;
   const inp = `w-full ${m.input} border rounded-lg p-3 text-sm resize-none focus:outline-none focus:border-violet-500 transition-colors placeholder-gray-400 ${m.text}`;
+  const copyBtn = colorMode === 'dark'
+    ? 'border border-violet-400/30 bg-violet-500/15 text-violet-200 hover:border-violet-300 hover:bg-violet-500/25'
+    : 'border border-violet-300 bg-violet-50 text-violet-700 hover:border-violet-400 hover:bg-violet-100';
   const showEditorPane = tab !== 'editor' || effectiveEditorLayout !== 'library';
   const showLibraryPane = tab !== 'editor' || effectiveEditorLayout !== 'editor';
   const primaryModKey = typeof navigator !== 'undefined' && /Mac|iPhone|iPad/.test(navigator.platform || navigator.userAgent)
     ? 'Cmd'
     : 'Ctrl';
   const currentEntry = editingId ? lib.library.find((entry) => entry.id === editingId) || null : null;
+  const versionHistoryEntry = lib.expandedVersionId
+    ? lib.library.find((entry) => entry.id === lib.expandedVersionId) || null
+    : null;
   const goldenResponse = currentEntry?.goldenResponse || null;
   const latestEvalRun = evalRuns[0] || null;
   const comparisonText = typeof enhanced === 'string' && enhanced.trim()
@@ -125,7 +134,13 @@ export default function App() {
       }
       if (mod && e.key === 'k') { e.preventDefault(); setShowCmdPalette(p => !p); setCmdQuery(''); }
       if (e.key === '?' && !['INPUT', 'TEXTAREA'].includes(e.target.tagName)) setShowShortcuts(p => !p);
-      if (e.key === 'Escape') { setShowCmdPalette(false); setShowShortcuts(false); setShowSettings(false); lib.setShareId(null); }
+      if (e.key === 'Escape') {
+        setShowCmdPalette(false);
+        setShowShortcuts(false);
+        setShowSettings(false);
+        lib.setShareId(null);
+        lib.closeVersionHistory();
+      }
     };
     window.addEventListener('keydown', h);
     return () => window.removeEventListener('keydown', h);
@@ -192,7 +207,7 @@ export default function App() {
         </div>
       </header>
 
-      <main role="tabpanel" aria-label={tab}>
+      <main role="tabpanel" aria-label={tab} className="flex-1 flex flex-col overflow-hidden">
       {/* ══ EDITOR TAB ══ */}
       {tab === 'editor' && (
         <div className={isWeb ? `flex ${compact ? 'flex-col' : ''}` : 'flex flex-1 overflow-hidden'}>
@@ -341,7 +356,10 @@ export default function App() {
                           <Ic n="Save" size={12} />Pin Golden
                         </button>
                       )}
-                      <button onClick={() => copy(enhanced)} className={`flex items-center gap-1.5 text-xs px-2 py-1 rounded ${m.btn} ${m.textSub} hover:text-white transition-colors`}><Ic n="Copy" size={12} />Copy</button>
+                      <button
+                        onClick={() => copy(enhanced)}
+                        className={`flex items-center gap-1.5 text-xs px-2.5 py-1.5 rounded-md font-semibold transition-colors ${copyBtn}`}
+                      ><Ic n="Copy" size={12} />Copy</button>
                     </div>
                   </div>
                   {showDiff ? (
@@ -404,7 +422,7 @@ export default function App() {
                           {run.output && (
                             <div className="mt-1 flex flex-wrap gap-3">
                               <button onClick={() => copy(run.output, 'Run output copied')}
-                                className={`flex items-center gap-1 ${m.textSub} hover:text-white transition-colors`}>
+                                className={`flex items-center gap-1 text-xs px-2 py-1 rounded-md font-semibold transition-colors ${copyBtn}`}>
                                 <Ic n="Copy" size={10} />Copy output
                               </button>
                               {editingId && (
@@ -517,6 +535,10 @@ export default function App() {
                   <div className="flex flex-wrap gap-1.5">
                     {ALL_TAGS.map(t => <TagChip key={t} tag={t} selected={saveTags.includes(t)} onClick={() => setSaveTags(prev => prev.includes(t) ? prev.filter(x => x !== t) : [...prev, t])} />)}
                   </div>
+                  {editingId && (
+                    <input className={`${m.input} border rounded-lg px-3 py-1.5 text-xs focus:outline-none focus:border-blue-500 ${m.text}`}
+                      placeholder="What changed? (optional)" value={changeNote} onChange={e => setChangeNote(e.target.value)} />
+                  )}
                   <div className="flex gap-2 pt-1">
                     <button onClick={() => doSave()} disabled={!hasSavablePrompt} className="flex-1 flex items-center justify-center gap-1.5 bg-green-600 hover:bg-green-500 disabled:opacity-40 text-white rounded-lg py-1.5 text-sm font-semibold transition-colors"><Ic n="Save" size={12} />Save ⌘S</button>
                     <button onClick={() => { setShowSave(false); setEditingId(null); }} className={`px-4 ${m.btn} rounded-lg text-sm ${m.textBody} transition-colors`}>Cancel</button>
@@ -685,24 +707,20 @@ export default function App() {
                           <div>
                             <div className="flex items-center justify-between mb-1">
                               <p className="text-xs text-blue-400 font-semibold uppercase tracking-wider flex items-center gap-1"><Ic n="Clock" size={9} />Version History ({entry.versions.length})</p>
-                              <button onClick={() => lib.setExpandedVersionId(p => p === entry.id ? null : entry.id)} className={`text-xs ${m.textSub} hover:text-white transition-colors`}>
-                                {lib.expandedVersionId === entry.id ? 'Collapse' : 'Expand'}
+                              <button
+                                onClick={() => lib.openVersionHistory(entry.id, 0)}
+                                className={`text-xs ${m.textSub} hover:text-white transition-colors flex items-center gap-1`}
+                              >
+                                <Ic n="GitBranch" size={9} />
+                                Open History
                               </button>
                             </div>
-                            {lib.expandedVersionId === entry.id && (
-                              <div className="flex flex-col gap-2 max-h-48 overflow-y-auto">
-                                {[...entry.versions].reverse().map((v, i) => (
-                                  <div key={i} className={`${m.codeBlock} border ${m.border} rounded-lg p-2`}>
-                                    <div className="flex justify-between items-center mb-1">
-                                      <span className={`text-xs ${m.textMuted}`}>{new Date(v.savedAt).toLocaleString()}</span>
-                                      <button onClick={() => lib.restoreVersion(entry.id, v)}
-                                        className="flex items-center gap-1 text-xs text-blue-400 hover:text-blue-300 transition-colors"><Ic n="RotateCcw" size={9} />Restore</button>
-                                    </div>
-                                    <p className={`text-xs ${m.textAlt} line-clamp-2`}>{v.enhanced}</p>
-                                  </div>
-                                ))}
+                            <div className={`${m.codeBlock} border ${m.border} rounded-lg p-2.5 text-xs ${m.textAlt}`}>
+                              <div className="flex items-center justify-between gap-3">
+                                <span>Latest snapshot: {new Date(entry.versions[entry.versions.length - 1].savedAt).toLocaleString()}</span>
+                                <span className={m.textMuted}>Restore and compare in modal</span>
                               </div>
-                            )}
+                            </div>
                           </div>
                         )}
                       </div>
@@ -726,7 +744,7 @@ export default function App() {
       {tab === 'abtest' && <ABTestTab m={m} copy={copy} notify={notify} compact={compact} pageScroll={isWeb} />}
 
       {/* ══ PAD TAB ══ */}
-      {tab === 'pad' && <PadTab m={m} notify={notify} />}
+      {tab === 'pad' && <PadTab m={m} notify={notify} pageScroll={isWeb} />}
       </main>
 
       {/* ══ MODALS ══ */}
@@ -861,6 +879,15 @@ export default function App() {
           </div>
         </div>
       )}
+
+      <VersionDiffModal
+        entry={versionHistoryEntry}
+        selectedIndex={lib.diffVersionIdx}
+        onSelectIndex={lib.setDiffVersionIdx}
+        onClose={lib.closeVersionHistory}
+        onRestore={(version) => lib.restoreVersion(versionHistoryEntry?.id, version)}
+        m={m}
+      />
 
       {/* ══ PII WARNING MODAL ══ */}
       {piiWarning && (

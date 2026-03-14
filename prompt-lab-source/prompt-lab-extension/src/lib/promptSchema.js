@@ -26,6 +26,11 @@ function normalizePromptMetadata(value) {
   };
 }
 
+function normalizeGoldenThreshold(value) {
+  if (!Number.isFinite(value)) return 0.7;
+  return Math.max(0, Math.min(1, value));
+}
+
 function normalizeGoldenResponse(value) {
   if (!value || typeof value !== 'object') return null;
   const text = ensureString(value.text);
@@ -42,11 +47,11 @@ function normalizeGoldenResponse(value) {
 function normalizeContentShape(value) {
   return {
     original: ensureString(value?.original),
-    enhanced: ensureString(value?.enhanced) || ensureString(value?.original),
+    enhanced: ensureString(value?.enhanced) || ensureString(value?.prompt) || ensureString(value?.original),
     variants: Array.isArray(value?.variants)
       ? value.variants.map(normalizeVariant).filter(item => item.content.trim())
       : [],
-    notes: ensureString(value?.notes),
+    notes: ensureString(value?.notes) || ensureString(value?.description),
   };
 }
 
@@ -146,6 +151,7 @@ export function createPromptEntry(value, options = {}) {
     versions: Array.isArray(value?.versions) ? value.versions : [],
     testCases: Array.isArray(value?.testCases) ? value.testCases : [],
     goldenResponse: value?.goldenResponse || null,
+    goldenThreshold: value?.goldenThreshold,
     metadata: value?.metadata || DEFAULT_PROMPT_METADATA,
   }, now);
 }
@@ -195,6 +201,9 @@ export function updatePromptEntry(entry, changes = {}, options = {}) {
     goldenResponse: Object.prototype.hasOwnProperty.call(changes, 'goldenResponse')
       ? changes.goldenResponse
       : current.goldenResponse,
+    goldenThreshold: Object.prototype.hasOwnProperty.call(changes, 'goldenThreshold')
+      ? normalizeGoldenThreshold(changes.goldenThreshold)
+      : current.goldenThreshold,
     metadata: Object.prototype.hasOwnProperty.call(changes, 'metadata')
       ? changes.metadata
       : current.metadata,
@@ -242,7 +251,7 @@ export function normalizeEntry(entry, fallbackTs = new Date().toISOString()) {
     variants: content.variants,
     notes: content.notes,
     tags: normalizeStringList(entry.tags),
-    collection: ensureString(entry.collection),
+    collection: ensureString(entry.collection) || ensureString(entry.category),
     createdAt,
     updatedAt,
     useCount: Number.isFinite(entry.useCount) ? Math.max(0, entry.useCount) : 0,
@@ -250,6 +259,7 @@ export function normalizeEntry(entry, fallbackTs = new Date().toISOString()) {
     versions,
     testCases,
     goldenResponse: normalizeGoldenResponse(entry.goldenResponse),
+    goldenThreshold: normalizeGoldenThreshold(entry.goldenThreshold),
     metadata: normalizePromptMetadata(entry.metadata),
   };
 }

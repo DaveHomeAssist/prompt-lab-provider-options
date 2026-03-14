@@ -6,6 +6,7 @@ import {
   suggestTitleFromText,
   looksSensitive, isTransientError,
   isGhostVar, resolveGhostVars,
+  ngramSimilarity,
 } from '../promptUtils';
 import { normalizeEntry } from '../lib/promptSchema.js';
 import { lintPrompt, applyLintQuickFix } from '../promptLint';
@@ -52,6 +53,7 @@ export default function usePromptEditor(ui, lib) {
   const [saveTitle, setSaveTitle] = useState('');
   const [saveTags, setSaveTags] = useState([]);
   const [saveCollection, setSaveCollection] = useState('');
+  const [changeNote, setChangeNote] = useState('');
 
   // ── Diff ──
   const [showDiff, setShowDiff] = useState(false);
@@ -284,12 +286,13 @@ export default function usePromptEditor(ui, lib) {
   const piiCancel = () => setPiiWarning(null);
 
   const doSave = () => {
-    const saved = lib.doSave({ raw, enhanced, variants, notes, tags: saveTags, title: saveTitle, collection: saveCollection, editingId });
+    const saved = lib.doSave({ raw, enhanced, variants, notes, tags: saveTags, title: saveTitle, collection: saveCollection, editingId, changeNote });
     if (saved?.id) {
       setEditingId(saved.id);
       setSaveTitle(saved.title || saveTitle);
       evalRunsHook.refreshEvalRuns(saved.id);
     }
+    setChangeNote('');
     setShowSave(false);
   };
 
@@ -416,6 +419,7 @@ export default function usePromptEditor(ui, lib) {
     saveTitle, setSaveTitle,
     saveTags, setSaveTags,
     saveCollection, setSaveCollection,
+    changeNote, setChangeNote,
 
     // Diff
     showDiff, setShowDiff,

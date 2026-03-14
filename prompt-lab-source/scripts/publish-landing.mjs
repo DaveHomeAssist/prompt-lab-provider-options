@@ -6,6 +6,7 @@ const scriptDir = dirname(fileURLToPath(import.meta.url));
 const sourceDir = resolve(scriptDir, '..');
 const repoDir = resolve(sourceDir, '..');
 const publicDir = join(sourceDir, 'public');
+const webPublicDir = join(sourceDir, 'prompt-lab-web', 'public');
 const docsDir = join(repoDir, 'docs');
 
 const copyTargets = [
@@ -14,6 +15,12 @@ const copyTargets = [
   ['og-image.png', 'og-image.png'],
   ['robots.txt', 'robots.txt'],
   ['sitemap.xml', 'sitemap.xml'],
+];
+
+// Additional pages from prompt-lab-web/public/
+const webPageTargets = [
+  ['guide.html', 'guide.html'],
+  ['setup.html', 'setup.html'],
 ];
 
 async function resetDocsDir() {
@@ -61,6 +68,29 @@ async function main() {
   }
 
   await copyFontsDir();
+
+  // Copy web pages (guide, setup)
+  for (const [fromName, toName] of webPageTargets) {
+    const src = join(webPublicDir, fromName);
+    try {
+      await stat(src);
+      await cp(src, join(docsDir, toName));
+    } catch {
+      console.warn(`  Optional page ${fromName} not found, skipping`);
+    }
+  }
+
+  // Copy templates directory
+  const templatesDir = join(webPublicDir, 'templates');
+  try {
+    const s = await stat(templatesDir);
+    if (s.isDirectory()) {
+      await cp(templatesDir, join(docsDir, 'templates'), { recursive: true });
+    }
+  } catch {
+    console.warn('  Optional templates/ directory not found, skipping');
+  }
+
   await writeNoJekyll();
 
   console.log(`Landing site published to ${docsDir}`);
