@@ -145,8 +145,19 @@ export async function callGemini(payload, settings = {}, fetchImpl = globalThis.
   }
 
   const data = await response.json();
-  const text = data?.candidates?.[0]?.content?.parts?.map((part) => part.text || '').join('');
-  if (!text) throw new Error('Gemini returned empty content.');
+  const candidate = data?.candidates?.[0];
+  const finishReason = candidate?.finishReason;
+  const text = candidate?.content?.parts?.map((part) => part.text || '').join('');
+  if (!text) {
+    if (finishReason === 'SAFETY') {
+      const ratings = candidate?.safetyRatings?.map((r) => `${r.category}: ${r.probability}`).join(', ');
+      throw new Error(`Gemini blocked this response due to safety filters (${ratings || 'no details'}).`);
+    }
+    if (data?.promptFeedback?.blockReason) {
+      throw new Error(`Gemini blocked the prompt: ${data.promptFeedback.blockReason}.`);
+    }
+    throw new Error('Gemini returned empty content.');
+  }
 
   return { content: [{ type: 'text', text }], model: modelId, provider: 'gemini' };
 }

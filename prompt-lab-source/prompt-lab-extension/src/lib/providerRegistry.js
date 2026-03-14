@@ -62,12 +62,22 @@ export function toChatMessages(payload) {
 }
 
 export function toGeminiContents(payload) {
-  const contents = [];
+  const mapped = [];
   for (const msg of payload?.messages || []) {
-    contents.push({
+    mapped.push({
       role: msg?.role === 'assistant' ? 'model' : 'user',
       parts: [{ text: anthropicBlocksToText(msg?.content) }],
     });
   }
-  return contents;
+
+  const collapsed = [];
+  for (const msg of mapped) {
+    const prev = collapsed[collapsed.length - 1];
+    if (prev && prev.role === msg.role) {
+      prev.parts[0].text += '\n\n' + msg.parts[0].text;
+    } else {
+      collapsed.push(msg);
+    }
+  }
+  return collapsed;
 }
