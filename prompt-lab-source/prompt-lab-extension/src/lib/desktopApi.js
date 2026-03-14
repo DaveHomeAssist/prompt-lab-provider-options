@@ -22,8 +22,8 @@ export function saveSettings(settings) {
   localStorage.setItem(SETTINGS_KEY, JSON.stringify(settings));
 }
 
-export async function callModelDirect(payload) {
-  const s = loadSettings();
+export async function callModelDirect(payload, { settingsOverride } = {}) {
+  const s = settingsOverride || loadSettings();
   return callProvider({
     provider: normalizeProvider(s.provider),
     payload,

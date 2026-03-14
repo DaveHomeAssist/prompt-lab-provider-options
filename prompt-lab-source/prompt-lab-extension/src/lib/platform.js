@@ -110,9 +110,8 @@ async function desktopSaveProviderSettings(settings) {
 }
 
 async function desktopTestProviderConnection(payload, settings) {
-  const { saveSettings, callModelDirect } = await getDesktopApi();
-  saveSettings(settings);
-  return callModelDirect(payload);
+  const { callModelDirect } = await getDesktopApi();
+  return callModelDirect(payload, { settingsOverride: settings });
 }
 
 function extSessionGet(key, cb) {
