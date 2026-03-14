@@ -114,9 +114,72 @@ body::before {
 }
 
 /* ============================
+   SITE NAV
+   ============================ */
+.site-nav {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  z-index: 100;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 0.65rem 1.5rem;
+  background: rgba(2, 6, 23, 0.75);
+  backdrop-filter: blur(12px);
+  -webkit-backdrop-filter: blur(12px);
+  border-bottom: 1px solid var(--glass-border);
+  transition: background 0.3s;
+}
+.site-nav-brand {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  font-family: 'Outfit', system-ui, sans-serif;
+  font-weight: 600;
+  font-size: 0.9rem;
+  color: var(--surface-100);
+  text-decoration: none;
+}
+.site-nav-brand img {
+  width: 24px;
+  height: 24px;
+}
+.site-nav-links {
+  display: flex;
+  align-items: center;
+  gap: 0.35rem;
+}
+.site-nav-links a {
+  padding: 0.35rem 0.75rem;
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 0.7rem;
+  letter-spacing: 0.04em;
+  color: var(--surface-300);
+  text-decoration: none;
+  border-radius: 6px;
+  transition: color 0.2s, background 0.2s;
+}
+.site-nav-links a:hover {
+  color: var(--surface-100);
+  background: rgba(255, 255, 255, 0.06);
+}
+.site-nav-links .nav-cta {
+  color: #fff;
+  background: var(--lab-violet);
+  padding: 0.35rem 0.85rem;
+  font-weight: 600;
+}
+.site-nav-links .nav-cta:hover {
+  background: var(--lab-violet-dim);
+}
+
+/* ============================
    HERO SECTION
    ============================ */
 .hero {
+  padding-top: 3.5rem;
   position: relative;
   min-height: 100vh;
   display: flex;
@@ -880,6 +943,9 @@ footer .lab-mark {
    RESPONSIVE
    ============================ */
 @media (max-width: 600px) {
+  .site-nav { padding: 0.5rem 1rem; }
+  .site-nav-links a:not(.nav-cta) { display: none; }
+  .site-nav-links .nav-cta { font-size: 0.65rem; padding: 0.3rem 0.7rem; }
   .provider-logos { gap: 0.75rem; }
   .provider-chip { font-size: 0.78rem; padding: 0.45rem 0.9rem; }
   .feature-grid { grid-template-columns: 1fr; }
@@ -907,6 +973,21 @@ footer .lab-mark {
 </script>
 </head>
 <body>
+
+<!-- ========== SITE NAV ========== -->
+<nav class="site-nav" aria-label="Site navigation">
+  <a href="./" class="site-nav-brand">
+    <img src="hero-logo.png" alt="" width="24" height="24">
+    Prompt Lab
+  </a>
+  <div class="site-nav-links">
+    <a href="#features">Features</a>
+    <a href="guide.html">Guide</a>
+    <a href="setup.html">Setup</a>
+    <a href="https://github.com/DaveHomeAssist/prompt-lab-provider-options" target="_blank" rel="noopener">GitHub</a>
+    <a href="app/" class="nav-cta">Open App</a>
+  </div>
+</nav>
 
 <!-- ========== HERO ========== -->
 <section class="hero">

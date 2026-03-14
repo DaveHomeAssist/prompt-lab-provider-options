@@ -197,7 +197,7 @@ export default function App() {
         </div>
       </header>
 
-      <main role="tabpanel" aria-label={tab}>
+      <main role="tabpanel" aria-label={tab} className="flex-1 flex flex-col overflow-hidden">
       {/* ══ EDITOR TAB ══ */}
       {tab === 'editor' && (
         <div className={isWeb ? `flex ${compact ? 'flex-col' : ''}` : 'flex flex-1 overflow-hidden'}>
