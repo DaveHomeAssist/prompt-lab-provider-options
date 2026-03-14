@@ -7,6 +7,7 @@ Ship Prompt Lab on iOS and Android without forking the shared frontend unless mo
 The desired architecture is:
 
 - shared React app in `prompt-lab-extension/src/`
+- hosted web shell in `prompt-lab-web/`
 - desktop shell in `prompt-lab-desktop/`
 - future mobile shell in a Tauri Mobile project
 

@@ -1,7 +1,7 @@
 import Ic from './icons';
 import useABTest from './hooks/useABTest';
 
-export default function ABTestTab({ m, copy, notify, compact = false }) {
+export default function ABTestTab({ m, copy, notify, compact = false, pageScroll = false }) {
   const {
     abA,
     setAbA,
@@ -24,7 +24,7 @@ export default function ABTestTab({ m, copy, notify, compact = false }) {
   const inp = `w-full ${m.input} border rounded-lg p-3 text-sm resize-none focus:outline-none focus:border-violet-500 transition-colors placeholder-gray-400 ${m.text}`;
 
   return (
-    <div className="flex flex-1 flex-col overflow-hidden">
+    <div className={pageScroll ? 'flex flex-col' : 'flex flex-1 flex-col overflow-hidden'}>
       <div className={`px-4 py-2 border-b ${m.border} flex items-center justify-between shrink-0`}>
         <p className={`text-xs font-semibold ${m.textSub} uppercase tracking-wider`}>A/B Prompt Testing</p>
         <div className={`flex items-center gap-3 ${compact ? 'flex-wrap justify-end' : ''}`}>
@@ -54,9 +54,9 @@ export default function ABTestTab({ m, copy, notify, compact = false }) {
           ))}
         </div>
       )}
-      <div className={`flex flex-1 overflow-hidden ${compact ? 'flex-col' : ''}`}>
+      <div className={`flex ${pageScroll ? '' : 'flex-1 overflow-hidden'} ${compact ? 'flex-col' : ''}`}>
         {([['A', abA, setAbA], ['B', abB, setAbB]]).filter(([side]) => !compact || side === activeSide).map(([side, state, setter]) => (
-          <div key={side} className={`flex-1 flex flex-col border-r last:border-r-0 ${m.border} overflow-hidden`}>
+          <div key={side} className={`flex-1 flex flex-col border-r last:border-r-0 ${m.border} ${pageScroll ? '' : 'overflow-hidden'}`}>
             <div className={`px-3 py-2 border-b ${m.border} flex items-center justify-between shrink-0`}>
               <span className="text-xs font-bold text-violet-400 uppercase">Variant {side}</span>
               <div className="flex gap-2">

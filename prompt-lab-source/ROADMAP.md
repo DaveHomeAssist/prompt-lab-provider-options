@@ -6,7 +6,7 @@ Prompt Lab is currently shipped as:
 
 - an MV3 side panel extension
 - a Tauri desktop app that reuses the shared frontend
-- a hosted web app deployed to Vercel with a CORS proxy edge function
+- a hosted web deployment on `promptlab.tools`, with the landing page at `/` and the shared app at `/app/`
 
 Current shipped capabilities include:
 
@@ -26,8 +26,27 @@ These are active priorities, not shipped commitments:
    - store listing copy
    - screenshots and promo assets
    - final permission review
-4. Keep extension, desktop, and web documentation aligned as the shared architecture evolves.
-5. Deploy hosted web version to Vercel and verify end-to-end proxy flow.
+3. Keep extension, desktop, and web documentation aligned as the shared architecture evolves.
+4. Keep the `promptlab.tools` landing page, `/app/` route, and proxy-backed web flow aligned with the current product docs.
+
+## Platform expansion strategy
+
+| Version | Focus |
+|---------|-------|
+| v1.6 | Distribution polish (CWS submission + desktop preview) |
+| v1.7 | Prompt Lab Server experiment (self-hosted browser access) |
+| v1.8 | Workflow improvements (ghost variables, golden response UI) |
+| v2.x | Mobile or public web platform |
+
+Platform priority ladder:
+
+1. **Extension + Desktop** — current primary surfaces, zero backend
+2. **Prompt Lab Server** — self-hosted process for browser access without a public proxy
+3. **Native mobile apps** — only if demand justifies it
+4. **Public web app / PWA** — deferred until a backend is architecturally justified
+
+The hosted web app at `promptlab.tools/app/` is a convenience surface for evaluation
+and demo purposes. It is not the primary product and should not gate feature work.
 
 ## Next improvements under consideration
 
@@ -44,3 +63,4 @@ These are candidates, not released features:
 - Do not describe roadmap items as shipped in public-facing docs.
 - Treat `prompt-lab-source/` as the canonical source tree for active documentation.
 - Keep release notes and README content based on verified commands and current repo state.
+- **v1.x rule:** avoid introducing a public backend unless it unlocks a core feature that cannot be delivered client-side.

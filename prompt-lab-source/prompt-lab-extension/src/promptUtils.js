@@ -48,6 +48,61 @@ export function extractVars(text) {
   return [...new Set([...text.matchAll(/\{\{(\w[\w ]*)\}\}/g)].map(m => m[1]))];
 }
 
+function pad2(value) {
+  return String(value).padStart(2, '0');
+}
+
+function formatLocalDate(date) {
+  return `${date.getFullYear()}-${pad2(date.getMonth() + 1)}-${pad2(date.getDate())}`;
+}
+
+function formatLocalTime(date) {
+  return `${pad2(date.getHours())}:${pad2(date.getMinutes())}:${pad2(date.getSeconds())}`;
+}
+
+function formatLocalDateTime(date) {
+  return `${formatLocalDate(date)} ${formatLocalTime(date)}`;
+}
+
+const GHOST_RESOLVERS = Object.freeze({
+  date: () => formatLocalDate(new Date()),
+  time: () => formatLocalTime(new Date()),
+  datetime: () => formatLocalDateTime(new Date()),
+  timestamp: () => String(Date.now()),
+  year: () => String(new Date().getFullYear()),
+  clipboard: async () => {
+    try {
+      if (typeof navigator === 'undefined' || !navigator?.clipboard?.readText) {
+        return '';
+      }
+      const text = await navigator.clipboard.readText();
+      return typeof text === 'string' ? text : '';
+    } catch {
+      return '';
+    }
+  },
+});
+
+function normalizeGhostVarName(name) {
+  return ensureString(name).trim().toLowerCase();
+}
+
+export function isGhostVar(name) {
+  return Object.prototype.hasOwnProperty.call(GHOST_RESOLVERS, normalizeGhostVarName(name));
+}
+
+export async function resolveGhostVars(varNames) {
+  const names = Array.isArray(varNames) ? varNames : [];
+  const resolved = {};
+  await Promise.all(names.map(async (name) => {
+    if (!isGhostVar(name)) return;
+    const resolver = GHOST_RESOLVERS[normalizeGhostVarName(name)];
+    const value = await resolver();
+    resolved[name] = ensureString(value);
+  }));
+  return resolved;
+}
+
 export function encodeShare(entry) {
   try {
     return btoa(unescape(encodeURIComponent(JSON.stringify({
@@ -137,6 +192,39 @@ const SECRET_PATTERN = /\b(sk-ant-|api[_-]?key|password|secret|access[_-]?token|
 
 export function looksSensitive(text) {
   return SECRET_PATTERN.test(ensureString(text));
+}
+
+function buildNgrams(text, n) {
+  const normalized = ensureString(text).trim().toLowerCase();
+  if (!normalized) return [];
+  if (normalized.length <= n) return [normalized];
+  const grams = [];
+  for (let i = 0; i <= normalized.length - n; i += 1) {
+    grams.push(normalized.slice(i, i + n));
+  }
+  return grams;
+}
+
+export function ngramSimilarity(a, b, n = 3) {
+  const size = Number.isInteger(n) && n > 0 ? n : 3;
+  const left = buildNgrams(a, size);
+  const right = buildNgrams(b, size);
+  if (left.length === 0 && right.length === 0) return 1;
+  if (left.length === 0 || right.length === 0) return 0;
+  const leftCounts = new Map();
+  const rightCounts = new Map();
+  left.forEach((gram) => leftCounts.set(gram, (leftCounts.get(gram) || 0) + 1));
+  right.forEach((gram) => rightCounts.set(gram, (rightCounts.get(gram) || 0) + 1));
+  const all = new Set([...leftCounts.keys(), ...rightCounts.keys()]);
+  let intersection = 0;
+  let union = 0;
+  all.forEach((gram) => {
+    const l = leftCounts.get(gram) || 0;
+    const r = rightCounts.get(gram) || 0;
+    intersection += Math.min(l, r);
+    union += Math.max(l, r);
+  });
+  return union === 0 ? 0 : intersection / union;
 }
 
 export function isTransientError(err) {

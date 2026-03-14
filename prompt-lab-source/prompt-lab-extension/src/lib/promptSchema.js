@@ -26,6 +26,19 @@ function normalizePromptMetadata(value) {
   };
 }
 
+function normalizeGoldenResponse(value) {
+  if (!value || typeof value !== 'object') return null;
+  const text = ensureString(value.text);
+  if (!text.trim()) return null;
+  return {
+    text: text.slice(0, 20000),
+    pinnedAt: safeDate(value.pinnedAt || new Date().toISOString()),
+    pinnedFromRunId: ensureString(value.pinnedFromRunId),
+    provider: ensureString(value.provider),
+    model: ensureString(value.model),
+  };
+}
+
 function normalizeContentShape(value) {
   return {
     original: ensureString(value?.original),
@@ -132,6 +145,7 @@ export function createPromptEntry(value, options = {}) {
     currentVersionId: ensureString(value?.currentVersionId) || randomId(),
     versions: Array.isArray(value?.versions) ? value.versions : [],
     testCases: Array.isArray(value?.testCases) ? value.testCases : [],
+    goldenResponse: value?.goldenResponse || null,
     metadata: value?.metadata || DEFAULT_PROMPT_METADATA,
   }, now);
 }
@@ -178,6 +192,9 @@ export function updatePromptEntry(entry, changes = {}, options = {}) {
     testCases: Object.prototype.hasOwnProperty.call(changes, 'testCases')
       ? Array.isArray(changes.testCases) ? changes.testCases : []
       : current.testCases,
+    goldenResponse: Object.prototype.hasOwnProperty.call(changes, 'goldenResponse')
+      ? changes.goldenResponse
+      : current.goldenResponse,
     metadata: Object.prototype.hasOwnProperty.call(changes, 'metadata')
       ? changes.metadata
       : current.metadata,
@@ -232,6 +249,7 @@ export function normalizeEntry(entry, fallbackTs = new Date().toISOString()) {
     currentVersionId: ensureString(entry.currentVersionId) || randomId(),
     versions,
     testCases,
+    goldenResponse: normalizeGoldenResponse(entry.goldenResponse),
     metadata: normalizePromptMetadata(entry.metadata),
   };
 }

@@ -136,6 +136,31 @@ export default function usePromptLibrary(notify) {
     notify('Restored!');
   };
 
+  const pinGoldenResponse = (entryId, { text, runId, provider, model } = {}) => {
+    const pinnedText = ensureString(text);
+    if (!pinnedText.trim()) return false;
+    const changed = updateLibraryEntry(entryId, entry => updatePromptEntry(entry, {
+      goldenResponse: {
+        text: pinnedText,
+        pinnedAt: new Date().toISOString(),
+        pinnedFromRunId: ensureString(runId),
+        provider: ensureString(provider),
+        model: ensureString(model),
+      },
+    }));
+    if (changed) notify('Golden response pinned.');
+    return changed;
+  };
+
+  const clearGoldenResponse = (entryId) => {
+    const changed = updateLibraryEntry(entryId, entry => {
+      if (!entry.goldenResponse) return entry;
+      return updatePromptEntry(entry, { goldenResponse: null });
+    });
+    if (changed) notify('Golden response cleared.');
+    return changed;
+  };
+
   const exportLib = () => {
     if (library.length === 0) {
       notify('Library is empty.');
@@ -206,6 +231,7 @@ export default function usePromptLibrary(notify) {
     shareId, setShareId, renamingId, setRenamingId, renameValue, setRenameValue,
     draggingLibraryId, setDraggingLibraryId, dragOverLibraryId, setDragOverLibraryId,
     doSave, del, bumpUse, moveLibraryEntry, renameEntry, restoreVersion,
+    pinGoldenResponse, clearGoldenResponse,
     exportLib, importLib, getShareUrl,
     allLibTags, filtered, quickInject,
   };

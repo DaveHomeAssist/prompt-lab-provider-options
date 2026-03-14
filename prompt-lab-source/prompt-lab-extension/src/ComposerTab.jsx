@@ -1,7 +1,7 @@
 import { useState } from 'react';
 import Ic from './icons';
 
-export default function ComposerTab({ m, library, composerBlocks, setComposerBlocks, addToComposer, notify, copy, setRaw, setTab, compact = false }) {
+export default function ComposerTab({ m, library, composerBlocks, setComposerBlocks, addToComposer, notify, copy, setRaw, setTab, compact = false, pageScroll = false }) {
   const [dragOverComposer, setDragOverComposer] = useState(false);
   const [draggingLibId, setDraggingLibId] = useState(null);
   const [dragOverBlockIdx, setDragOverBlockIdx] = useState(null);
@@ -13,8 +13,8 @@ export default function ComposerTab({ m, library, composerBlocks, setComposerBlo
   const showPreview = !compact || mobileView === 'preview';
 
   return (
-    <div className="flex flex-1 overflow-hidden">
-      <div className={`${compact ? 'hidden' : 'w-64 shrink-0'} flex flex-col border-r ${m.border} overflow-hidden`}>
+    <div className={pageScroll ? `flex ${compact ? 'flex-col' : ''}` : 'flex flex-1 overflow-hidden'}>
+      <div className={`${compact ? 'hidden' : 'w-64 shrink-0'} flex flex-col border-r ${m.border} ${pageScroll ? '' : 'overflow-hidden'}`}>
         <div className={`px-3 py-2 border-b ${m.border} shrink-0`}><p className={`text-xs font-semibold ${m.textSub} uppercase tracking-wider`}>Library · Drag to add</p></div>
         <div className="flex-1 overflow-y-auto p-2 flex flex-col gap-1.5">
           {library.length === 0 && <p className={`text-xs ${m.textMuted} p-2`}>No saved prompts yet.</p>}
@@ -35,7 +35,7 @@ export default function ComposerTab({ m, library, composerBlocks, setComposerBlo
           ))}
         </div>
       </div>
-      <div className="flex-1 flex flex-col overflow-hidden">
+      <div className={`flex-1 flex flex-col ${pageScroll ? '' : 'overflow-hidden'}`}>
         <div className={`px-4 py-2 border-b ${m.border} flex items-center justify-between shrink-0`}>
           <p className={`text-xs font-semibold ${m.textSub} uppercase tracking-wider`}>Canvas ({composerBlocks.length} blocks)</p>
           <div className="flex gap-2">
@@ -56,7 +56,7 @@ export default function ComposerTab({ m, library, composerBlocks, setComposerBlo
             ))}
           </div>
         )}
-        <div className={`flex flex-1 overflow-hidden gap-3 p-3 ${compact ? 'flex-col' : ''}`}>
+        <div className={`flex ${pageScroll ? '' : 'flex-1 overflow-hidden'} gap-3 p-3 ${compact ? 'flex-col' : ''}`}>
           {showLibrary && (
           <div className={`${compact ? 'min-h-0 max-h-44' : 'hidden'} rounded-xl border ${m.border} overflow-hidden`}>
             <div className={`px-3 py-2 border-b ${m.border} shrink-0`}>

@@ -2,7 +2,7 @@ import { useEffect, useState } from 'react';
 import Ic from './icons';
 import {
   wordDiff, scorePrompt, extractVars,
-  looksSensitive,
+  looksSensitive, isGhostVar, ngramSimilarity,
 } from './promptUtils';
 import { ALL_TAGS, MODES, T } from './constants';
 import useLibrary from './hooks/usePromptLibrary.js';
@@ -21,6 +21,8 @@ import { isExtension } from './lib/platform.js';
 export default function App() {
   const ui = useUiState();
   const [showDesktopSettings, setShowDesktopSettings] = useState(false);
+  const [showGoldenComparison, setShowGoldenComparison] = useState(true);
+  const isWeb = !isExtension && import.meta.env?.VITE_WEB_MODE === 'true';
   const {
     viewportWidth,
     colorMode,
@@ -78,6 +80,38 @@ export default function App() {
   const inp = `w-full ${m.input} border rounded-lg p-3 text-sm resize-none focus:outline-none focus:border-violet-500 transition-colors placeholder-gray-400 ${m.text}`;
   const showEditorPane = tab !== 'editor' || effectiveEditorLayout !== 'library';
   const showLibraryPane = tab !== 'editor' || effectiveEditorLayout !== 'editor';
+  const primaryModKey = typeof navigator !== 'undefined' && /Mac|iPhone|iPad/.test(navigator.platform || navigator.userAgent)
+    ? 'Cmd'
+    : 'Ctrl';
+  const currentEntry = editingId ? lib.library.find((entry) => entry.id === editingId) || null : null;
+  const goldenResponse = currentEntry?.goldenResponse || null;
+  const latestEvalRun = evalRuns[0] || null;
+  const comparisonText = typeof enhanced === 'string' && enhanced.trim()
+    ? enhanced
+    : (typeof latestEvalRun?.output === 'string' ? latestEvalRun.output : '');
+  const comparisonSourceLabel = typeof enhanced === 'string' && enhanced.trim() ? 'Current enhanced output' : 'Latest eval run';
+  const goldenSimilarity = goldenResponse?.text && comparisonText
+    ? ngramSimilarity(goldenResponse.text, comparisonText)
+    : 0;
+
+  const loadTemplateWithoutVars = () => {
+    if (!pendingTemplate) return;
+    setEditingId(pendingTemplate.id);
+    setRaw(pendingTemplate.original || '');
+    setEnhanced(pendingTemplate.enhanced || '');
+    setVariants(pendingTemplate.variants || []);
+    setNotes(pendingTemplate.notes || '');
+    setSaveTags(pendingTemplate.tags || []);
+    setSaveTitle(pendingTemplate.title || '');
+    setSaveCollection(pendingTemplate.collection || '');
+    setShowSave(false);
+    setShowDiff(false);
+    setVarVals({});
+    setShowVarForm(false);
+    lib.bumpUse(pendingTemplate.id);
+    setTab('editor');
+    notify('Loaded into editor!');
+  };
 
   // ── Keyboard shortcuts ──
   useEffect(() => {
@@ -124,6 +158,7 @@ export default function App() {
   // ─────────────────────────────────────────────────────────────────────────
   return (
     <div className={`min-h-screen ${m.bg} ${m.text} flex flex-col`} style={{ fontFamily: 'system-ui,sans-serif' }}>
+      <h1 className="sr-only">Prompt Lab</h1>
 
       {/* Header */}
       <header className={`px-4 py-2 ${m.header} border-b shrink-0`}>
@@ -145,9 +180,9 @@ export default function App() {
               <button onClick={() => setShowSettings(true)} className={`p-1.5 rounded-lg ${m.btn} ${m.textAlt} hover:text-violet-400 transition-colors`}><Ic n="Settings" size={13} /></button>
             </div>
           </div>
-          <div className={`flex items-center gap-1 ${compact ? 'overflow-x-auto pb-0.5' : ''}`}>
+          <div className={`flex items-center gap-1 ${compact ? 'overflow-x-auto pb-0.5' : ''}`} role="tablist" aria-label="Prompt Lab views">
             {[['editor', 'Editor'], ['composer', 'Compose'], ['abtest', 'A/B Test'], ['pad', 'Scratchpad']].map(([id, label]) => (
-              <button key={id} onClick={() => setTab(id)}
+              <button key={id} onClick={() => setTab(id)} role="tab" aria-selected={tab === id}
                 className={`px-2.5 py-1.5 font-semibold rounded-lg transition-colors whitespace-nowrap ${tab === id ? 'bg-violet-600 text-white' : `${m.btn} ${m.textAlt}`}`}
                 style={{ fontSize: '0.68rem', letterSpacing: '0.03em' }}>
                 {label}
@@ -157,11 +192,12 @@ export default function App() {
         </div>
       </header>
 
+      <main role="tabpanel" aria-label={tab}>
       {/* ══ EDITOR TAB ══ */}
       {tab === 'editor' && (
-        <div className="flex flex-1 overflow-hidden">
+        <div className={isWeb ? `flex ${compact ? 'flex-col' : ''}` : 'flex flex-1 overflow-hidden'}>
           {showEditorPane && (
-          <div className={`${showLibraryPane && !compact ? `w-1/2 border-r ${m.border}` : 'w-full'} flex flex-col overflow-y-auto`}>
+          <div className={`${showLibraryPane && !compact ? `w-1/2 border-r ${m.border}` : 'w-full'} flex flex-col ${isWeb ? '' : 'overflow-y-auto'}`}>
             <div className="p-4 flex flex-col gap-3">
               <div className="flex gap-1">
                 {[
@@ -181,7 +217,7 @@ export default function App() {
                   <span className={`text-xs ${m.textSub} uppercase tracking-widest font-semibold`}>Input</span>
                   <span className={`text-xs ${m.textMuted}`}>{wc}w · {raw.length}c{score ? ` · ~${score.tokens} tok` : ''}</span>
                 </div>
-                <textarea rows={5} className={inp} placeholder="Paste or write your prompt here…" value={raw} onChange={e => setRaw(e.target.value)} />
+                <textarea rows={8} className={inp} placeholder="Paste or write your prompt here…" value={raw} onChange={e => setRaw(e.target.value)} />
               </div>
               {/* Scoring */}
               {score && (() => {
@@ -289,7 +325,23 @@ export default function App() {
                       <button onClick={() => setShowDiff(p => !p)} className={`flex items-center gap-1 text-xs transition-colors ${showDiff ? 'text-violet-400' : `${m.textSub} hover:text-white`}`}>
                         <Ic n="GitBranch" size={10} />{showDiff ? 'Hide Diff' : 'Show Diff'}
                       </button>
-                      <button onClick={() => copy(enhanced)} className={`flex items-center gap-1 text-xs ${m.textSub} hover:text-white transition-colors`}><Ic n="Copy" size={10} />Copy</button>
+                      {editingId && (
+                        <button
+                          onClick={() => lib.pinGoldenResponse(editingId, {
+                            text: enhanced,
+                            runId: latestEvalRun?.id,
+                            provider: latestEvalRun?.provider,
+                            model: latestEvalRun?.model,
+                          })}
+                          disabled={!enhanced.trim()}
+                          className={`flex items-center gap-1.5 text-xs px-2 py-1 rounded transition-colors ${
+                            enhanced.trim() ? 'bg-emerald-500/15 text-emerald-300 hover:bg-emerald-500/25' : `${m.btn} ${m.textMuted} opacity-40 cursor-not-allowed`
+                          }`}
+                        >
+                          <Ic n="Save" size={12} />Pin Golden
+                        </button>
+                      )}
+                      <button onClick={() => copy(enhanced)} className={`flex items-center gap-1.5 text-xs px-2 py-1 rounded ${m.btn} ${m.textSub} hover:text-white transition-colors`}><Ic n="Copy" size={12} />Copy</button>
                     </div>
                   </div>
                   {showDiff ? (
@@ -350,10 +402,25 @@ export default function App() {
                           </div>
                           <p className={`${m.textBody} leading-relaxed whitespace-pre-wrap`}>{(run.output || '').slice(0, 220)}{run.output && run.output.length > 220 ? '…' : ''}</p>
                           {run.output && (
-                            <button onClick={() => copy(run.output, 'Run output copied')}
-                              className={`mt-1 flex items-center gap-1 ${m.textSub} hover:text-white transition-colors`}>
-                              <Ic n="Copy" size={10} />Copy output
-                            </button>
+                            <div className="mt-1 flex flex-wrap gap-3">
+                              <button onClick={() => copy(run.output, 'Run output copied')}
+                                className={`flex items-center gap-1 ${m.textSub} hover:text-white transition-colors`}>
+                                <Ic n="Copy" size={10} />Copy output
+                              </button>
+                              {editingId && (
+                                <button
+                                  onClick={() => lib.pinGoldenResponse(editingId, {
+                                    text: run.output,
+                                    runId: run.id,
+                                    provider: run.provider,
+                                    model: run.model,
+                                  })}
+                                  className="flex items-center gap-1 text-emerald-400 hover:text-emerald-300 transition-colors font-semibold"
+                                >
+                                  <Ic n="Save" size={10} />Pin as Golden
+                                </button>
+                              )}
+                            </div>
                           )}
                         </div>
                       ))}
@@ -363,6 +430,62 @@ export default function App() {
                     <p className={`px-3 pb-3 text-xs ${m.textMuted}`}>No saved runs yet.</p>
                   )}
                 </div>
+                {editingId && goldenResponse && (
+                  <div className={`${m.surface} border ${m.border} rounded-lg`}>
+                    <button
+                      onClick={() => setShowGoldenComparison((p) => !p)}
+                      className={`w-full flex justify-between items-center px-3 py-2 text-xs font-semibold ${m.textSub} uppercase tracking-wider`}
+                    >
+                      <span>Golden Benchmark</span>
+                      <Ic n={showGoldenComparison ? 'ChevronUp' : 'ChevronDown'} size={10} />
+                    </button>
+                    {showGoldenComparison && (
+                      <div className="px-3 pb-3 flex flex-col gap-3">
+                        <div className={`${m.codeBlock} border ${m.border} rounded-lg p-3`}>
+                          <div className="flex items-start justify-between gap-3 mb-2">
+                            <div>
+                              <p className="text-xs font-semibold text-emerald-400 uppercase tracking-wider">Pinned Golden</p>
+                              <p className={`text-xs ${m.textMuted} mt-1`}>
+                                {goldenResponse.provider || 'Unknown provider'}
+                                {goldenResponse.model ? ` · ${goldenResponse.model}` : ''}
+                                {goldenResponse.pinnedAt ? ` · ${new Date(goldenResponse.pinnedAt).toLocaleString()}` : ''}
+                              </p>
+                            </div>
+                            <button
+                              onClick={() => lib.clearGoldenResponse(editingId)}
+                              className="flex items-center gap-1 text-xs text-red-400 hover:text-red-300 transition-colors font-semibold"
+                            >
+                              <Ic n="Trash2" size={10} />Clear Golden
+                            </button>
+                          </div>
+                          <div className="flex items-center justify-between gap-3 mb-1">
+                            <span className={`text-xs ${m.textSub}`}>Similarity vs {comparisonSourceLabel.toLowerCase()}</span>
+                            <span className="text-xs font-semibold text-emerald-400">{Math.round(goldenSimilarity * 100)}%</span>
+                          </div>
+                          <div className={`w-full h-2 rounded-full overflow-hidden ${m.input} border ${m.border}`}>
+                            <div className="h-full bg-emerald-500 transition-all" style={{ width: `${Math.max(0, Math.min(100, goldenSimilarity * 100))}%` }} />
+                          </div>
+                        </div>
+                        {comparisonText ? (
+                          <div>
+                            <p className={`text-xs ${m.textSub} font-semibold mb-1 uppercase tracking-wider`}>
+                              Word Diff: Golden vs {comparisonSourceLabel}
+                            </p>
+                            <div className={`${m.codeBlock} border ${m.border} rounded-lg p-3 text-sm leading-loose`}>
+                              {wordDiff(goldenResponse.text, comparisonText).map((d, i) => (
+                                <span key={i} className={`${d.t === 'add' ? m.diffAdd : d.t === 'del' ? m.diffDel : m.diffEq} px-0.5 rounded mr-0.5`}>
+                                  {d.v}
+                                </span>
+                              ))}
+                            </div>
+                          </div>
+                        ) : (
+                          <p className={`text-xs ${m.textMuted}`}>No enhanced output or eval run output is available to compare yet.</p>
+                        )}
+                      </div>
+                    )}
+                  </div>
+                )}
               </>}
               {/* Save panel */}
               {showSave && (
@@ -421,7 +544,7 @@ export default function App() {
 
           {/* Right — Library */}
           {showLibraryPane && (
-          <div className={`${showEditorPane && !compact ? 'w-1/2' : 'w-full'} flex flex-col overflow-hidden`}>
+          <div className={`${showEditorPane && !compact ? 'w-1/2' : 'w-full'} flex flex-col ${isWeb ? '' : 'overflow-hidden'}`}>
             <div className={`p-3 border-b ${m.border} flex flex-col gap-2 shrink-0`}>
               {!showEditorPane && (
                 <div className="flex gap-1">
@@ -468,7 +591,7 @@ export default function App() {
                 </div>
               )}
             </div>
-            <div className="flex-1 overflow-y-auto p-3 flex flex-col gap-2">
+            <div className={`${isWeb ? '' : 'flex-1 overflow-y-auto'} p-3 flex flex-col gap-2`}>
               {lib.filtered.length === 0 && (
                 <div className="flex flex-col items-center justify-center h-full gap-2 text-center">
                   <Ic n="Wand2" size={24} className={m.textMuted} />
@@ -596,36 +719,45 @@ export default function App() {
       {/* ══ COMPOSER TAB ══ */}
       {tab === 'composer' && (
         <ComposerTab m={m} library={lib.library} composerBlocks={composerBlocks} setComposerBlocks={setComposerBlocks}
-          addToComposer={addToComposer} notify={notify} copy={copy} setRaw={setRaw} setTab={setTab} compact={compact} />
+          addToComposer={addToComposer} notify={notify} copy={copy} setRaw={setRaw} setTab={setTab} compact={compact} pageScroll={isWeb} />
       )}
 
       {/* ══ A/B TEST TAB ══ */}
-      {tab === 'abtest' && <ABTestTab m={m} copy={copy} notify={notify} compact={compact} />}
+      {tab === 'abtest' && <ABTestTab m={m} copy={copy} notify={notify} compact={compact} pageScroll={isWeb} />}
 
       {/* ══ PAD TAB ══ */}
       {tab === 'pad' && <PadTab m={m} notify={notify} />}
+      </main>
 
       {/* ══ MODALS ══ */}
       {showVarForm && pendingTemplate && (
         <div className={`fixed inset-0 ${m.modalBg} flex items-center justify-center z-40 p-4`}>
-          <div className={`${m.modal} border rounded-xl p-5 w-full max-w-md flex flex-col gap-4`}>
+          <div className={`${m.modal} border rounded-xl p-5 w-full max-w-md flex flex-col gap-4`} role="dialog" aria-modal="true" aria-labelledby="modal-vars">
             <div className="flex justify-between items-center">
-              <h2 className={`font-bold text-sm ${m.text}`}>Fill Template Variables</h2>
+              <h2 id="modal-vars" className={`font-bold text-sm ${m.text}`}>Fill Template Variables</h2>
               <button onClick={() => setShowVarForm(false)} className={`${m.textSub} hover:text-white`}><Ic n="X" size={15} /></button>
             </div>
             <p className={`text-xs ${m.textAlt}`}>"{pendingTemplate.title}" contains template variables:</p>
             <div className="flex flex-col gap-2">
               {Object.keys(varVals).map(k => (
                 <div key={k}>
-                  <label className="text-xs font-mono font-semibold text-violet-400 block mb-1">{`{{${k}}}`}</label>
+                  <label className="text-xs font-mono font-semibold text-violet-400 block mb-1">
+                    {`{{${k}}}`}
+                    {isGhostVar(k) && (
+                      <span className="ml-2 inline-flex items-center rounded-full border border-emerald-500/30 bg-emerald-500/15 px-1.5 py-0.5 text-[10px] font-sans font-semibold uppercase tracking-wide text-emerald-300">
+                        auto
+                      </span>
+                    )}
+                  </label>
                   <input className={`w-full ${m.input} border rounded-lg px-3 py-1.5 text-sm focus:outline-none focus:border-violet-500 ${m.text}`}
-                    placeholder={`Value for ${k}…`} value={varVals[k]} onChange={e => setVarVals(p => ({ ...p, [k]: e.target.value }))} />
+                    placeholder={isGhostVar(k) ? 'Auto-filled · editable' : `Value for ${k}…`}
+                    value={varVals[k]} onChange={e => setVarVals(p => ({ ...p, [k]: e.target.value }))} />
                 </div>
               ))}
             </div>
             <div className="flex gap-2">
               <button onClick={applyTemplate} className="flex-1 bg-violet-600 hover:bg-violet-500 text-white rounded-lg py-2 text-sm font-semibold transition-colors">Apply Template</button>
-              <button onClick={() => { applyEntry(pendingTemplate); setShowVarForm(false); setPendingTemplate(null); }} className={`px-4 ${m.btn} rounded-lg text-sm ${m.textBody} transition-colors`}>Skip</button>
+              <button onClick={loadTemplateWithoutVars} className={`px-4 ${m.btn} rounded-lg text-sm ${m.textBody} transition-colors`}>Skip</button>
             </div>
           </div>
         </div>
@@ -633,9 +765,9 @@ export default function App() {
 
       {showSettings && (
         <div className={`fixed inset-0 ${m.modalBg} flex items-center justify-center z-40 p-4`}>
-          <div className={`${m.modal} border rounded-xl p-5 w-full max-w-sm flex flex-col gap-4`}>
+          <div className={`${m.modal} border rounded-xl p-5 w-full max-w-sm flex flex-col gap-4`} role="dialog" aria-modal="true" aria-labelledby="modal-settings">
             <div className="flex justify-between items-center">
-              <h2 className={`font-bold text-base ${m.text}`}>Settings</h2>
+              <h2 id="modal-settings" className={`font-bold text-base ${m.text}`}>Settings</h2>
               <button onClick={() => setShowSettings(false)} className={`${m.textSub} hover:text-white`}><Ic n="X" size={15} /></button>
             </div>
             <label className={`flex items-center justify-between text-sm ${m.textBody} cursor-pointer`}>
@@ -692,18 +824,39 @@ export default function App() {
 
       {showShortcuts && (
         <div className={`fixed inset-0 ${m.modalBg} flex items-center justify-center z-50 p-4`} onClick={() => setShowShortcuts(false)}>
-          <div className={`${m.modal} border rounded-xl p-5 w-full max-w-xs`} onClick={e => e.stopPropagation()}>
+          <div className={`${m.modal} border rounded-xl p-5 w-full max-w-sm`} role="dialog" aria-modal="true" aria-labelledby="modal-shortcuts" onClick={e => e.stopPropagation()}>
             <div className="flex justify-between items-center mb-4">
-              <h2 className={`font-bold text-sm ${m.text}`}>Keyboard Shortcuts</h2>
+              <h2 id="modal-shortcuts" className={`font-bold text-sm ${m.text}`}>Keyboard Shortcuts</h2>
               <button onClick={() => setShowShortcuts(false)} className={m.textSub}><Ic n="X" size={14} /></button>
             </div>
-            <div className="flex flex-col gap-2.5">
-              {[['⌘ ↵', 'Enhance prompt'], ['⌘ S', 'Save prompt'], ['⌘ K', 'Command palette'], ['?', 'Show shortcuts'], ['Esc', 'Close modals']].map(([key, label]) => (
-                <div key={key} className="flex items-center justify-between">
-                  <span className={`text-sm ${m.textBody}`}>{label}</span>
-                  <kbd className={`text-xs font-mono px-2 py-1 ${m.pill} rounded-md`}>{key}</kbd>
+            <div className="flex flex-col gap-4">
+              <div>
+                <p className={`text-xs font-semibold ${m.textSub} uppercase tracking-wider mb-2`}>Global</p>
+                <div className="flex flex-col gap-2.5">
+                  {[[`${primaryModKey} ↵`, 'Enhance prompt'], [`${primaryModKey} S`, 'Save prompt'], [`${primaryModKey} K`, 'Command palette'], ['?', 'Show shortcuts'], ['Esc', 'Close modals']].map(([key, label]) => (
+                    <div key={key} className="flex items-center justify-between">
+                      <span className={`text-sm ${m.textBody}`}>{label}</span>
+                      <kbd className={`text-xs font-mono px-2 py-1 ${m.pill} rounded-md`}>{key}</kbd>
+                    </div>
+                  ))}
                 </div>
-              ))}
+              </div>
+              <div>
+                <p className={`text-xs font-semibold ${m.textSub} uppercase tracking-wider mb-2`}>Scratchpad (PadTab)</p>
+                <div className="flex flex-col gap-2.5">
+                  {[
+                    [`${primaryModKey} E`, 'Export / download pad'],
+                    [`${primaryModKey} ⇧ D`, 'Insert date separator'],
+                    [`${primaryModKey} ⇧ C`, 'Copy all content'],
+                    [`${primaryModKey} ⇧ X`, 'Clear pad'],
+                  ].map(([key, label]) => (
+                    <div key={key} className="flex items-center justify-between">
+                      <span className={`text-sm ${m.textBody}`}>{label}</span>
+                      <kbd className={`text-xs font-mono px-2 py-1 ${m.pill} rounded-md`}>{key}</kbd>
+                    </div>
+                  ))}
+                </div>
+              </div>
             </div>
           </div>
         </div>
@@ -712,9 +865,9 @@ export default function App() {
       {/* ══ PII WARNING MODAL ══ */}
       {piiWarning && (
         <div className={`fixed inset-0 ${m.modalBg} flex items-center justify-center z-50 p-4`}>
-          <div className={`${m.modal} border rounded-xl p-5 w-full max-w-md flex flex-col gap-4`}>
+          <div className={`${m.modal} border rounded-xl p-5 w-full max-w-md flex flex-col gap-4`} role="dialog" aria-modal="true" aria-labelledby="modal-pii">
             <div className="flex justify-between items-center">
-              <h2 className={`font-bold text-sm ${m.text}`}>Sensitive Data Detected</h2>
+              <h2 id="modal-pii" className={`font-bold text-sm ${m.text}`}>Sensitive Data Detected</h2>
               <button onClick={piiCancel} className={`${m.textSub} hover:text-white`}><Ic n="X" size={15} /></button>
             </div>
             <p className={`text-xs ${m.textAlt}`}>The following potentially sensitive items were found in your prompt:</p>

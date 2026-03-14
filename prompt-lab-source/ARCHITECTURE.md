@@ -2,11 +2,12 @@
 
 ## Overview
 
-Prompt Lab is currently delivered through three shells that share one frontend codebase:
+Prompt Lab is currently delivered through three runtime shells that share one frontend codebase, plus a public landing page:
 
 - Chrome / Vivaldi extension: MV3 side panel build
 - Desktop app: Tauri 2 wrapper
-- Hosted web app: Vite build deployed to Vercel with a CORS proxy edge function
+- Hosted web app: Vite build deployed to Vercel with a CORS proxy edge function at `https://promptlab.tools/app/`
+- Public landing page: static marketing entry at `https://promptlab.tools/`
 
 The shared React application lives in `prompt-lab-extension/src/`.
 
@@ -25,8 +26,11 @@ The shared React application lives in `prompt-lab-extension/src/`.
   - Tauri shell that loads `../prompt-lab-extension/src/main.jsx`
   - Desktop packaging config and native bundle settings
 - `prompt-lab-web/`
-  - Hosted web shell that loads `../prompt-lab-extension/src/main.jsx`
-  - Vite config sets `VITE_WEB_MODE=true` to activate proxy fetch injection
+  - Public web deploy package
+  - `index.html` is the landing page served at `/`
+  - `app/index.html` is the shared React app shell served at `/app/`
+  - `public/` holds static assets copied into the deployed site root
+  - Vite config sets `VITE_WEB_MODE=true` to activate proxy fetch injection in the app shell
 - `api/`
   - Vercel Edge Function CORS proxy at `api/proxy.js`
 - `vercel.json`
@@ -65,14 +69,32 @@ The desktop app uses Tauri plus local browser storage:
 
 ### Web path
 
-The hosted web app runs as a standard Vite SPA deployed to Vercel:
+The hosted web deployment is split into a landing route and an app route:
 
-- `prompt-lab-web/index.html` imports `../prompt-lab-extension/src/main.jsx`
+- `prompt-lab-web/index.html` is the public landing page for `https://promptlab.tools/`
+- `prompt-lab-web/app/index.html` imports `../../prompt-lab-extension/src/main.jsx` and is served at `https://promptlab.tools/app/`
+- `prompt-lab-web/public/` provides shared static assets such as fonts and social images
 - `src/lib/desktopApi.js` detects web mode via `VITE_WEB_MODE` and injects a proxy-aware fetch wrapper
 - `src/lib/proxyFetch.js` reroutes provider API requests through `/api/proxy` to bypass CORS
 - `api/proxy.js` is a Vercel Edge Function that validates the target domain against an allowlist and forwards the request
+- `vercel.json` rewrites `/app` and `/app/(.*)` to `/app/index.html`
 - Ollama requests bypass the proxy and go direct to localhost
 - API keys are entered by the user and never stored server-side
+
+## Platform runtime model
+
+| Platform | API path | Public backend? |
+|----------|----------|-----------------|
+| Extension | Service worker → provider | No |
+| Desktop | Native fetch → provider | No |
+| Web (hosted) | CORS proxy → provider | Yes (`api/proxy.js`) |
+| Server (planned) | Server process → provider | No (self-hosted) |
+
+The extension and desktop shells call provider APIs directly from the client with
+no intermediary. The hosted web app routes through a Vercel Edge Function proxy to
+bypass browser CORS restrictions — this is the only surface with a public backend
+dependency. A planned "Prompt Lab Server" mode would provide browser access through
+a self-hosted process, preserving the zero-public-backend property.
 
 ## Providers
 

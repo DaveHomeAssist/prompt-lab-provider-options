@@ -1,6 +1,11 @@
 # Prompt Lab Extension
 
-Prompt Lab is a Chrome MV3 side-panel extension for writing, testing, and refining prompts across Anthropic, OpenAI, Gemini, OpenRouter, and Ollama. The extension shares its React frontend with the desktop app and remains the main browser-native distribution target.
+Prompt Lab Extension is the MV3 side-panel shell for Prompt Lab. It shares its React frontend with:
+
+- the hosted web app at `https://promptlab.tools/app/`
+- the Tauri desktop shell in `prompt-lab-desktop/`
+
+The extension remains the browser-native workflow for users who want Prompt Lab docked beside the page they are already using.
 
 ## Install From Source
 
@@ -21,4 +26,6 @@ npm test
 
 ## More Docs
 
-See the [root README](../../README.md) for the overall project layout, desktop app notes, and CI/development workflow.
+- `../ARCHITECTURE.md` — shared architecture across extension, web, and desktop
+- `../ROADMAP.md` — current product and release priorities
+- `../prompt-lab-web/README.md` — hosted web deployment notes

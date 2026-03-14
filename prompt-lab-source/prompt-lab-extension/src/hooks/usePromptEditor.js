@@ -5,6 +5,7 @@ import {
   extractTextFromAnthropic, parseEnhancedPayload,
   suggestTitleFromText,
   looksSensitive, isTransientError,
+  isGhostVar, resolveGhostVars,
 } from '../promptUtils';
 import { normalizeEntry } from '../lib/promptSchema.js';
 import { lintPrompt, applyLintQuickFix } from '../promptLint';
@@ -72,6 +73,7 @@ export default function usePromptEditor(ui, lib) {
 
   // ── Refs ──
   const enhanceReqRef = useRef(0);
+  const templateLoadReqRef = useRef(0);
 
   // ── Derived ──
   const hasSavablePrompt = raw.trim() || enhanced.trim();
@@ -291,10 +293,37 @@ export default function usePromptEditor(ui, lib) {
     setShowSave(false);
   };
 
-  const loadEntry = entry => {
+  const applyTemplateWithVals = (entry, vals) => {
+    let text = ensureString(entry?.enhanced);
+    Object.entries(vals || {}).forEach(([k, v]) => { text = text.replaceAll(`{{${k}}}`, ensureString(v)); });
+    applyEntry({ ...entry, enhanced: text });
+  };
+
+  const loadEntry = async (entry) => {
     const vars = extractVars(entry?.enhanced);
-    if (vars.length > 0) { setPendingTemplate(entry); setVarVals(Object.fromEntries(vars.map(v => [v, '']))); setShowVarForm(true); }
-    else applyEntry(entry);
+    if (vars.length === 0) {
+      applyEntry(entry);
+      return;
+    }
+    const reqId = templateLoadReqRef.current + 1;
+    templateLoadReqRef.current = reqId;
+    const ghostVars = vars.filter(isGhostVar);
+    const manualVars = vars.filter(v => !isGhostVar(v));
+    const ghostVals = await resolveGhostVars(ghostVars);
+    if (reqId !== templateLoadReqRef.current) return;
+    if (manualVars.length === 0) {
+      setShowVarForm(false);
+      setPendingTemplate(null);
+      setVarVals({});
+      applyTemplateWithVals(entry, ghostVals);
+      return;
+    }
+    setPendingTemplate(entry);
+    setVarVals({
+      ...Object.fromEntries(manualVars.map(v => [v, ''])),
+      ...ghostVals,
+    });
+    setShowVarForm(true);
   };
 
   const applyEntry = entry => {
@@ -309,9 +338,7 @@ export default function usePromptEditor(ui, lib) {
 
   const applyTemplate = () => {
     if (!pendingTemplate) return;
-    let text = ensureString(pendingTemplate.enhanced);
-    Object.entries(varVals).forEach(([k, v]) => { text = text.replaceAll(`{{${k}}}`, v); });
-    applyEntry({ ...pendingTemplate, enhanced: text });
+    applyTemplateWithVals(pendingTemplate, varVals);
     setShowVarForm(false); setPendingTemplate(null);
   };
 

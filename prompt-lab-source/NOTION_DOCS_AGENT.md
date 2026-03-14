@@ -55,9 +55,9 @@ The `workflow_run.workflows` list currently expects:
 
 - `Extension CI`
 - `Desktop Build`
-- `GitHub Pages`
+- a web deployment workflow if you want hosted-site changes to trigger docs sync
 
-If your actual workflow names differ, update `.github/workflows/notion-docs-agent.yml`.
+If your actual workflow names differ, update `.github/workflows/notion-docs-agent.yml`. The older `GitHub Pages` example is stale now that the public site is deployed through Vercel.
 
 ## Local dry run
 

@@ -2,9 +2,13 @@
 
 **Effective date:** 2026-03-12
 
+## Scope
+
+This policy applies to the Prompt Lab Chrome extension. Prompt Lab also has hosted web and desktop shells that reuse the same shared frontend, but this document is the privacy disclosure used for the extension distribution flow.
+
 ## Data Storage
 
-All user data — including API keys, prompt history, and application settings — is stored locally on the user's device via `chrome.storage.local`. No data is written to any external database or cloud service controlled by the developer.
+Prompt Lab stores user data locally on the user's device. For the extension, provider settings are stored in browser-managed local extension storage, and app state stays local to the browser environment. No data is written to any external database or cloud service controlled by the developer.
 
 ## Data Transmission
 

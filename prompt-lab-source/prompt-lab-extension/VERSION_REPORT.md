@@ -2,16 +2,17 @@
 
 - Date: 2026-03-13
 - Release: `v1.5.0`
-- Scope: extension runtime, shared frontend architecture, desktop shell, CI, and packaging
+- Scope: extension runtime, shared frontend architecture, hosted web shell, desktop shell, CI, and packaging
 
 ## Release summary
 
-`v1.5.0` is the first release where Prompt Lab is documented and maintained as a shared extension-plus-desktop product instead of only an MV3 extension.
+`v1.5.0` is the first release where Prompt Lab is documented and maintained as a shared extension-plus-web-plus-desktop product instead of only an MV3 extension.
 
 ## Technical state
 
 - Shared frontend source lives in `prompt-lab-extension/src/`.
 - The Chrome extension packages that source into an MV3 side panel build.
+- The hosted web deployment serves a landing page at `promptlab.tools/` and the shared app at `promptlab.tools/app/`.
 - The Tauri desktop app loads the same `main.jsx` entry through `prompt-lab-desktop/index.html`.
 - Supported providers are Anthropic, OpenAI, Gemini, OpenRouter, and Ollama.
 

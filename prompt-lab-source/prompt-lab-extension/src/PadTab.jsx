@@ -1,55 +1,331 @@
-import { useState, useRef } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import Ic from './icons';
 import { logWarn } from './lib/logger.js';
 import { storageKeys } from './lib/storage.js';
 
-const PAD_KEY = storageKeys.pad;
+/* ── Multi-pad storage constants ── */
+const LEGACY_PAD_KEY = storageKeys.pad;                 // "pl2-pad"
+const LEGACY_PAD_META_KEY = `${storageKeys.pad}_meta`;  // "pl2-pad_meta"
+const PADS_KEY = 'pl2-pads';
+const PADS_SCHEMA_VERSION_KEY = 'pl2-pads-schema-version';
+const PADS_SCHEMA_VERSION = '2';
 
-// One-time migration from legacy key
-try {
-  const OLD_KEY = 'pl-pad';
-  const legacy = localStorage.getItem(OLD_KEY);
-  if (legacy !== null && localStorage.getItem(PAD_KEY) === null) {
-    localStorage.setItem(PAD_KEY, legacy);
-    const meta = localStorage.getItem(OLD_KEY + '_meta');
-    if (meta) localStorage.setItem(PAD_KEY + '_meta', meta);
-    localStorage.removeItem(OLD_KEY);
-    localStorage.removeItem(OLD_KEY + '_meta');
+const DEFAULT_PAD_ID = 'default';
+const DEFAULT_PAD_NAME = 'Scratchpad';
+const NEW_PAD_NAME_PREFIX = 'Pad';
+
+/* ── Migration helpers ── */
+
+function parseSavedTimestamp(raw) {
+  if (!raw) return Date.now();
+  const iso = new Date(raw).getTime();
+  if (!Number.isNaN(iso)) return iso;
+  return Date.now();
+}
+
+function buildDefaultPadsPayload(content = '', timestamp = Date.now()) {
+  return {
+    pads: [
+      {
+        id: DEFAULT_PAD_ID,
+        name: DEFAULT_PAD_NAME,
+        content,
+        timestamp,
+      },
+    ],
+    activePadId: DEFAULT_PAD_ID,
+  };
+}
+
+function isValidPadsPayload(value) {
+  return Boolean(
+    value &&
+    Array.isArray(value.pads) &&
+    value.pads.length > 0 &&
+    typeof value.activePadId === 'string' &&
+    value.pads.every(
+      (pad) =>
+        pad &&
+        typeof pad.id === 'string' &&
+        typeof pad.name === 'string' &&
+        typeof pad.content === 'string' &&
+        typeof pad.timestamp === 'number'
+    )
+  );
+}
+
+function readPadsPayload() {
+  try {
+    const raw = localStorage.getItem(PADS_KEY);
+    if (!raw) return null;
+    const parsed = JSON.parse(raw);
+    return isValidPadsPayload(parsed) ? parsed : null;
+  } catch (error) {
+    logWarn('read pads payload', error);
+    return null;
   }
-} catch { /* migration is best-effort */ }
+}
+
+function migratePadStorage() {
+  try {
+    const version = localStorage.getItem(PADS_SCHEMA_VERSION_KEY);
+
+    // Already migrated and readable.
+    if (version === PADS_SCHEMA_VERSION) {
+      const existing = readPadsPayload();
+      if (existing) {
+        return { migrated: false, payload: existing, error: null };
+      }
+    }
+
+    // Recover if pads payload exists but version flag was never written.
+    const existingPayload = readPadsPayload();
+    if (existingPayload) {
+      localStorage.setItem(PADS_SCHEMA_VERSION_KEY, PADS_SCHEMA_VERSION);
+      return { migrated: true, payload: existingPayload, error: null };
+    }
+
+    // Migrate from legacy single-pad keys (pl2-pad / pl2-pad_meta).
+    // Also handles the pl-pad → pl2-pad hop if it was never completed.
+    let legacyContent = localStorage.getItem(LEGACY_PAD_KEY) || '';
+    let legacyMeta = localStorage.getItem(LEGACY_PAD_META_KEY) || '';
+
+    // Check for pre-pl2 key ("pl-pad") in case that migration never ran.
+    if (!legacyContent) {
+      const prePl2 = localStorage.getItem('pl-pad');
+      if (prePl2) {
+        legacyContent = prePl2;
+        legacyMeta = localStorage.getItem('pl-pad_meta') || '';
+      }
+    }
+
+    const payload = buildDefaultPadsPayload(
+      legacyContent,
+      parseSavedTimestamp(legacyMeta)
+    );
+
+    // Write new schema first.
+    localStorage.setItem(PADS_KEY, JSON.stringify(payload));
+    localStorage.setItem(PADS_SCHEMA_VERSION_KEY, PADS_SCHEMA_VERSION);
+
+    // Only remove legacy keys after successful write.
+    localStorage.removeItem(LEGACY_PAD_KEY);
+    localStorage.removeItem(LEGACY_PAD_META_KEY);
+    localStorage.removeItem('pl-pad');
+    localStorage.removeItem('pl-pad_meta');
+
+    return { migrated: true, payload, error: null };
+  } catch (error) {
+    logWarn('pad schema migration', error);
+
+    // Quota exceeded or write failure: do not destroy legacy data.
+    const fallbackPayload = buildDefaultPadsPayload(
+      localStorage.getItem(LEGACY_PAD_KEY) || '',
+      parseSavedTimestamp(localStorage.getItem(LEGACY_PAD_META_KEY) || '')
+    );
+
+    return {
+      migrated: false,
+      payload: fallbackPayload,
+      error,
+    };
+  }
+}
+
+/* ── Persistence helpers (write to pl2-pads) ── */
+
+function updateActivePadContent(prev, nextContent) {
+  return {
+    ...prev,
+    pads: prev.pads.map((pad) =>
+      pad.id === prev.activePadId
+        ? { ...pad, content: nextContent, timestamp: Date.now() }
+        : pad
+    ),
+  };
+}
+
+function persistPadsState(nextState) {
+  localStorage.setItem(PADS_KEY, JSON.stringify(nextState));
+  localStorage.setItem(PADS_SCHEMA_VERSION_KEY, PADS_SCHEMA_VERSION);
+}
+
+function buildPadId() {
+  if (typeof crypto !== 'undefined' && typeof crypto.randomUUID === 'function') {
+    return crypto.randomUUID();
+  }
+  return `pad-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`;
+}
+
+/* ── Component ── */
 
 export default function PadTab({ m, notify }) {
-  const [text, setText] = useState(() => { try { return localStorage.getItem(PAD_KEY) || ''; } catch { return ''; } });
-  const [stamp, setStamp] = useState(() => { try { return localStorage.getItem(PAD_KEY + '_meta') || ''; } catch { return ''; } });
+  const migrationCheckedRef = useRef(false);
+  const textareaRef = useRef(null);
+
+  const [padsState, setPadsState] = useState(() => {
+    const payload = readPadsPayload();
+    return payload || buildDefaultPadsPayload('', Date.now());
+  });
+
+  const activePad =
+    padsState.pads.find((pad) => pad.id === padsState.activePadId) ||
+    padsState.pads[0];
+
+  const [text, setText] = useState(activePad?.content || '');
+  const [saveState, setSaveState] = useState('idle');
+  const [saveError, setSaveError] = useState('');
+  const [lastSavedAt, setLastSavedAt] = useState(() => {
+    if (!activePad?.timestamp) return '';
+    return new Date(activePad.timestamp).toISOString();
+  });
+  const [relativeSavedAt, setRelativeSavedAt] = useState('');
   const timerRef = useRef(null);
+  const savedStateTimerRef = useRef(null);
   const wc = text.trim() ? text.trim().split(/\s+/).length : 0;
+
+  const formatRelativeTime = (value) => {
+    if (!value) return '';
+    const diffMs = Date.now() - new Date(value).getTime();
+    if (Number.isNaN(diffMs) || diffMs < 0) return 'just now';
+    const seconds = Math.floor(diffMs / 1000);
+    if (seconds < 10) return 'just now';
+    if (seconds < 60) return `${seconds} sec ago`;
+    const minutes = Math.floor(seconds / 60);
+    if (minutes < 60) return `${minutes} min ago`;
+    const hours = Math.floor(minutes / 60);
+    if (hours < 24) return `${hours} hr ago`;
+    const days = Math.floor(hours / 24);
+    return `${days} day${days === 1 ? '' : 's'} ago`;
+  };
+
+  const focusTextarea = () => {
+    setTimeout(() => textareaRef.current?.focus(), 0);
+  };
+
+  const loadPadView = (pad) => {
+    setText(pad?.content || '');
+    setSaveState('idle');
+    setSaveError('');
+    const savedAt = pad?.timestamp ? new Date(pad.timestamp).toISOString() : '';
+    setLastSavedAt(savedAt);
+    setRelativeSavedAt(savedAt ? formatRelativeTime(savedAt) : '');
+    focusTextarea();
+  };
+
+  // Run migration once on mount.
+  useEffect(() => {
+    if (migrationCheckedRef.current) return;
+    migrationCheckedRef.current = true;
+
+    const { payload, error, migrated } = migratePadStorage();
+    setPadsState(payload);
+    const active = payload.pads.find((pad) => pad.id === payload.activePadId) || payload.pads[0];
+    setText(active?.content || '');
+    if (active?.timestamp) {
+      setLastSavedAt(new Date(active.timestamp).toISOString());
+    }
+
+    if (error) {
+      notify?.('Pad storage migration failed; using fallback data');
+      return;
+    }
+
+    if (migrated) {
+      notify?.('Scratchpad migrated to multi-pad storage');
+    }
+  }, [notify]);
+
+  const scheduleIdleStatus = () => {
+    clearTimeout(savedStateTimerRef.current);
+    savedStateTimerRef.current = setTimeout(() => setSaveState('idle'), 2000);
+  };
+
+  const commitSave = (value) => {
+    const savedAt = new Date().toISOString();
+    const nextState = updateActivePadContent(padsState, value);
+    persistPadsState(nextState);
+    setPadsState(nextState);
+    setLastSavedAt(savedAt);
+    setRelativeSavedAt(formatRelativeTime(savedAt));
+    setSaveError('');
+    setSaveState('saved');
+    scheduleIdleStatus();
+  };
+
+  const flushActivePad = ({ silent = false } = {}) => {
+    clearTimeout(timerRef.current);
+    if (!activePad || text === activePad.content) {
+      return padsState;
+    }
+
+    const nextState = updateActivePadContent(padsState, text);
+    persistPadsState(nextState);
+    setPadsState(nextState);
+
+    const savedAt = new Date(
+      nextState.pads.find((pad) => pad.id === nextState.activePadId)?.timestamp || Date.now()
+    ).toISOString();
+    setLastSavedAt(savedAt);
+    setRelativeSavedAt(formatRelativeTime(savedAt));
+    setSaveError('');
+
+    if (silent) {
+      setSaveState('idle');
+      return nextState;
+    }
+
+    setSaveState('saved');
+    scheduleIdleStatus();
+    return nextState;
+  };
+
+  const buildFilename = () => {
+    const now = new Date();
+    const yyyy = String(now.getFullYear());
+    const mm = String(now.getMonth() + 1).padStart(2, '0');
+    const dd = String(now.getDate()).padStart(2, '0');
+    const hh = String(now.getHours()).padStart(2, '0');
+    const min = String(now.getMinutes()).padStart(2, '0');
+    const ss = String(now.getSeconds()).padStart(2, '0');
+    return `pad-${yyyy}-${mm}-${dd}-${hh}${min}${ss}.txt`;
+  };
 
   const onChange = e => {
     const v = e.target.value;
     setText(v);
+    setSaveError('');
+    setSaveState('pending');
     clearTimeout(timerRef.current);
+    clearTimeout(savedStateTimerRef.current);
     timerRef.current = setTimeout(() => {
       try {
-        localStorage.setItem(PAD_KEY, v);
-        const s = 'Saved ' + new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
-        localStorage.setItem(PAD_KEY + '_meta', s);
-        setStamp(s);
-      } catch (e) { logWarn('pad save', e); }
+        commitSave(v);
+      } catch (e) {
+        logWarn('pad save', e);
+        setSaveState('idle');
+        setSaveError('Save failed');
+      }
     }, 600);
   };
 
   const insertDate = () => {
     const d = new Date().toLocaleDateString(undefined, { weekday: 'short', year: 'numeric', month: 'short', day: 'numeric' });
     const entry = `\n── ${d} ──\n`;
-    const ta = document.getElementById('plPadArea');
+    const ta = textareaRef.current;
+    if (!ta) return;
     const pos = ta.selectionStart;
     const next = text.slice(0, pos) + entry + text.slice(ta.selectionEnd);
     setText(next);
     setTimeout(() => { ta.selectionStart = ta.selectionEnd = pos + entry.length; ta.focus(); }, 0);
-    try { localStorage.setItem(PAD_KEY, next); } catch (e) { logWarn('pad insert date', e); }
+    try {
+      clearTimeout(timerRef.current);
+      commitSave(next);
+    } catch (e) { logWarn('pad insert date', e); }
+    notify('Date separator inserted');
   };
 
-  const copyPad = () => {
+  const handleCopy = () => {
     if (!text.trim()) return;
     try { navigator.clipboard.writeText(text); }
     catch {
@@ -61,28 +337,300 @@ export default function PadTab({ m, notify }) {
     notify('Pad copied!');
   };
 
-  const clearPad = () => {
-    if (!window.confirm('Clear all notes?')) return;
-    setText(''); setStamp('');
-    try { localStorage.removeItem(PAD_KEY); localStorage.removeItem(PAD_KEY + '_meta'); } catch (e) { logWarn('pad clear', e); }
+  const exportPad = () => {
+    if (!text.trim()) return;
+    const filename = buildFilename();
+    const blob = new Blob([text], { type: 'text/plain;charset=utf-8' });
+    try {
+      if (typeof navigator !== 'undefined' && typeof navigator.msSaveOrOpenBlob === 'function') {
+        navigator.msSaveOrOpenBlob(blob, filename);
+        notify('Pad downloaded!');
+        return;
+      }
+      const url = URL.createObjectURL(blob);
+      const anchor = document.createElement('a');
+      anchor.href = url;
+      anchor.download = filename;
+      document.body.appendChild(anchor);
+      anchor.click();
+      document.body.removeChild(anchor);
+      setTimeout(() => URL.revokeObjectURL(url), 0);
+      notify('Pad downloaded!');
+    } catch (e) {
+      logWarn('pad download', e);
+      notify('Download unavailable');
+    }
   };
+
+  const handleSelectPad = (padId) => {
+    if (padId === padsState.activePadId) return;
+    const baseState = flushActivePad({ silent: true });
+    const nextState = { ...baseState, activePadId: padId };
+    persistPadsState(nextState);
+    setPadsState(nextState);
+    const nextPad = nextState.pads.find((pad) => pad.id === padId) || nextState.pads[0];
+    loadPadView(nextPad);
+  };
+
+  const handleCreatePad = () => {
+    const baseState = flushActivePad({ silent: true });
+    const suggestedName = `${NEW_PAD_NAME_PREFIX} ${baseState.pads.length + 1}`;
+    const requestedName = window.prompt('Name the new pad:', suggestedName);
+    if (requestedName === null) return;
+    const name = requestedName.trim() || suggestedName;
+    const newPad = {
+      id: buildPadId(),
+      name,
+      content: '',
+      timestamp: 0,
+    };
+    const nextState = {
+      pads: [...baseState.pads, newPad],
+      activePadId: newPad.id,
+    };
+    persistPadsState(nextState);
+    setPadsState(nextState);
+    loadPadView(newPad);
+    notify(`Created pad: ${name}`);
+  };
+
+  const handleRenamePad = () => {
+    if (!activePad) return;
+    const requestedName = window.prompt('Rename pad:', activePad.name);
+    if (requestedName === null) return;
+    const name = requestedName.trim();
+    if (!name || name === activePad.name) return;
+    const nextState = {
+      ...padsState,
+      pads: padsState.pads.map((pad) =>
+        pad.id === activePad.id ? { ...pad, name } : pad
+      ),
+    };
+    persistPadsState(nextState);
+    setPadsState(nextState);
+    notify(`Renamed pad: ${name}`);
+  };
+
+  const handleDeletePad = () => {
+    if (!activePad || padsState.pads.length <= 1) return;
+    if (!window.confirm(`Delete pad "${activePad.name}"?`)) return;
+
+    const currentIndex = padsState.pads.findIndex((pad) => pad.id === activePad.id);
+    const remainingPads = padsState.pads.filter((pad) => pad.id !== activePad.id);
+    const fallbackPad = remainingPads[Math.max(0, currentIndex - 1)] || remainingPads[0];
+    const nextState = {
+      pads: remainingPads,
+      activePadId: fallbackPad.id,
+    };
+    persistPadsState(nextState);
+    setPadsState(nextState);
+    loadPadView(fallbackPad);
+    notify(`Deleted pad: ${activePad.name}`);
+  };
+
+  const handleClear = () => {
+    if (!window.confirm('Clear all notes?')) return;
+    setText('');
+    setSaveState('idle');
+    setSaveError('');
+    setLastSavedAt('');
+    setRelativeSavedAt('');
+    clearTimeout(timerRef.current);
+    clearTimeout(savedStateTimerRef.current);
+    try {
+      const cleared = updateActivePadContent(padsState, '');
+      persistPadsState(cleared);
+      setPadsState(cleared);
+    } catch (e) { logWarn('pad clear', e); }
+    notify('Pad cleared');
+  };
+
+  useEffect(() => {
+    if (!lastSavedAt) {
+      setRelativeSavedAt('');
+      return undefined;
+    }
+    const update = () => setRelativeSavedAt(formatRelativeTime(lastSavedAt));
+    update();
+    const intervalId = setInterval(update, 30000);
+    return () => clearInterval(intervalId);
+  }, [lastSavedAt]);
+
+  useEffect(() => () => {
+    clearTimeout(timerRef.current);
+    clearTimeout(savedStateTimerRef.current);
+  }, []);
+
+  const cyclePad = (direction) => {
+    if (padsState.pads.length <= 1) return;
+    const idx = padsState.pads.findIndex((p) => p.id === padsState.activePadId);
+    const next = (idx + direction + padsState.pads.length) % padsState.pads.length;
+    handleSelectPad(padsState.pads[next].id);
+  };
+
+  useEffect(() => {
+    const onKeyDown = (e) => {
+      const mod = e.metaKey || e.ctrlKey;
+      if (!mod) return;
+      const key = String(e.key || '').toLowerCase();
+
+      // Multi-pad navigation: Cmd+] next, Cmd+[ prev
+      if (key === ']' && !e.shiftKey && !e.altKey) {
+        e.preventDefault();
+        cyclePad(1);
+        return;
+      }
+      if (key === '[' && !e.shiftKey && !e.altKey) {
+        e.preventDefault();
+        cyclePad(-1);
+        return;
+      }
+      // Cmd+T: new pad (prevent browser new tab)
+      if (key === 't' && !e.shiftKey && !e.altKey) {
+        e.preventDefault();
+        handleCreatePad();
+        return;
+      }
+      // Cmd+W: close active pad (prevent browser tab close)
+      if (key === 'w' && !e.shiftKey && !e.altKey) {
+        e.preventDefault();
+        handleDeletePad();
+        return;
+      }
+      // Existing shortcuts
+      if (key === 'e' && !e.shiftKey && !e.altKey) {
+        e.preventDefault();
+        exportPad();
+        return;
+      }
+      if (key === 'd' && e.shiftKey && !e.altKey) {
+        e.preventDefault();
+        insertDate();
+        return;
+      }
+      if (key === 'c' && e.shiftKey && !e.altKey) {
+        e.preventDefault();
+        handleCopy();
+        return;
+      }
+      if (key === 'x' && e.shiftKey && !e.altKey) {
+        e.preventDefault();
+        handleClear();
+      }
+    };
+
+    window.addEventListener('keydown', onKeyDown);
+    return () => window.removeEventListener('keydown', onKeyDown);
+  }, [text, padsState]);
 
   return (
     <div className="flex flex-col flex-1 overflow-hidden">
+      <div className={`flex items-center gap-3 px-4 py-2 border-b ${m.border} shrink-0`}>
+        <div className="flex-1 overflow-x-auto">
+          <div className="flex items-center gap-2 min-w-max">
+            {padsState.pads.map((pad) => {
+              const isActive = pad.id === padsState.activePadId;
+              return (
+                <button
+                  key={pad.id}
+                  type="button"
+                  onClick={() => handleSelectPad(pad.id)}
+                  className={`px-3 py-1.5 text-xs rounded-lg border transition-colors ${
+                    isActive
+                      ? 'bg-violet-600/20 border-violet-500/60 text-violet-200'
+                      : `${m.btn} ${m.textAlt} ${m.border}`
+                  }`}
+                  title={pad.name}
+                >
+                  {pad.name}
+                </button>
+              );
+            })}
+          </div>
+        </div>
+        <div className="flex items-center gap-1 shrink-0">
+          <button
+            type="button"
+            onClick={handleCreatePad}
+            className={`flex items-center gap-1 text-xs ${m.btn} ${m.textAlt} px-2 py-1 rounded-lg transition-colors`}
+            title="New pad"
+          >
+            <Ic n="Plus" size={11} />
+            New
+          </button>
+          <button
+            type="button"
+            onClick={handleRenamePad}
+            className={`flex items-center gap-1 text-xs ${m.btn} ${m.textAlt} px-2 py-1 rounded-lg transition-colors`}
+            title="Rename active pad"
+          >
+            Rename
+          </button>
+          <button
+            type="button"
+            onClick={handleDeletePad}
+            disabled={padsState.pads.length <= 1}
+            className={`flex items-center gap-1 text-xs px-2 py-1 rounded-lg transition-colors ${
+              padsState.pads.length > 1
+                ? 'text-red-400 hover:bg-red-950/30'
+                : `${m.textMuted} opacity-40 cursor-not-allowed`
+            }`}
+            title={padsState.pads.length > 1 ? 'Delete active pad' : 'At least one pad is required'}
+          >
+            <Ic n="Trash2" size={11} />
+            Delete
+          </button>
+        </div>
+      </div>
       <div className={`flex items-center justify-between px-4 py-2 border-b ${m.border} shrink-0`}>
         <span className={`text-xs font-mono ${m.textMuted}`}>{wc} word{wc !== 1 ? 's' : ''} · {text.length} chars</span>
         <div className="flex gap-2">
-          <button onClick={insertDate} className={`flex items-center gap-1 text-xs ${m.btn} ${m.textAlt} px-2 py-1 rounded-lg transition-colors`}>📅 Date</button>
-          <button onClick={copyPad} className={`flex items-center gap-1 text-xs ${m.btn} ${m.textAlt} px-2 py-1 rounded-lg transition-colors`}><Ic n="Copy" size={11} />Copy</button>
-          <button onClick={clearPad} className="flex items-center gap-1 text-xs px-2 py-1 rounded-lg transition-colors text-red-400 hover:bg-red-950/30"><Ic n="Trash2" size={11} />Clear</button>
+          <button type="button" onClick={insertDate} className={`flex items-center gap-1 text-xs ${m.btn} ${m.textAlt} px-2 py-1 rounded-lg transition-colors`}>📅 Date</button>
+          <button
+            type="button"
+            onClick={exportPad}
+            disabled={!text.trim()}
+            title="Download as text file"
+            className={`flex items-center gap-1 text-xs px-2 py-1 rounded-lg transition-colors ${
+              text.trim() ? `${m.btn} ${m.textAlt}` : `${m.btn} ${m.textMuted} opacity-40 cursor-not-allowed`
+            }`}
+          >
+            <Ic n="Download" size={11} />Download
+          </button>
+          <button type="button" onClick={handleCopy} className={`flex items-center gap-1 text-xs ${m.btn} ${m.textAlt} px-2 py-1 rounded-lg transition-colors`}><Ic n="Copy" size={11} />Copy</button>
+          <button type="button" onClick={handleClear} className="flex items-center gap-1 text-xs px-2 py-1 rounded-lg transition-colors text-red-400 hover:bg-red-950/30"><Ic n="Trash2" size={11} />Clear</button>
         </div>
       </div>
       <div className="flex-1 p-4 flex flex-col gap-2 overflow-hidden">
-        <textarea id="plPadArea"
-          className={`flex-1 w-full resize-none rounded-xl border ${m.input} border p-4 text-sm leading-relaxed focus:outline-none focus:border-violet-500 transition-colors ${m.text}`}
+        <textarea
+          id="plPadArea"
+          ref={textareaRef}
+          className={`flex-1 w-full min-h-[16rem] resize-none rounded-xl border ${m.input} border p-4 text-sm leading-relaxed focus:outline-none focus:border-violet-500 transition-colors ${m.text}`}
           placeholder={'Notes, ideas, prompt snippets…\n\nUse 📅 Date to timestamp entries.'}
           value={text} onChange={onChange} spellCheck />
-        <div className={`text-xs font-mono text-right ${m.textMuted}`}>{stamp}</div>
+        <div className="flex items-center justify-start min-h-5">
+          {saveError ? (
+            <div className="flex items-center gap-1.5 text-xs font-mono text-red-400 transition-colors">
+              <Ic n="X" size={11} />
+              <span>{saveError}</span>
+            </div>
+          ) : saveState === 'pending' ? (
+            <div className={`flex items-center gap-1.5 text-xs font-mono text-gray-500 transition-colors ${m.textMuted}`}>
+              <span className="w-3 h-3 border-2 border-current border-t-transparent rounded-full animate-spin" />
+              <span>Saving...</span>
+            </div>
+          ) : saveState === 'saved' ? (
+            <div className="flex items-center gap-1.5 text-xs font-mono text-green-500 transition-opacity duration-200">
+              <Ic n="Check" size={11} />
+              <span>Saved</span>
+            </div>
+          ) : lastSavedAt ? (
+            <div className={`flex items-center gap-1.5 text-xs font-mono text-gray-500 transition-colors ${m.textMuted}`}>
+              <Ic n="Clock" size={11} />
+              <span>Last saved {relativeSavedAt}</span>
+            </div>
+          ) : null}
+        </div>
       </div>
     </div>
   );

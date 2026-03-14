@@ -4,8 +4,8 @@ Date: 2026-03-13
 
 ## What changed in v1.5.0
 
-1. Prompt Lab now has a matching Tauri desktop shell in addition to the MV3 extension.
-2. The desktop app reuses the same React frontend as the extension, so product behavior stays aligned across both targets.
+1. Prompt Lab now has a hosted web app and a matching Tauri desktop shell in addition to the MV3 extension.
+2. The web app and desktop app reuse the same React frontend as the extension, so product behavior stays aligned across all three targets.
 3. Desktop users now have an in-app provider settings modal instead of the extension-only options page flow.
 4. Provider-specific request logic was pulled into a shared provider layer, which makes adding or changing providers less brittle.
 5. The PII scanner and the settings redaction rules now share one canonical engine instead of duplicating regex logic in two places.
@@ -23,4 +23,4 @@ Date: 2026-03-13
 
 ## In short
 
-This release turns Prompt Lab from an extension-only tool into a shared extension-plus-desktop codebase with better test coverage, cleaner provider plumbing, and cleaner release infrastructure.
+This release turns Prompt Lab from an extension-only tool into a shared extension-plus-web-plus-desktop codebase with better test coverage, cleaner provider plumbing, and cleaner release infrastructure.
