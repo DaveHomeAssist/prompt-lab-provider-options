@@ -3,6 +3,7 @@ import usePersistedState from '../usePersistedState.js';
 
 export default function useUiState() {
   const [viewportWidth, setViewportWidth] = useState(() => (typeof window !== 'undefined' ? window.innerWidth : 420));
+  const [viewportHeight, setViewportHeight] = useState(() => (typeof window !== 'undefined' ? window.innerHeight : 720));
   const [colorMode, setColorMode] = usePersistedState('pl2-mode', 'dark', {
     validate: value => (value === 'dark' || value === 'light') ? value : 'dark',
   });
@@ -14,13 +15,17 @@ export default function useUiState() {
   const [cmdQuery, setCmdQuery] = useState('');
 
   useEffect(() => {
-    const onResize = () => setViewportWidth(window.innerWidth);
+    const onResize = () => {
+      setViewportWidth(window.innerWidth);
+      setViewportHeight(window.innerHeight);
+    };
     window.addEventListener('resize', onResize);
     return () => window.removeEventListener('resize', onResize);
   }, []);
 
   return {
     viewportWidth,
+    viewportHeight,
     colorMode,
     setColorMode,
     tab,

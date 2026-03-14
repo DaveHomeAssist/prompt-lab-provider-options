@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<meta name="description" content="Prompt Lab is a multi-provider prompt engineering workbench. Enhance, A/B test, compose, and compare prompts across Anthropic, OpenAI, Gemini, OpenRouter, and Ollama.">
+<meta name="description" content="Prompt Lab is a multi-provider prompt engineering workbench and LLM comparison tool. A/B test prompts across Anthropic, OpenAI, Gemini, OpenRouter, and Ollama. Use as a web app or Chrome extension.">
 <meta name="robots" content="index,follow">
 <meta name="theme-color" content="#020617">
 <link rel="icon" type="image/png" href="/og-image.png">
@@ -249,6 +249,39 @@ body::before {
 .reveal-static {
   animation: none;
   opacity: 1;
+}
+
+.hero-proof {
+  position: relative;
+  z-index: 2;
+  display: flex;
+  align-items: center;
+  gap: 1.5rem;
+  margin-top: 1.25rem;
+  animation: fadeUp 1s 0.9s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+  opacity: 0;
+}
+
+.github-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.4rem;
+  color: var(--text-sub);
+  font-size: 0.8rem;
+  font-weight: 500;
+  text-decoration: none;
+  padding: 0.35rem 0.75rem;
+  border: 1px solid rgba(255,255,255,0.12);
+  border-radius: 6px;
+  transition: color 0.2s, border-color 0.2s;
+}
+.github-badge:hover { color: #fff; border-color: rgba(255,255,255,0.3); }
+
+.hero-stat {
+  color: var(--text-sub);
+  font-size: 0.8rem;
+  font-weight: 400;
+  letter-spacing: 0.02em;
 }
 
 .inline-code-chip {
@@ -525,6 +558,14 @@ body::before {
   font-size: 0.9rem;
   color: var(--surface-400);
   line-height: 1.7;
+}
+.feature-desc code {
+  color: var(--lab-violet-light);
+  background: rgba(124, 58, 237, 0.12);
+  padding: 0.1em 0.35em;
+  border-radius: 3px;
+  font-family: var(--font-mono);
+  font-size: 0.85em;
 }
 
 /* ============================
@@ -936,6 +977,14 @@ footer .lab-mark {
     <a href="#get-started" class="btn-secondary">Install Extension</a>
   </div>
 
+  <div class="hero-proof">
+    <a href="https://github.com/DaveHomeAssist/prompt-lab-provider-options" target="_blank" rel="noreferrer noopener" class="github-badge">
+      <svg viewBox="0 0 16 16" width="14" height="14" fill="currentColor" aria-hidden="true"><path d="M8 0C3.58 0 0 3.58 0 8c0 3.54 2.29 6.53 5.47 7.59.4.07.55-.17.55-.38 0-.19-.01-.82-.01-1.49-2.01.37-2.53-.49-2.69-.94-.09-.23-.48-.94-.82-1.13-.28-.15-.68-.52-.01-.53.63-.01 1.08.58 1.23.82.72 1.21 1.87.87 2.33.66.07-.52.28-.87.51-1.07-1.78-.2-3.64-.89-3.64-3.95 0-.87.31-1.59.82-2.15-.08-.2-.36-1.02.08-2.12 0 0 .67-.21 2.2.82a7.65 7.65 0 0 1 2-.27c.68 0 1.36.09 2 .27 1.53-1.04 2.2-.82 2.2-.82.44 1.1.16 1.92.08 2.12.51.56.82 1.27.82 2.15 0 3.07-1.87 3.75-3.65 3.95.29.25.54.73.54 1.48 0 1.07-.01 1.93-.01 2.2 0 .21.15.46.55.38A8.01 8.01 0 0 0 16 8c0-4.42-3.58-8-8-8z"/></svg>
+      <span>Star on GitHub</span>
+    </a>
+    <span class="hero-stat">5 providers &middot; 50+ models</span>
+  </div>
+
   <div class="scroll-indicator" aria-hidden="true">
     <div class="scroll-line"></div>
     scroll
@@ -960,7 +1009,7 @@ footer .lab-mark {
 <section class="features" id="features">
   <div class="section-header reveal">
     <div class="section-eyebrow">// capabilities</div>
-    <h2 class="section-title">Everything you need to engineer prompts</h2>
+    <h2 class="section-title">A complete prompt engineering and LLM comparison toolkit</h2>
   </div>
 
   <div class="feature-grid stagger">
@@ -1014,10 +1063,10 @@ footer .lab-mark {
 
     <div class="feature-card reveal">
       <div class="feature-icon">
-        <svg aria-hidden="true" viewBox="0 0 24 24"><rect x="2" y="3" width="20" height="14" rx="2" ry="2"/><line x1="8" y1="21" x2="16" y2="21"/><line x1="12" y1="17" x2="12" y2="21"/></svg>
+        <svg aria-hidden="true" viewBox="0 0 24 24"><polyline points="4 17 10 11 4 5"/><line x1="12" y1="19" x2="20" y2="19"/></svg>
       </div>
-      <h3 class="feature-name">Use Anywhere</h3>
-      <p class="feature-desc">Open the web app at promptlab.tools/app in any browser. Or install the Chrome extension for a side panel that stays open while you browse — zero tab-switching.</p>
+      <h3 class="feature-name">Template Variables</h3>
+      <p class="feature-desc">Define dynamic placeholders like <code>{{role}}</code>, <code>{{context}}</code>, or <code>{{clipboard}}</code> in any prompt. Fill them at run time — reuse one template across dozens of scenarios.</p>
     </div>
   </div>
 </section>

@@ -42,11 +42,11 @@ function normalizeGoldenResponse(value) {
 function normalizeContentShape(value) {
   return {
     original: ensureString(value?.original),
-    enhanced: ensureString(value?.enhanced) || ensureString(value?.original),
+    enhanced: ensureString(value?.enhanced) || ensureString(value?.prompt) || ensureString(value?.original),
     variants: Array.isArray(value?.variants)
       ? value.variants.map(normalizeVariant).filter(item => item.content.trim())
       : [],
-    notes: ensureString(value?.notes),
+    notes: ensureString(value?.notes) || ensureString(value?.description),
   };
 }
 
@@ -242,7 +242,7 @@ export function normalizeEntry(entry, fallbackTs = new Date().toISOString()) {
     variants: content.variants,
     notes: content.notes,
     tags: normalizeStringList(entry.tags),
-    collection: ensureString(entry.collection),
+    collection: ensureString(entry.collection) || ensureString(entry.category),
     createdAt,
     updatedAt,
     useCount: Number.isFinite(entry.useCount) ? Math.max(0, entry.useCount) : 0,

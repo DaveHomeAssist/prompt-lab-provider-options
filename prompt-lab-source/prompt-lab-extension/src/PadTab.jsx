@@ -159,7 +159,7 @@ function buildPadId() {
 
 /* ── Component ── */
 
-export default function PadTab({ m, notify }) {
+export default function PadTab({ m, notify, pageScroll = false }) {
   const migrationCheckedRef = useRef(false);
   const textareaRef = useRef(null);
 
@@ -183,6 +183,10 @@ export default function PadTab({ m, notify }) {
   const timerRef = useRef(null);
   const savedStateTimerRef = useRef(null);
   const wc = text.trim() ? text.trim().split(/\s+/).length : 0;
+  const shellMinHeightClass = pageScroll ? 'min-h-[calc(100vh-9rem)]' : 'min-h-[calc(100vh-7rem)]';
+  const editorPaneMinHeightClass = pageScroll ? 'min-h-[calc(100vh-13rem)]' : 'min-h-[calc(100vh-11rem)]';
+  const textareaMinHeightClass = pageScroll ? 'min-h-[calc(100vh-16rem)]' : 'min-h-[calc(100vh-14rem)]';
+  const copyBtnClass = 'border border-violet-400/30 bg-violet-500/15 text-violet-200 hover:border-violet-300 hover:bg-violet-500/25';
 
   const formatRelativeTime = (value) => {
     if (!value) return '';
@@ -524,8 +528,8 @@ export default function PadTab({ m, notify }) {
   }, [text, padsState]);
 
   return (
-    <div className="flex flex-col flex-1 overflow-hidden">
-      <div className={`flex items-center gap-3 px-4 py-2 border-b ${m.border} shrink-0`}>
+    <div className={`${shellMinHeightClass} flex flex-col ${pageScroll ? '' : 'flex-1 overflow-hidden'}`}>
+      <div className={`flex flex-wrap items-center gap-3 px-4 py-2 border-b ${m.border} shrink-0`}>
         <div className="flex-1 overflow-x-auto">
           <div className="flex items-center gap-2 min-w-max">
             {padsState.pads.map((pad) => {
@@ -548,7 +552,7 @@ export default function PadTab({ m, notify }) {
             })}
           </div>
         </div>
-        <div className="flex items-center gap-1 shrink-0">
+        <div className="flex flex-wrap items-center gap-1 shrink-0">
           <button
             type="button"
             onClick={handleCreatePad}
@@ -582,9 +586,9 @@ export default function PadTab({ m, notify }) {
           </button>
         </div>
       </div>
-      <div className={`flex items-center justify-between px-4 py-2 border-b ${m.border} shrink-0`}>
+      <div className={`flex flex-wrap items-center justify-between gap-2 px-4 py-2 border-b ${m.border} shrink-0`}>
         <span className={`text-xs font-mono ${m.textMuted}`}>{wc} word{wc !== 1 ? 's' : ''} · {text.length} chars</span>
-        <div className="flex gap-2">
+        <div className="flex flex-wrap gap-2">
           <button type="button" onClick={insertDate} className={`flex items-center gap-1 text-xs ${m.btn} ${m.textAlt} px-2 py-1 rounded-lg transition-colors`}>📅 Date</button>
           <button
             type="button"
@@ -597,15 +601,15 @@ export default function PadTab({ m, notify }) {
           >
             <Ic n="Download" size={11} />Download
           </button>
-          <button type="button" onClick={handleCopy} className={`flex items-center gap-1 text-xs ${m.btn} ${m.textAlt} px-2 py-1 rounded-lg transition-colors`}><Ic n="Copy" size={11} />Copy</button>
+          <button type="button" onClick={handleCopy} className={`flex items-center gap-1 text-xs px-2.5 py-1.5 rounded-lg font-semibold transition-colors ${copyBtnClass}`}><Ic n="Copy" size={11} />Copy</button>
           <button type="button" onClick={handleClear} className="flex items-center gap-1 text-xs px-2 py-1 rounded-lg transition-colors text-red-400 hover:bg-red-950/30"><Ic n="Trash2" size={11} />Clear</button>
         </div>
       </div>
-      <div className="flex-1 p-4 flex flex-col gap-2 overflow-hidden">
+      <div className={`flex-1 p-4 flex flex-col gap-2 ${editorPaneMinHeightClass} ${pageScroll ? '' : 'overflow-hidden'}`}>
         <textarea
           id="plPadArea"
           ref={textareaRef}
-          className={`flex-1 w-full min-h-[16rem] resize-none rounded-xl border ${m.input} border p-4 text-sm leading-relaxed focus:outline-none focus:border-violet-500 transition-colors ${m.text}`}
+          className={`flex-1 w-full ${textareaMinHeightClass} resize-none rounded-xl border ${m.input} border p-4 text-sm leading-relaxed focus:outline-none focus:border-violet-500 transition-colors ${m.text}`}
           placeholder={'Notes, ideas, prompt snippets…\n\nUse 📅 Date to timestamp entries.'}
           value={text} onChange={onChange} spellCheck />
         <div className="flex items-center justify-start min-h-5">

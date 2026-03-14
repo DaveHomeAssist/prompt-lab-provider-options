@@ -21,6 +21,7 @@ export default function usePromptLibrary(notify) {
   const [sortBy, setSortBy] = useState('newest');
   const [expandedId, setExpandedId] = useState(null);
   const [expandedVersionId, setExpandedVersionId] = useState(null);
+  const [diffVersionIdx, setDiffVersionIdx] = useState(null);
   const [shareId, setShareId] = useState(null);
   const [renamingId, setRenamingId] = useState(null);
   const [renameValue, setRenameValue] = useState('');
@@ -60,7 +61,7 @@ export default function usePromptLibrary(notify) {
     return changed;
   };
 
-  const doSave = ({ raw, enhanced, variants, notes, tags, title, collection, editingId }) => {
+  const doSave = ({ raw, enhanced, variants, notes, tags, title, collection, editingId, changeNote }) => {
     const cleanTitle = ensureString(title).trim() || suggestTitleFromText(enhanced || raw);
     const payload = {
       title: cleanTitle,
@@ -75,7 +76,7 @@ export default function usePromptLibrary(notify) {
     if (editingId) {
       let savedTitle = cleanTitle;
       updateLibraryEntry(editingId, entry => {
-        const next = updatePromptEntry(entry, payload, { source: 'manual_save' });
+        const next = updatePromptEntry(entry, payload, { source: 'manual_save', changeNote: ensureString(changeNote) });
         savedTitle = next?.title || savedTitle;
         return next;
       });
@@ -227,7 +228,7 @@ export default function usePromptLibrary(notify) {
   return {
     library, setLibrary, libReady, collections, setCollections,
     search, setSearch, activeTag, setActiveTag, activeCollection, setActiveCollection,
-    sortBy, setSortBy, expandedId, setExpandedId, expandedVersionId, setExpandedVersionId,
+    sortBy, setSortBy, expandedId, setExpandedId, expandedVersionId, setExpandedVersionId, diffVersionIdx, setDiffVersionIdx,
     shareId, setShareId, renamingId, setRenamingId, renameValue, setRenameValue,
     draggingLibraryId, setDraggingLibraryId, dragOverLibraryId, setDragOverLibraryId,
     doSave, del, bumpUse, moveLibraryEntry, renameEntry, restoreVersion,
