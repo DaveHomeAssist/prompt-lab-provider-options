@@ -26,8 +26,11 @@ The shared React application lives in `prompt-lab-extension/src/`.
   - Desktop packaging config and native bundle settings
 - `prompt-lab-web/`
   - Hosted web shell that loads `../prompt-lab-extension/src/main.jsx`
-  - Vercel Edge Function CORS proxy at `api/proxy.js`
   - Vite config sets `VITE_WEB_MODE=true` to activate proxy fetch injection
+- `api/`
+  - Vercel Edge Function CORS proxy at `api/proxy.js`
+- `vercel.json`
+  - Root Vercel build config for the hosted web deployment
 - `.github/workflows/`
   - Extension CI
   - Desktop cross-platform build workflow
@@ -67,7 +70,7 @@ The hosted web app runs as a standard Vite SPA deployed to Vercel:
 - `prompt-lab-web/index.html` imports `../prompt-lab-extension/src/main.jsx`
 - `src/lib/desktopApi.js` detects web mode via `VITE_WEB_MODE` and injects a proxy-aware fetch wrapper
 - `src/lib/proxyFetch.js` reroutes provider API requests through `/api/proxy` to bypass CORS
-- `prompt-lab-web/api/proxy.js` is a Vercel Edge Function that validates the target domain against an allowlist and forwards the request
+- `api/proxy.js` is a Vercel Edge Function that validates the target domain against an allowlist and forwards the request
 - Ollama requests bypass the proxy and go direct to localhost
 - API keys are entered by the user and never stored server-side
 

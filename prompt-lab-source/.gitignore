@@ -7,3 +7,4 @@ prompt-lab-desktop/src-tauri/target/
 
 # Desktop Vite build output (regenerated)
 prompt-lab-desktop/dist/
+.vercel

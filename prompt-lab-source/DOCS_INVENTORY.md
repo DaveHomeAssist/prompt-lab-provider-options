@@ -17,8 +17,9 @@ Updated: 2026-03-13
 | `NOTION_DOCS_AGENT.md` | Notion automation setup | Active | Documents the GitHub Actions driven Notion docs sync agent, required secrets, and trigger behavior. |
 | `QA_LANDING_PAGE.md` | Landing page QA pack | Active | Manual QA checklist for the GitHub Pages marketing site. |
 | `prompt-lab-web/README.md` | Web deployment quickstart | Active | Dev setup, local proxy testing, and Vercel deploy instructions. |
-| `prompt-lab-web/vercel.json` | Vercel config | Active | SPA rewrite, CORS headers on `/api/*` routes. |
-| `prompt-lab-web/api/proxy.js` | CORS proxy edge function | Active | Domain-allowlisted pass-through proxy for provider APIs. |
+| `vercel.json` | Vercel config | Active | Root build config for the hosted web app, including output directory and SPA routing. |
+| `api/proxy.js` | CORS proxy edge function | Active | Domain-allowlisted pass-through proxy for provider APIs. |
+| `.vercelignore` | Vercel upload filter | Active | Excludes local dependencies, build artifacts, and Tauri output from deployments. |
 
 ## Historical but retained
 

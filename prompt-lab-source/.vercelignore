@@ -1,0 +1,9 @@
+.DS_Store
+.vercel
+node_modules
+**/node_modules
+prompt-lab-desktop/dist
+prompt-lab-desktop/src-tauri/target
+prompt-lab-web/dist
+prompt-lab-extension/dist
+_archive

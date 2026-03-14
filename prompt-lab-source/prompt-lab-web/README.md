@@ -18,13 +18,14 @@ For local proxy testing, install the Vercel CLI and use `vercel dev` instead of 
 ## Deploy
 
 ```bash
-vercel               # follow prompts to link/create project
+cd ..
+vercel               # run from prompt-lab-source/
 ```
 
-Vercel auto-detects Vite, builds the frontend, and deploys the edge function at `/api/proxy`.
+Vercel builds `prompt-lab-web/`, serves `prompt-lab-web/dist`, and deploys the root edge function at `/api/proxy`.
 
 ## Key files
 
-- `api/proxy.js` — CORS proxy edge function (~40 lines)
-- `vercel.json` — SPA rewrite + CORS headers
+- `../api/proxy.js` — CORS proxy edge function (~40 lines)
+- `../vercel.json` — root Vercel build config
 - `vite.config.js` — sets `VITE_WEB_MODE=true` to activate proxy fetch injection
