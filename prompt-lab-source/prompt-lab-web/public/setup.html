@@ -6,69 +6,77 @@
 <title>Setup Guide — PromptLab</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-<link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:ital,wght@0,400;0,500;0,600;1,400&family=Syne:wght@400;600;700;800&display=swap" rel="stylesheet">
+<link href="https://fonts.googleapis.com/css2?family=Outfit:wght@400;500;600;700;800&family=JetBrains+Mono:ital,wght@0,400;0,500;0,600;1,400&display=swap" rel="stylesheet">
 <style>
+/* ── TOKENS ── */
 :root {
-  --bg: #06060b;
-  --surface: #0d0d16;
-  --card: #111120;
-  --border: #1c1c32;
-  --border-hi: #2e2e50;
-  --text: #dde2f0;
-  --text-sub: #7a85a0;
-  --text-muted: #3d4460;
-  --accent: #7c3aed;
-  --accent2: #4f46e5;
-  --accent-light: #a78bfa;
-  --accent-dim: rgba(124,58,237,0.10);
-  --accent-border: rgba(124,58,237,0.30);
-  --green: #10b981;
-  --green-dim: rgba(16,185,129,0.10);
-  --amber: #f59e0b;
-  --amber-dim: rgba(245,158,11,0.10);
-  --blue: #3b82f6;
-  --blue-dim: rgba(59,130,246,0.10);
-  --red: #ef4444;
-  --cyan: #06b6d4;
-  --mono: 'IBM Plex Mono', monospace;
-  --display: 'Syne', sans-serif;
+  --lab-violet:       #7C3AED;
+  --lab-violet-light: #A78BFA;
+  --lab-violet-dim:   #6D28D9;
+  --lab-indigo:       #818CF8;
+  --lab-teal:         #2DD4BF;
+  --lab-teal-dim:     rgba(45,212,191,0.15);
+  --surface-950:      #020617;
+  --surface-900:      #0F172A;
+  --surface-800:      #1E293B;
+  --surface-700:      #334155;
+  --surface-600:      #475569;
+  --surface-500:      #64748B;
+  --surface-400:      #94A3B8;
+  --surface-300:      #CBD5E1;
+  --surface-200:      #E2E8F0;
+  --surface-100:      #F1F5F9;
+  --glass-bg:         rgba(255,255,255,0.04);
+  --glass-border:     rgba(255,255,255,0.08);
+  --glass-blur:       16px;
+  --glass-bg-hover:   rgba(255,255,255,0.07);
+  --glow-violet:      rgba(124,58,237,0.35);
+  --glow-violet-soft: rgba(124,58,237,0.12);
+  --glow-teal:        rgba(45,212,191,0.15);
+  --font-display:     'Outfit', system-ui, sans-serif;
+  --font-body:        'Outfit', system-ui, sans-serif;
+  --font-mono:        'JetBrains Mono', monospace;
+  --radius-sm:        8px;
+  --radius-md:        12px;
+  --radius-lg:        16px;
+  --radius-xl:        24px;
+  /* semantic shorthands */
+  --bg:          var(--surface-950);
+  --surface:     var(--surface-900);
+  --card:        var(--surface-800);
+  --border:      var(--glass-border);
+  --border-hi:   rgba(255,255,255,0.14);
+  --text:        var(--surface-100);
+  --text-sub:    var(--surface-400);
+  --text-muted:  var(--surface-600);
+  --accent:      var(--lab-violet);
+  --accent-light:var(--lab-violet-light);
+  --accent-dim:  var(--glow-violet-soft);
+  --accent-border: rgba(124,58,237,0.35);
+  --green:       #10b981;
+  --green-dim:   rgba(16,185,129,0.10);
+  --amber:       #f59e0b;
+  --amber-dim:   rgba(245,158,11,0.10);
+  --blue:        var(--lab-indigo);
+  --blue-dim:    rgba(129,140,248,0.10);
+  --teal:        var(--lab-teal);
+  --teal-dim:    var(--lab-teal-dim);
+  --red:         #f87171;
+  --cyan:        var(--lab-teal);
 }
 
-@media (prefers-color-scheme: light) {
-  :root {
-    --bg: #f0eff5;
-    --surface: #ffffff;
-    --card: #f8f7fc;
-    --border: #e0def0;
-    --border-hi: #c8c5e0;
-    --text: #1a1830;
-    --text-sub: #4a4870;
-    --text-muted: #9898b8;
-    --accent: #6d28d9;
-    --accent2: #4338ca;
-    --accent-light: #7c3aed;
-    --accent-dim: rgba(109,40,217,0.07);
-    --accent-border: rgba(109,40,217,0.25);
-    --green: #059669;
-    --green-dim: rgba(5,150,105,0.08);
-    --amber: #d97706;
-    --amber-dim: rgba(217,119,6,0.08);
-    --blue: #2563eb;
-    --blue-dim: rgba(37,99,235,0.08);
-    --red: #dc2626;
-    --cyan: #0891b2;
-  }
-}
-
-* { margin: 0; padding: 0; box-sizing: border-box; }
+/* ── RESET ── */
+*, *::before, *::after { margin: 0; padding: 0; box-sizing: border-box; }
+html { scroll-behavior: smooth; }
 
 body {
-  font-family: var(--mono);
+  font-family: var(--font-body);
   background: var(--bg);
   color: var(--text);
-  font-size: 14px;
+  font-size: 15px;
   line-height: 1.7;
   min-height: 100vh;
+  -webkit-font-smoothing: antialiased;
 }
 
 /* ── FOCUS ── */
@@ -76,7 +84,7 @@ a:focus-visible,
 button:focus-visible {
   outline: 2px solid var(--accent-light);
   outline-offset: 2px;
-  border-radius: 3px;
+  border-radius: var(--radius-sm);
 }
 
 /* ── HEADER ── */
@@ -84,19 +92,15 @@ header {
   position: sticky;
   top: 0;
   z-index: 100;
-  background: rgba(6,6,11,0.88);
-  backdrop-filter: blur(12px);
-  -webkit-backdrop-filter: blur(12px);
-  border-bottom: 1px solid var(--border);
+  background: var(--glass-bg);
+  backdrop-filter: blur(var(--glass-blur));
+  -webkit-backdrop-filter: blur(var(--glass-blur));
+  border-bottom: 1px solid var(--glass-border);
   padding: 0 2rem;
-  height: 52px;
+  height: 54px;
   display: flex;
   align-items: center;
   justify-content: space-between;
-}
-
-@media (prefers-color-scheme: light) {
-  header { background: rgba(240,239,245,0.90); }
 }
 
 .logo {
@@ -107,62 +111,66 @@ header {
 }
 
 .logo-icon {
-  width: 26px; height: 26px;
-  background: linear-gradient(135deg, #7c3aed 0%, #4f46e5 100%);
-  border-radius: 6px;
+  width: 28px; height: 28px;
+  background: linear-gradient(135deg, var(--lab-violet) 0%, var(--lab-violet-dim) 100%);
+  border-radius: var(--radius-sm);
   display: flex; align-items: center; justify-content: center;
+  box-shadow: 0 0 12px var(--glow-violet-soft);
 }
 
-.logo-icon svg { width: 14px; height: 14px; fill: #fff; }
+.logo-icon svg { width: 15px; height: 15px; fill: #fff; }
 
 .logo-name {
-  font-family: var(--display);
-  font-size: 0.95rem;
+  font-family: var(--font-display);
+  font-size: 1rem;
   font-weight: 700;
   color: var(--text);
-  letter-spacing: 0.01em;
+  letter-spacing: -0.01em;
 }
 
 .logo-name em { font-style: normal; color: var(--accent-light); }
 
 .header-badge {
+  font-family: var(--font-mono);
   font-size: 0.65rem;
-  font-weight: 600;
-  letter-spacing: 0.08em;
+  font-weight: 500;
+  letter-spacing: 0.06em;
   text-transform: uppercase;
   color: var(--text-muted);
-  border: 1px solid var(--border);
-  padding: 0.2rem 0.6rem;
-  border-radius: 4px;
+  border: 1px solid var(--glass-border);
+  background: var(--glass-bg);
+  padding: 0.2rem 0.65rem;
+  border-radius: var(--radius-sm);
 }
 
 /* ── LAYOUT ── */
 .layout {
   display: grid;
   grid-template-columns: 220px 1fr;
-  max-width: 1100px;
+  max-width: 1120px;
   margin: 0 auto;
-  min-height: calc(100vh - 52px);
+  min-height: calc(100vh - 54px);
 }
 
 /* ── SIDEBAR ── */
 nav.sidebar {
-  border-right: 1px solid var(--border);
+  border-right: 1px solid var(--glass-border);
   padding: 2rem 0;
   position: sticky;
-  top: 52px;
-  height: calc(100vh - 52px);
+  top: 54px;
+  height: calc(100vh - 54px);
   overflow-y: auto;
 }
 
 .nav-label {
+  font-family: var(--font-mono);
   font-size: 0.6rem;
   font-weight: 600;
   letter-spacing: 0.1em;
   text-transform: uppercase;
   color: var(--text-muted);
   padding: 0 1.5rem;
-  margin-bottom: 0.6rem;
+  margin-bottom: 0.5rem;
   margin-top: 1.25rem;
 }
 
@@ -172,7 +180,8 @@ nav a {
   display: flex;
   align-items: center;
   gap: 0.5rem;
-  font-size: 0.78rem;
+  font-size: 0.82rem;
+  font-weight: 500;
   color: var(--text-sub);
   text-decoration: none;
   padding: 0.35rem 1.5rem;
@@ -182,7 +191,7 @@ nav a {
 
 nav a:hover {
   color: var(--text);
-  background: var(--accent-dim);
+  background: var(--glass-bg-hover);
   border-left-color: var(--accent-border);
 }
 
@@ -207,13 +216,13 @@ main {
 /* ── PAGE TITLE ── */
 .page-title {
   margin-bottom: 2.5rem;
-  padding-bottom: 1.5rem;
-  border-bottom: 1px solid var(--border);
+  padding-bottom: 1.75rem;
+  border-bottom: 1px solid var(--glass-border);
 }
 
 .page-title h1 {
-  font-family: var(--display);
-  font-size: 2rem;
+  font-family: var(--font-display);
+  font-size: 2.1rem;
   font-weight: 800;
   letter-spacing: -0.03em;
   color: var(--text);
@@ -224,16 +233,16 @@ main {
 .page-title h1 span { color: var(--accent-light); }
 
 .page-title p {
-  font-size: 0.82rem;
+  font-size: 0.9rem;
   color: var(--text-sub);
-  max-width: 540px;
-  line-height: 1.6;
+  max-width: 560px;
+  line-height: 1.65;
 }
 
 /* ── SECTION ── */
 .section {
   margin-bottom: 3.5rem;
-  scroll-margin-top: 72px;
+  scroll-margin-top: 74px;
   animation: fadeUp 0.35s ease both;
 }
 
@@ -245,30 +254,30 @@ main {
 }
 
 .section-num {
-  font-family: var(--mono);
-  font-size: 0.65rem;
+  font-family: var(--font-mono);
+  font-size: 0.62rem;
   font-weight: 600;
   color: var(--accent-light);
   background: var(--accent-dim);
   border: 1px solid var(--accent-border);
   padding: 0.2rem 0.5rem;
-  border-radius: 4px;
+  border-radius: var(--radius-sm);
   letter-spacing: 0.05em;
 }
 
 .section-header h2 {
-  font-family: var(--display);
-  font-size: 1.1rem;
+  font-family: var(--font-display);
+  font-size: 1.15rem;
   font-weight: 700;
-  letter-spacing: -0.01em;
+  letter-spacing: -0.02em;
   color: var(--text);
 }
 
 /* ── PROVIDER TABS ── */
 .provider-tabs {
   display: flex;
-  border: 1px solid var(--border);
-  border-radius: 10px 10px 0 0;
+  border: 1px solid var(--glass-border);
+  border-radius: var(--radius-md) var(--radius-md) 0 0;
   overflow-x: auto;
   overflow-y: hidden;
   background: var(--surface);
@@ -279,15 +288,15 @@ main {
 .provider-tabs::-webkit-scrollbar { display: none; }
 
 .ptab {
-  flex: 0 0 auto;
+  flex: 1 0 auto;
   min-width: 80px;
   background: none;
   border: none;
-  border-right: 1px solid var(--border);
-  padding: 0.7rem 0.75rem;
+  border-right: 1px solid var(--glass-border);
+  padding: 0.75rem 0.75rem;
   cursor: pointer;
-  font-family: var(--mono);
-  font-size: 0.68rem;
+  font-family: var(--font-mono);
+  font-size: 0.67rem;
   font-weight: 600;
   color: var(--text-muted);
   letter-spacing: 0.04em;
@@ -296,36 +305,36 @@ main {
   display: flex;
   flex-direction: column;
   align-items: center;
-  gap: 0.3rem;
+  gap: 0.35rem;
   white-space: nowrap;
 }
 
-@media (min-width: 600px) {
-  .ptab { flex: 1; }
-}
+@media (min-width: 600px) { .ptab { flex: 1; } }
 
 .ptab:last-child { border-right: none; }
-.ptab:hover { color: var(--text-sub); background: var(--accent-dim); }
+.ptab:hover { color: var(--text-sub); background: var(--glass-bg-hover); }
 
 .ptab.active,
 .ptab[aria-selected="true"] {
   color: var(--accent-light);
   background: var(--accent-dim);
   border-bottom: 2px solid var(--accent);
+  box-shadow: inset 0 -1px 0 var(--accent);
 }
 
 .ptab-dot {
-  width: 8px; height: 8px;
+  width: 7px; height: 7px;
   border-radius: 50%;
   background: currentColor;
-  opacity: 0.6;
+  opacity: 0.65;
 }
 
+/* ── PROVIDER PANEL ── */
 .provider-panel {
-  background: var(--card);
-  border: 1px solid var(--border);
+  background: var(--glass-bg);
+  border: 1px solid var(--glass-border);
   border-top: none;
-  border-radius: 0 0 10px 10px;
+  border-radius: 0 0 var(--radius-md) var(--radius-md);
   padding: 1.5rem;
 }
 
@@ -347,7 +356,8 @@ main {
   background: var(--accent-dim);
   border: 1px solid var(--accent-border);
   display: flex; align-items: center; justify-content: center;
-  font-size: 0.65rem;
+  font-family: var(--font-mono);
+  font-size: 0.62rem;
   font-weight: 600;
   color: var(--accent-light);
   flex-shrink: 0;
@@ -356,16 +366,16 @@ main {
 
 .step-body strong {
   display: block;
-  font-size: 0.82rem;
+  font-size: 0.88rem;
   font-weight: 600;
   color: var(--text);
-  margin-bottom: 0.25rem;
+  margin-bottom: 0.2rem;
 }
 
 .step-body p {
-  font-size: 0.78rem;
+  font-size: 0.84rem;
   color: var(--text-sub);
-  line-height: 1.6;
+  line-height: 1.65;
   margin-bottom: 0.4rem;
 }
 
@@ -373,45 +383,46 @@ main {
 
 /* ── CODE BLOCK ── */
 .code-block {
-  background: var(--surface);
-  border: 1px solid var(--border);
-  border-radius: 8px;
+  background: var(--surface-900);
+  border: 1px solid var(--glass-border);
+  border-radius: var(--radius-sm);
   padding: 0.75rem 1rem;
   margin: 0.5rem 0;
   overflow-x: auto;
 }
 
 .code-block pre {
-  font-family: var(--mono);
+  font-family: var(--font-mono);
   font-size: 0.75rem;
   color: var(--text);
-  line-height: 1.6;
+  line-height: 1.65;
   white-space: pre;
 }
 
-.code-block .comment { color: var(--text-muted); }
-.code-block .key { color: var(--accent-light); }
-.code-block .val { color: var(--green); }
-.code-block .url { color: var(--cyan); }
-.code-block .cmd { color: var(--amber); }
+.code-block .comment { color: var(--text-muted); font-style: italic; }
+.code-block .key     { color: var(--accent-light); }
+.code-block .val     { color: var(--teal); }
+.code-block .url     { color: var(--lab-indigo); }
+.code-block .cmd     { color: var(--amber); }
 
 .code-label {
-  font-size: 0.6rem;
+  font-family: var(--font-mono);
+  font-size: 0.58rem;
   font-weight: 600;
   letter-spacing: 0.08em;
   text-transform: uppercase;
   color: var(--text-muted);
-  margin-bottom: 0.35rem;
+  margin-bottom: 0.3rem;
 }
 
 /* ── INLINE CODE ── */
 code {
-  font-family: var(--mono);
-  font-size: 0.75rem;
+  font-family: var(--font-mono);
+  font-size: 0.78rem;
   color: var(--accent-light);
   background: var(--accent-dim);
   padding: 0.1rem 0.35rem;
-  border-radius: 3px;
+  border-radius: 4px;
 }
 
 /* ── CALLOUT ── */
@@ -419,38 +430,33 @@ code {
   display: flex;
   gap: 0.75rem;
   padding: 0.9rem 1rem;
-  border-radius: 8px;
+  border-radius: var(--radius-sm);
   margin: 0.75rem 0;
-  font-size: 0.78rem;
+  font-size: 0.84rem;
   line-height: 1.6;
 }
 
-.callout-icon {
-  font-size: 0.85rem;
-  flex-shrink: 0;
-  margin-top: 0.05rem;
-}
-
+.callout-icon { font-size: 0.85rem; flex-shrink: 0; margin-top: 0.05rem; }
 .callout-body { color: var(--text-sub); }
 .callout-body strong { color: var(--text); font-weight: 600; }
 
-.callout.tip  { background: var(--green-dim); border-left: 3px solid var(--green); }
-.callout.warn { background: var(--amber-dim); border-left: 3px solid var(--amber); }
-.callout.info { background: var(--blue-dim);  border-left: 3px solid var(--blue);  }
+.callout.tip  { background: var(--green-dim);  border-left: 3px solid var(--green); }
+.callout.warn { background: var(--amber-dim);  border-left: 3px solid var(--amber); }
+.callout.info { background: var(--teal-dim);   border-left: 3px solid var(--teal); }
 
 /* ── LINKS ── */
 a.ext-link {
   color: var(--accent-light);
   text-decoration: none;
   border-bottom: 1px dashed var(--accent-border);
-  transition: border-color 0.15s;
+  transition: border-color 0.15s, color 0.15s;
 }
-a.ext-link:hover { border-bottom-color: var(--accent-light); }
+a.ext-link:hover { color: #fff; border-bottom-color: var(--accent-light); }
 
 /* ── DIVIDER ── */
 .divider {
   border: none;
-  border-top: 1px solid var(--border);
+  border-top: 1px solid var(--glass-border);
   margin: 2.5rem 0;
 }
 
@@ -463,41 +469,45 @@ a.ext-link:hover { border-bottom-color: var(--accent-light); }
 }
 
 .install-card {
-  background: var(--surface);
-  border: 1px solid var(--border);
-  border-radius: 8px;
-  padding: 0.9rem;
+  background: var(--surface-900);
+  border: 1px solid var(--glass-border);
+  border-radius: var(--radius-sm);
+  padding: 0.85rem;
   transition: border-color 0.15s;
 }
 
 .install-card:hover { border-color: var(--border-hi); }
 
 .install-card .os {
-  font-size: 0.65rem;
+  font-family: var(--font-mono);
+  font-size: 0.6rem;
   font-weight: 600;
   letter-spacing: 0.06em;
   text-transform: uppercase;
   color: var(--text-muted);
-  margin-bottom: 0.4rem;
+  margin-bottom: 0.35rem;
 }
 
 .install-card .install-cmd {
-  font-size: 0.73rem;
+  font-family: var(--font-mono);
+  font-size: 0.72rem;
   color: var(--amber);
   word-break: break-all;
+  line-height: 1.5;
 }
 
 /* ── FOOTER ── */
 footer {
-  border-top: 1px solid var(--border);
+  border-top: 1px solid var(--glass-border);
   padding: 1.25rem 2rem;
   text-align: center;
-  font-size: 0.68rem;
+  font-size: 0.72rem;
   color: var(--text-muted);
-  letter-spacing: 0.03em;
+  letter-spacing: 0.02em;
+  font-family: var(--font-mono);
 }
 
-footer a { color: var(--text-muted); text-decoration: none; }
+footer a { color: var(--text-muted); text-decoration: none; transition: color 0.15s; }
 footer a:hover { color: var(--text-sub); }
 
 /* ── RESPONSIVE ── */
@@ -506,12 +516,12 @@ footer a:hover { color: var(--text-sub); }
   nav.sidebar { display: none; }
   main { padding: 1.5rem 1.25rem 4rem; }
   .install-grid { grid-template-columns: 1fr; }
-  .page-title h1 { font-size: 1.5rem; }
+  .page-title h1 { font-size: 1.6rem; }
 }
 
 /* ── ANIMATION ── */
 @keyframes fadeUp {
-  from { opacity: 0; transform: translateY(12px); }
+  from { opacity: 0; transform: translateY(10px); }
   to   { opacity: 1; transform: translateY(0); }
 }
 </style>
@@ -555,7 +565,7 @@ footer a:hover { color: var(--text-sub); }
         <span class="section-num">00</span>
         <h2>How provider configuration works</h2>
       </div>
-      <p style="font-size:0.82rem; color:var(--text-sub); margin-bottom:1rem; line-height:1.65;">PromptLab routes all API calls through its background service worker. Your API key never touches the panel UI — it lives in extension storage, sandboxed away from the page context. When you run an enhance or A/B test, the extension reads your stored key and sends the request directly to your chosen provider.</p>
+      <p style="font-size:0.88rem; color:var(--text-sub); margin-bottom:1rem; line-height:1.65;">PromptLab routes all API calls through its background service worker. Your API key never touches the panel UI — it lives in extension storage, sandboxed away from the page context. When you run an enhance or A/B test, the extension reads your stored key and sends the request directly to your chosen provider.</p>
       <div class="callout info">
         <span class="callout-icon">ℹ</span>
         <div class="callout-body"><strong>Five providers supported:</strong> Anthropic Claude, OpenAI, Google Gemini, OpenRouter (gateway to 200+ models), and Ollama for fully local inference. You can switch providers at any time from Options without losing your library or settings.</div>
@@ -606,7 +616,7 @@ footer a:hover { color: var(--text-sub); }
 
     <hr class="divider">
 
-    <!-- PROVIDERS — single section, tabbed -->
+    <!-- PROVIDERS -->
     <div class="section" id="providers">
       <div class="section-header">
         <span class="section-num">02</span>
@@ -614,20 +624,20 @@ footer a:hover { color: var(--text-sub); }
       </div>
 
       <div class="provider-tabs" role="tablist" aria-label="AI providers">
-        <button class="ptab active" role="tab" id="tab-anthropic" aria-selected="true"  aria-controls="panel-anthropic" data-provider="anthropic" tabindex="0">
+        <button class="ptab active" role="tab" id="tab-anthropic"  aria-selected="true"  aria-controls="panel-anthropic"  data-provider="anthropic"  tabindex="0">
           <span class="ptab-dot" style="color:#d97706"></span>Anthropic
         </button>
-        <button class="ptab" role="tab" id="tab-openai"    aria-selected="false" aria-controls="panel-openai"    data-provider="openai" tabindex="-1">
+        <button class="ptab" role="tab" id="tab-openai"     aria-selected="false" aria-controls="panel-openai"     data-provider="openai"     tabindex="-1">
           <span class="ptab-dot" style="color:#10b981"></span>OpenAI
         </button>
-        <button class="ptab" role="tab" id="tab-gemini"    aria-selected="false" aria-controls="panel-gemini"    data-provider="gemini" tabindex="-1">
-          <span class="ptab-dot" style="color:#3b82f6"></span>Gemini
+        <button class="ptab" role="tab" id="tab-gemini"     aria-selected="false" aria-controls="panel-gemini"     data-provider="gemini"     tabindex="-1">
+          <span class="ptab-dot" style="color:var(--lab-indigo)"></span>Gemini
         </button>
         <button class="ptab" role="tab" id="tab-openrouter" aria-selected="false" aria-controls="panel-openrouter" data-provider="openrouter" tabindex="-1">
-          <span class="ptab-dot" style="color:#8b5cf6"></span>OpenRouter
+          <span class="ptab-dot" style="color:var(--lab-violet-light)"></span>OpenRouter
         </button>
-        <button class="ptab" role="tab" id="tab-ollama"    aria-selected="false" aria-controls="panel-ollama"    data-provider="ollama" tabindex="-1">
-          <span class="ptab-dot" style="color:#06b6d4"></span>Ollama
+        <button class="ptab" role="tab" id="tab-ollama"     aria-selected="false" aria-controls="panel-ollama"     data-provider="ollama"     tabindex="-1">
+          <span class="ptab-dot" style="color:var(--lab-teal)"></span>Ollama
         </button>
       </div>
 
@@ -687,7 +697,7 @@ footer a:hover { color: var(--text-sub); }
             <div class="step-num">3</div>
             <div class="step-body">
               <strong>Choose a model</strong>
-              <p>Use the default model recommended in PromptLab's dropdown, or check <a href="https://platform.openai.com/docs/models" class="ext-link" target="_blank" rel="noopener noreferrer">OpenAI's model docs</a> for the latest options. Model recommendations change frequently as new versions ship.</p>
+              <p>Use the default model recommended in PromptLab's dropdown, or check <a href="https://platform.openai.com/docs/models" class="ext-link" target="_blank" rel="noopener noreferrer">OpenAI's model docs</a> for the latest options. Recommendations change frequently as new versions ship.</p>
             </div>
           </div>
         </div>
@@ -846,21 +856,21 @@ footer a:hover { color: var(--text-sub); }
       </div>
       <div class="steps">
         <div class="step">
-          <div class="step-num" style="background:rgba(239,68,68,0.1); border-color:rgba(239,68,68,0.3); color:var(--red);">!</div>
+          <div class="step-num" style="background:rgba(248,113,113,0.1); border-color:rgba(248,113,113,0.3); color:var(--red);">!</div>
           <div class="step-body">
             <strong>Test Connection returns an error</strong>
             <p>Double-check that your API key was copied completely with no trailing spaces. Confirm your account has available credits or quota. For Ollama, confirm the service is running with <code>ollama serve</code>.</p>
           </div>
         </div>
         <div class="step">
-          <div class="step-num" style="background:rgba(239,68,68,0.1); border-color:rgba(239,68,68,0.3); color:var(--red);">!</div>
+          <div class="step-num" style="background:rgba(248,113,113,0.1); border-color:rgba(248,113,113,0.3); color:var(--red);">!</div>
           <div class="step-body">
             <strong>Enhance / A/B test gives no response</strong>
             <p>Save your settings in Options, then reload the extension from <code>chrome://extensions</code> and try again.</p>
           </div>
         </div>
         <div class="step">
-          <div class="step-num" style="background:rgba(239,68,68,0.1); border-color:rgba(239,68,68,0.3); color:var(--red);">!</div>
+          <div class="step-num" style="background:rgba(248,113,113,0.1); border-color:rgba(248,113,113,0.3); color:var(--red);">!</div>
           <div class="step-body">
             <strong>Ollama connection refused</strong>
             <p>By default Ollama only accepts connections from localhost. You may need to set <code>OLLAMA_ORIGINS</code> before starting Ollama to allow the extension origin:</p>
@@ -868,7 +878,7 @@ footer a:hover { color: var(--text-sub); }
           </div>
         </div>
         <div class="step">
-          <div class="step-num" style="background:rgba(239,68,68,0.1); border-color:rgba(239,68,68,0.3); color:var(--red);">!</div>
+          <div class="step-num" style="background:rgba(248,113,113,0.1); border-color:rgba(248,113,113,0.3); color:var(--red);">!</div>
           <div class="step-body">
             <strong>OpenRouter model slug error</strong>
             <p>Model slugs are case-sensitive and must exactly match the identifier shown on <a href="https://openrouter.ai/models" class="ext-link" target="_blank" rel="noopener noreferrer">openrouter.ai/models</a>. A typo will produce a runtime error rather than a helpful message.</p>
@@ -901,20 +911,18 @@ footer a:hover { color: var(--text-sub); }
       t.setAttribute('aria-selected', active ? 'true' : 'false');
       t.setAttribute('tabindex', active ? '0' : '-1');
     });
-    panels.forEach(p => {
-      p.hidden = p.id !== 'panel-' + id;
-    });
+    panels.forEach(p => { p.hidden = p.id !== 'panel-' + id; });
     if (updateHash !== false) {
       history.replaceState(null, '', '#' + id);
     }
   }
 
-  // bind tab clicks
+  // tab clicks
   tabs.forEach(tab => {
     tab.addEventListener('click', () => activateProvider(tab.dataset.provider));
   });
 
-  // keyboard nav: arrow keys, Home, End within tablist
+  // keyboard nav within tablist
   tabs.forEach((tab, i) => {
     tab.addEventListener('keydown', e => {
       let next = -1;
@@ -930,35 +938,28 @@ footer a:hover { color: var(--text-sub); }
     });
   });
 
-  // initial load: handle provider or section hash without smooth scroll
+  // initial load — no smooth scroll, no jarring animation
   const initHash = location.hash.replace('#', '');
   if (validProviders.includes(initHash)) {
     activateProvider(initHash, false);
-    // jump to providers section immediately, no smooth scroll
     const providerSection = document.getElementById('providers');
     if (providerSection) providerSection.scrollIntoView({ behavior: 'instant' });
   } else {
-    // set default tabindex state for initial render (no hash or non-provider hash)
     activateProvider('anthropic', false);
   }
 
-  // hashchange: sync tabs when URL hash changes externally (back/forward, shared links)
+  // hashchange — sync tabs when URL changes externally
   window.addEventListener('hashchange', () => {
     const h = location.hash.replace('#', '');
-    if (validProviders.includes(h)) {
-      activateProvider(h, false);
-    }
+    if (validProviders.includes(h)) activateProvider(h, false);
   });
 
-  // sidebar active state — section scroll tracking only
+  // sidebar active state — section scroll only
   const observer = new IntersectionObserver(entries => {
     entries.forEach(e => {
       if (e.isIntersecting) {
         navLinks.forEach(l => l.classList.remove('active'));
-        // map provider hashes back to #providers for sidebar highlight
-        const sectionId = e.target.id;
-        const href = '#' + sectionId;
-        const match = document.querySelector(`nav a[href="${href}"]`);
+        const match = document.querySelector(`nav a[href="#${e.target.id}"]`);
         if (match) match.classList.add('active');
       }
     });
