@@ -194,6 +194,44 @@ test('parse: throws on non-JSON', () => {
   assert.throws(() => parseEnhancedPayload('This is just plain text without any JSON'), /not valid JSON/i);
 });
 
+test('parse: stringifies object-shaped prompt fields', () => {
+  const r = parseEnhancedPayload(JSON.stringify({
+    enhanced: {
+      role: 'expert',
+      task: 'analyze',
+      clarity_specificity: 'high',
+      format: 'report',
+      constraints: 'strict',
+    },
+    variants: [
+      {
+        label: 'Variant A',
+        content: {
+          role: 'reviewer',
+          task: 'audit',
+        },
+      },
+      {
+        role: 'fallback',
+        task: 'summarize',
+      },
+    ],
+    notes: {
+      source: 'model',
+    },
+    tags: ['Analysis', { type: 'Other' }],
+  }));
+
+  assert.match(r.enhanced, /"role": "expert"/);
+  assert.equal(r.variants[0].label, 'Variant A');
+  assert.match(r.variants[0].content, /"role": "reviewer"/);
+  assert.equal(r.variants[1].label, 'Variant');
+  assert.match(r.variants[1].content, /"role": "fallback"/);
+  assert.match(r.notes, /"source": "model"/);
+  assert.equal(r.tags[0], 'Analysis');
+  assert.match(r.tags[1], /"type": "Other"/);
+});
+
 // ── ensureString ────────────────────────────────────────────────────────────
 
 test('ensureString: returns strings as-is', () => {

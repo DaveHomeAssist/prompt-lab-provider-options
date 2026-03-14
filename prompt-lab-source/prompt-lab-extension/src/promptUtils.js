@@ -75,17 +75,58 @@ export function extractTextFromAnthropic(data) {
   return text;
 }
 
+function stringifyPromptValue(value) {
+  if (typeof value === 'string') return value;
+  if (typeof value === 'number' || typeof value === 'boolean') return String(value);
+  if (!value || typeof value !== 'object') return '';
+  try {
+    return JSON.stringify(value, null, 2);
+  } catch {
+    return '';
+  }
+}
+
+function normalizeParsedPayload(payload) {
+  if (!payload || typeof payload !== 'object' || Array.isArray(payload)) return payload;
+  return {
+    ...payload,
+    enhanced: stringifyPromptValue(payload.enhanced),
+    variants: Array.isArray(payload.variants)
+      ? payload.variants
+        .map((variant) => {
+          if (!variant || typeof variant !== 'object') {
+            return {
+              label: 'Variant',
+              content: stringifyPromptValue(variant),
+            };
+          }
+          return {
+            label: stringifyPromptValue(variant.label).trim() || 'Variant',
+            content: stringifyPromptValue(
+              Object.prototype.hasOwnProperty.call(variant, 'content') ? variant.content : variant
+            ),
+          };
+        })
+        .filter((variant) => variant.content.trim())
+      : [],
+    notes: stringifyPromptValue(payload.notes),
+    tags: Array.isArray(payload.tags)
+      ? payload.tags.map((tag) => stringifyPromptValue(tag).trim()).filter(Boolean)
+      : [],
+  };
+}
+
 export function parseEnhancedPayload(rawText) {
   const cleaned = String(rawText || '').replace(/```json|```/g, '').trim();
   if (!cleaned) throw new Error('Model returned empty content. Try again.');
   try {
-    return JSON.parse(cleaned);
+    return normalizeParsedPayload(JSON.parse(cleaned));
   } catch {
     const firstBrace = cleaned.indexOf('{');
     const lastBrace = cleaned.lastIndexOf('}');
     if (firstBrace >= 0 && lastBrace > firstBrace) {
       try {
-        return JSON.parse(cleaned.slice(firstBrace, lastBrace + 1));
+        return normalizeParsedPayload(JSON.parse(cleaned.slice(firstBrace, lastBrace + 1)));
       } catch {}
     }
     throw new Error('Model response was not valid JSON. Try again.');

@@ -60,6 +60,36 @@ test('parseEnhancedPayload handles fenced JSON and noisy wrappers', () => {
   assert.equal(payload2.enhanced, 'x');
 });
 
+test('parseEnhancedPayload stringifies structured prompt fields', () => {
+  const payload = parseEnhancedPayload(JSON.stringify({
+    enhanced: {
+      role: 'designer',
+      task: 'visualize',
+      clarity_specificity: 'high',
+      format: 'brief',
+      constraints: 'strict',
+    },
+    variants: [
+      {
+        label: 'Blueprint',
+        content: {
+          role: 'draftsman',
+          task: 'diagram',
+        },
+      },
+    ],
+    notes: { source: 'gemini' },
+    tags: ['Creative', { name: 'Other' }],
+  }));
+
+  assert.match(payload.enhanced, /"role": "designer"/);
+  assert.equal(payload.variants[0].label, 'Blueprint');
+  assert.match(payload.variants[0].content, /"role": "draftsman"/);
+  assert.match(payload.notes, /"source": "gemini"/);
+  assert.equal(payload.tags[0], 'Creative');
+  assert.match(payload.tags[1], /"name": "Other"/);
+});
+
 test('isTransientError detects retryable conditions', () => {
   assert.equal(isTransientError(new Error('429 rate limit')), true);
   assert.equal(isTransientError(new Error('Network timeout')), true);

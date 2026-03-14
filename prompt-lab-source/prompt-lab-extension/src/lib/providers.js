@@ -133,6 +133,10 @@ export async function callGemini(payload, settings = {}, fetchImpl = globalThis.
   }
   if (payload.max_tokens) requestBody.generationConfig.maxOutputTokens = payload.max_tokens;
   if (typeof payload.temperature === 'number') requestBody.generationConfig.temperature = payload.temperature;
+  // Cap thinking budget for 2.5+ models so output tokens aren't starved
+  if (modelId.includes('2.5')) {
+    requestBody.generationConfig.thinkingConfig = { thinkingBudget: 1024 };
+  }
 
   const response = await fetchOrThrow(fetchImpl)(`https://generativelanguage.googleapis.com/v1beta/models/${modelId}:generateContent?key=${apiKey}`, {
     method: 'POST',
@@ -145,6 +149,7 @@ export async function callGemini(payload, settings = {}, fetchImpl = globalThis.
   }
 
   const data = await response.json();
+  console.log('[Gemini raw response]', JSON.stringify(data, null, 2));
   const candidate = data?.candidates?.[0];
   const finishReason = candidate?.finishReason;
   const text = candidate?.content?.parts?.map((part) => part.text || '').join('');

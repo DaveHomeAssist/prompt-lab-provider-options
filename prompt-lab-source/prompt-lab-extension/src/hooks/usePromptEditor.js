@@ -177,7 +177,7 @@ export default function usePromptEditor(ui, lib) {
   const buildEnhancePayloadFor = (inputText) => {
     const modeObj = MODES.find(x => x.id === enhMode) || MODES[0];
     const sys = `You are an expert prompt engineer. ${modeObj.sys}\nReturn ONLY valid JSON, no markdown, no backticks:\n{"enhanced":"...","variants":[{"label":"...","content":"..."}],"notes":"...","tags":["..."]}\nProduce 2 variants. Available tags: ${ALL_TAGS.join(', ')}.`;
-    return { model: 'claude-sonnet-4-20250514', max_tokens: 1500, system: sys, messages: [{ role: 'user', content: inputText }], responseFormat: 'json' };
+    return { model: 'claude-sonnet-4-20250514', max_tokens: 4096, system: sys, messages: [{ role: 'user', content: inputText }], responseFormat: 'json' };
   };
 
   const buildEnhancePayload = () => buildEnhancePayloadFor(raw);
@@ -248,7 +248,13 @@ export default function usePromptEditor(ui, lib) {
       const data = await callWithRetry(payload);
       if (reqId !== enhanceReqRef.current) return;
       const txt = extractTextFromAnthropic(data);
-      const p = parseEnhancedPayload(txt);
+      console.log('[enhance] extracted text:', txt);
+      let p;
+      try { p = parseEnhancedPayload(txt); } catch (parseErr) {
+        console.error('[enhance] parse failed:', parseErr.message, '\n[enhance] raw txt:', txt);
+        throw parseErr;
+      }
+      console.log('[enhance] parsed keys:', Object.keys(p), 'enhanced type:', typeof p.enhanced);
       setEnhanced(p.enhanced || ''); setVariants(p.variants || []); setNotes(p.notes || '');
       setSaveTags(p.tags || []);
       const nextTitle = suggestTitleFromText(p.enhanced || raw);
