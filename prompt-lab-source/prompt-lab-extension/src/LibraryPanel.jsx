@@ -33,8 +33,8 @@ const LibraryPanel = memo(function LibraryPanel({
               ['library', 'Library'],
               ...(!compact ? [['split', 'Split']] : []),
             ].map(([id, label]) => (
-              <button key={id} onClick={() => setEditorLayout(id)}
-                className={`text-xs px-2 py-1 rounded-lg transition-colors ${effectiveEditorLayout === id ? 'bg-violet-600 text-white' : `${m.btn} ${m.textAlt}`}`}>
+              <button key={id} type="button" onClick={() => setEditorLayout(id)}
+                className={`ui-control text-xs px-2 py-1 rounded-lg transition-colors ${effectiveEditorLayout === id ? 'bg-violet-600 text-white' : `${m.btn} ${m.textAlt}`}`}>
                 {label}
               </button>
             ))}
@@ -48,18 +48,18 @@ const LibraryPanel = memo(function LibraryPanel({
           </div>
           <div className={`flex gap-2 ${compact ? 'w-full' : ''}`}>
             <select value={lib.sortBy} onChange={e => lib.setSortBy(e.target.value)}
-              className={`${m.input} border rounded-lg px-2 py-1.5 text-xs ${m.textBody} focus:outline-none ${compact ? 'flex-1' : ''}`}>
+              className={`ui-control ${m.input} border rounded-lg px-2 py-1.5 text-xs ${m.textBody} focus:outline-none ${compact ? 'flex-1' : ''}`}>
               <option value="newest">Newest</option><option value="oldest">Oldest</option><option value="most-used">Most Used</option><option value="manual">Manual</option>
             </select>
-            <button onClick={lib.exportLib} className={`px-2.5 rounded-lg text-xs ${m.btn} ${m.textAlt} transition-colors ${compact ? 'flex-1 py-1.5' : ''}`}>Export</button>
+            <button type="button" onClick={lib.exportLib} className={`ui-control px-2.5 rounded-lg text-xs ${m.btn} ${m.textAlt} transition-colors ${compact ? 'flex-1 py-1.5' : ''}`}>Export</button>
           </div>
         </div>
         {lib.collections.length > 0 && (
           <div className="flex gap-1 flex-wrap">
-            <button onClick={() => lib.setActiveCollection(null)} className={`px-2 py-0.5 rounded-full text-xs font-medium transition-colors ${!lib.activeCollection ? 'bg-violet-600 text-white' : `${m.btn} ${m.textAlt}`}`}>All</button>
+            <button type="button" onClick={() => lib.setActiveCollection(null)} className={`ui-control px-2 py-0.5 rounded-full text-xs font-medium transition-colors ${!lib.activeCollection ? 'bg-violet-600 text-white' : `${m.btn} ${m.textAlt}`}`}>All</button>
             {lib.collections.map(c => (
-              <button key={c} onClick={() => lib.setActiveCollection(p => p === c ? null : c)}
-                className={`px-2 py-0.5 rounded-full text-xs font-medium transition-colors flex items-center gap-1 ${lib.activeCollection === c ? 'bg-violet-600 text-white' : `${m.btn} ${m.textAlt}`}`}>
+              <button key={c} type="button" onClick={() => lib.setActiveCollection(p => p === c ? null : c)}
+                className={`ui-control px-2 py-0.5 rounded-full text-xs font-medium transition-colors flex items-center gap-1 ${lib.activeCollection === c ? 'bg-violet-600 text-white' : `${m.btn} ${m.textAlt}`}`}>
                 <Ic n="FolderOpen" size={9} />{c}
               </button>
             ))}
@@ -73,7 +73,7 @@ const LibraryPanel = memo(function LibraryPanel({
       </div>
       <div className={`${isWeb ? '' : 'flex-1 overflow-y-auto'} p-3 flex flex-col gap-2`}>
         {lib.filtered.length === 0 && (
-          <div className="flex flex-col items-center justify-center h-full gap-2 text-center">
+          <div className={`ui-empty-state h-full ${m.codeBlock} border ${m.border}`}>
             <Ic n="Wand2" size={24} className={m.textMuted} />
             <p className={`text-sm ${m.textSub}`}>{lib.library.length === 0 ? 'No saved prompts yet.' : 'No results found.'}</p>
           </div>
@@ -95,8 +95,8 @@ const LibraryPanel = memo(function LibraryPanel({
                     <div className="flex gap-1.5">
                       <input autoFocus value={lib.renameValue} onChange={e => lib.setRenameValue(e.target.value)}
                         className={`flex-1 ${m.input} border rounded-lg px-2 py-1 text-xs focus:outline-none focus:border-violet-500 ${m.text}`} />
-                      <button onClick={() => lib.renameEntry(entry.id, lib.renameValue, editingId, setSaveTitle)} className="px-2 py-1 text-xs bg-violet-600 hover:bg-violet-500 text-white rounded-lg transition-colors">Save</button>
-                      <button onClick={() => { lib.setRenamingId(null); lib.setRenameValue(''); }} className={`px-2 py-1 text-xs ${m.btn} ${m.textAlt} rounded-lg transition-colors`}>Cancel</button>
+                      <button type="button" onClick={() => lib.renameEntry(entry.id, lib.renameValue, editingId, setSaveTitle)} className="ui-control px-2 py-1 text-xs bg-violet-600 hover:bg-violet-500 text-white rounded-lg transition-colors">Save</button>
+                      <button type="button" onClick={() => { lib.setRenamingId(null); lib.setRenameValue(''); }} className={`ui-control px-2 py-1 text-xs ${m.btn} ${m.textAlt} rounded-lg transition-colors`}>Cancel</button>
                     </div>
                   ) : (
                     <p className={`text-sm font-semibold ${m.text} truncate`}>{entry.title}</p>
@@ -111,9 +111,9 @@ const LibraryPanel = memo(function LibraryPanel({
                 </div>
                 <div className="flex items-center gap-1 shrink-0">
                   {manual && <Ic n="GripVertical" size={12} className={m.textMuted} />}
-                  <button onClick={() => { copy(entry.enhanced); lib.bumpUse(entry.id); }} className={`p-1.5 rounded ${m.btn} ${m.textSub} hover:text-violet-400 transition-colors`}><Ic n="Copy" size={12} /></button>
-                  <button onClick={() => loadEntry(entry)} className={`px-2 py-1 rounded ${m.btn} text-violet-400 text-xs font-semibold transition-colors`}>Load</button>
-                  <button onClick={() => lib.setExpandedId(p => p === entry.id ? null : entry.id)} className={`p-1.5 rounded ${m.btn} ${m.textSub} transition-colors`}>
+                  <button type="button" onClick={() => { copy(entry.enhanced); lib.bumpUse(entry.id); }} className={`ui-control p-1.5 rounded ${m.btn} ${m.textSub} hover:text-violet-400 transition-colors`}><Ic n="Copy" size={12} /></button>
+                  <button type="button" onClick={() => loadEntry(entry)} className={`ui-control px-2 py-1 rounded ${m.btn} text-violet-400 text-xs font-semibold transition-colors`}>Load</button>
+                  <button type="button" onClick={() => lib.setExpandedId(p => p === entry.id ? null : entry.id)} className={`ui-control p-1.5 rounded ${m.btn} ${m.textSub} transition-colors`}>
                     {lib.expandedId === entry.id ? <Ic n="ChevronUp" size={12} /> : <Ic n="ChevronDown" size={12} />}
                   </button>
                 </div>
@@ -122,21 +122,21 @@ const LibraryPanel = memo(function LibraryPanel({
               {lib.shareId === entry.id && (
                 <div className={`border-t ${m.border} px-3 py-2 flex gap-2`}>
                   <input readOnly className={`flex-1 ${m.input} border rounded-lg px-2 py-1 text-xs focus:outline-none ${m.text} font-mono`} value={shareUrl || 'Unable to create share URL'} />
-                  <button onClick={() => copy(shareUrl || '')} className="px-2 py-1 bg-violet-600 hover:bg-violet-500 text-white rounded-lg text-xs font-medium transition-colors">Copy URL</button>
+                  <button type="button" onClick={() => copy(shareUrl || '')} className="ui-control px-2 py-1 bg-violet-600 hover:bg-violet-500 text-white rounded-lg text-xs font-medium transition-colors">Copy URL</button>
                 </div>
               )}
               {lib.expandedId === entry.id && (
                 <div className={`border-t ${m.border} px-3 py-3 flex flex-col gap-3`}>
                   <div className={`flex flex-wrap gap-2`}>
-                    <button onClick={() => addToComposer(entry)} className={`px-2 py-1 rounded ${m.btn} ${m.textAlt} text-xs transition-colors flex items-center gap-1`}><Ic n="Layers" size={11} />Add to Compose</button>
-                    <button onClick={() => {
+                    <button type="button" onClick={() => addToComposer(entry)} className={`ui-control px-2 py-1 rounded ${m.btn} ${m.textAlt} text-xs transition-colors flex items-center gap-1`}><Ic n="Layers" size={11} />Add to Compose</button>
+                    <button type="button" onClick={() => {
                       if ((looksSensitive(entry.original) || looksSensitive(entry.enhanced) || looksSensitive(entry.notes))
                         && !window.confirm('This shared link may include sensitive content. Continue?')) return;
                       lib.setShareId(p => p === entry.id ? null : entry.id);
-                    }} className={`px-2 py-1 rounded ${m.btn} ${m.textAlt} text-xs transition-colors flex items-center gap-1`}><Ic n="Share2" size={11} />Share</button>
-                    <button onClick={() => openSavePanel(entry)} className={`px-2 py-1 rounded ${m.btn} ${m.textAlt} text-xs transition-colors`}>Edit</button>
-                    <button onClick={() => { lib.setRenamingId(entry.id); lib.setRenameValue(entry.title); }} className={`px-2 py-1 rounded ${m.btn} ${m.textAlt} text-xs transition-colors`}>Rename</button>
-                    <button onClick={() => lib.del(entry.id)} className="px-2 py-1 rounded bg-red-600 hover:bg-red-500 text-white text-xs transition-colors flex items-center gap-1"><Ic n="Trash2" size={11} />Delete</button>
+                    }} className={`ui-control px-2 py-1 rounded ${m.btn} ${m.textAlt} text-xs transition-colors flex items-center gap-1`}><Ic n="Share2" size={11} />Share</button>
+                    <button type="button" onClick={() => openSavePanel(entry)} className={`ui-control px-2 py-1 rounded ${m.btn} ${m.textAlt} text-xs transition-colors`}>Edit</button>
+                    <button type="button" onClick={() => { lib.setRenamingId(entry.id); lib.setRenameValue(entry.title); }} className={`ui-control px-2 py-1 rounded ${m.btn} ${m.textAlt} text-xs transition-colors`}>Rename</button>
+                    <button type="button" onClick={() => lib.del(entry.id)} className="ui-control px-2 py-1 rounded bg-red-600 hover:bg-red-500 text-white text-xs transition-colors flex items-center gap-1"><Ic n="Trash2" size={11} />Delete</button>
                   </div>
                   <TestCasesPanel
                     m={m} entry={entry} cases={testCasesByPrompt[entry.id] || []}

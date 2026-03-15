@@ -22,12 +22,15 @@ import { isExtension } from './lib/platform.js';
 import MainWorkspace from './MainWorkspace';
 import EditorActions from './EditorActions';
 import { ThemeProvider } from './theme/ThemeProvider.jsx';
+import MarkdownPreview from './MarkdownPreview';
 
 // ── Main App ──────────────────────────────────────────────────────────────────
 export default function App() {
   const ui = useUiState();
   const [showDesktopSettings, setShowDesktopSettings] = useState(false);
   const [showGoldenComparison, setShowGoldenComparison] = useState(true);
+  const [mdPreview, setMdPreview] = useState(false);
+  const [enhMdPreview, setEnhMdPreview] = useState(false);
   const isWeb = !isExtension && import.meta.env?.VITE_WEB_MODE === 'true';
   const {
     viewportWidth,
@@ -210,19 +213,18 @@ export default function App() {
               <span className={`text-[11px] ${m.textMuted}`}>{lib.library.length} saved</span>
             </div>
             <div className="flex items-center gap-1">
-              <button onClick={() => { setShowCmdPalette(true); setCmdQuery(''); }} className={`px-2 py-1 rounded-lg ${m.btn} ${m.textAlt} text-[11px] font-mono hover:text-violet-400 transition-colors`}>⌘K</button>
-              <button onClick={() => setColorMode(p => p === 'dark' ? 'light' : 'dark')} className={`p-1.5 rounded-lg ${m.btn} ${m.textAlt} hover:text-violet-400 transition-colors`}>
+              <button type="button" onClick={() => { setShowCmdPalette(true); setCmdQuery(''); }} className={`ui-control px-2 py-1 rounded-lg ${m.btn} ${m.textAlt} text-[11px] font-mono hover:text-violet-400 transition-colors`}>⌘K</button>
+              <button type="button" onClick={() => setColorMode(p => p === 'dark' ? 'light' : 'dark')} className={`ui-control p-1.5 rounded-lg ${m.btn} ${m.textAlt} hover:text-violet-400 transition-colors`}>
                 {colorMode === 'dark' ? <Ic n="Sun" size={13} /> : <Ic n="Moon" size={13} />}
               </button>
-              <button onClick={() => setShowShortcuts(true)} className={`p-1.5 rounded-lg ${m.btn} ${m.textAlt} hover:text-violet-400 transition-colors`}><Ic n="Keyboard" size={13} /></button>
-              <button onClick={() => setShowSettings(true)} className={`p-1.5 rounded-lg ${m.btn} ${m.textAlt} hover:text-violet-400 transition-colors`}><Ic n="Settings" size={13} /></button>
+              <button type="button" onClick={() => setShowShortcuts(true)} className={`ui-control p-1.5 rounded-lg ${m.btn} ${m.textAlt} hover:text-violet-400 transition-colors`}><Ic n="Keyboard" size={13} /></button>
+              <button type="button" onClick={() => setShowSettings(true)} className={`ui-control p-1.5 rounded-lg ${m.btn} ${m.textAlt} hover:text-violet-400 transition-colors`}><Ic n="Settings" size={13} /></button>
             </div>
           </div>
-          <div className={`flex items-center gap-1 ${compact ? 'overflow-x-auto pb-0.5' : ''}`} role="tablist" aria-label="Prompt Lab views">
+          <div className={`flex items-center gap-1 ${compact ? 'overflow-x-auto pb-1' : ''}`} role="tablist" aria-label="Prompt Lab views">
             {[['editor', 'Editor'], ['composer', 'Compose'], ['abtest', 'A/B Test'], ['pad', 'Scratchpad']].map(([id, label]) => (
-              <button key={id} onClick={() => setTab(id)} role="tab" aria-selected={tab === id}
-                className={`px-2.5 py-1.5 font-semibold rounded-lg transition-colors whitespace-nowrap ${tab === id ? 'bg-violet-600 text-white' : `${m.btn} ${m.textAlt}`}`}
-                style={{ fontSize: '0.68rem', letterSpacing: '0.03em' }}>
+              <button key={id} type="button" onClick={() => setTab(id)} role="tab" aria-selected={tab === id}
+                className={`ui-control px-3 py-1.5 text-xs font-semibold rounded-lg transition-colors whitespace-nowrap ${tab === id ? 'bg-violet-600 text-white' : `${m.btn} ${m.textAlt}`}`}>
                 {label}
               </button>
             ))}
@@ -248,8 +250,8 @@ export default function App() {
                   ['library', 'Library'],
                   ...(!compact ? [['split', 'Split']] : []),
                 ].map(([id, label]) => (
-                  <button key={id} onClick={() => setEditorLayout(id)}
-                    className={`text-xs px-2 py-1 rounded-lg transition-colors ${effectiveEditorLayout === id ? 'bg-violet-600 text-white' : `${m.btn} ${m.textAlt}`}`}>
+                  <button key={id} type="button" onClick={() => setEditorLayout(id)}
+                    className={`ui-control text-xs px-2.5 py-1 rounded-lg transition-colors ${effectiveEditorLayout === id ? 'bg-violet-600 text-white' : `${m.btn} ${m.textAlt}`}`}>
                     {label}
                   </button>
                 ))}
@@ -257,10 +259,24 @@ export default function App() {
               {/* Input */}
               <div>
                 <div className={`flex justify-between items-center mb-1.5 ${compact ? 'gap-2 flex-wrap' : ''}`}>
-                  <span className={`text-xs ${m.textSub} uppercase tracking-widest font-semibold`}>Input</span>
+                  <div className="flex items-center gap-2">
+                    <span className={`text-xs ${m.textSub} uppercase tracking-widest font-semibold`}>Input</span>
+                    <div className="flex rounded-md overflow-hidden border" style={{ borderColor: 'rgba(255,255,255,0.1)' }}>
+                      <button type="button" onClick={() => setMdPreview(false)} aria-pressed={!mdPreview}
+                        className={`text-[10px] px-2 py-0.5 transition-colors ${!mdPreview ? 'bg-violet-600 text-white' : `${m.btn} ${m.textAlt}`}`}>Write</button>
+                      <button type="button" onClick={() => setMdPreview(true)} aria-pressed={mdPreview}
+                        className={`text-[10px] px-2 py-0.5 transition-colors ${mdPreview ? 'bg-violet-600 text-white' : `${m.btn} ${m.textAlt}`}`}>Preview</button>
+                    </div>
+                  </div>
                   <span className={`text-xs ${m.textMuted}`}>{wc}w · {raw.length}c{score ? ` · ~${score.tokens} tok` : ''}</span>
                 </div>
-                <textarea rows={8} className={inp} placeholder="Paste or write your prompt here…" value={raw} onChange={e => setRaw(e.target.value)} />
+                {mdPreview ? (
+                  <div className={`${inp} overflow-y-auto`} style={{ minHeight: '12rem', maxHeight: '24rem' }}>
+                    {raw.trim() ? <MarkdownPreview text={raw} /> : <span className={`text-sm ${m.textSub}`}>Nothing to preview</span>}
+                  </div>
+                ) : (
+                  <textarea rows={8} className={inp} placeholder="Paste or write your prompt here…" value={raw} onChange={e => setRaw(e.target.value)} />
+                )}
               </div>
               {/* Scoring */}
               {score && (() => {
@@ -367,8 +383,11 @@ export default function App() {
                       )}
                     </span>
                     <div className={`flex items-center gap-3 ${compact ? 'flex-wrap justify-end' : ''}`}>
-                      <button onClick={() => setShowDiff(p => !p)} className={`flex items-center gap-1 text-xs transition-colors ${showDiff ? 'text-violet-400' : `${m.textSub} hover:text-white`}`}>
+                      <button onClick={() => { setShowDiff(p => !p); setEnhMdPreview(false); }} className={`flex items-center gap-1 text-xs transition-colors ${showDiff ? 'text-violet-400' : `${m.textSub} hover:text-white`}`}>
                         <Ic n="GitBranch" size={10} />{showDiff ? 'Hide Diff' : 'Show Diff'}
+                      </button>
+                      <button onClick={() => { setEnhMdPreview(p => !p); setShowDiff(false); }} className={`flex items-center gap-1 text-xs transition-colors ${enhMdPreview ? 'text-violet-400' : `${m.textSub} hover:text-white`}`}>
+                        <Ic n="Eye" size={10} />{enhMdPreview ? 'Edit' : 'Preview'}
                       </button>
                       {editingId && (
                         <button
@@ -397,6 +416,10 @@ export default function App() {
                       {wordDiff(raw, enhanced).map((d, i) => (
                         <span key={i} className={`${d.t === 'add' ? m.diffAdd : d.t === 'del' ? m.diffDel : m.diffEq} px-0.5 rounded mr-0.5`}>{d.v}</span>
                       ))}
+                    </div>
+                  ) : enhMdPreview ? (
+                    <div className={`${inp} border-violet-500/40 overflow-y-auto`} style={{ minHeight: '8rem', maxHeight: '24rem' }}>
+                      <MarkdownPreview text={enhanced} />
                     </div>
                   ) : (
                     <textarea rows={5} className={`${inp} border-violet-500/40`} value={enhanced} onChange={e => setEnhanced(e.target.value)} />
@@ -429,7 +452,7 @@ export default function App() {
                   </div>
                 )}
                 <div className={`${m.surface} border ${m.border} rounded-lg`}>
-                  <button onClick={() => setShowEvalHistory(p => !p)}
+                  <button type="button" onClick={() => setShowEvalHistory(p => !p)}
                     className={`w-full flex justify-between items-center px-3 py-2 text-xs font-semibold ${m.textSub} uppercase tracking-wider`}>
                     <span>{editingId ? `Run History (${evalRuns.length})` : `Recent Runs (${evalRuns.length})`}</span>
                     <Ic n={showEvalHistory ? 'ChevronUp' : 'ChevronDown'} size={10} />
@@ -480,12 +503,13 @@ export default function App() {
                     </div>
                   )}
                   {showEvalHistory && evalRuns.length === 0 && (
-                    <p className={`px-3 pb-3 text-xs ${m.textMuted}`}>No saved runs yet.</p>
+                    <div className={`ui-empty-state px-3 pb-3 text-xs ${m.textMuted}`}>No saved runs yet.</div>
                   )}
                 </div>
                 {editingId && goldenResponse && (
                   <div className={`${m.surface} border ${m.border} rounded-lg`}>
                     <button
+                      type="button"
                       onClick={() => setShowGoldenComparison((p) => !p)}
                       className={`w-full flex justify-between items-center px-3 py-2 text-xs font-semibold ${m.textSub} uppercase tracking-wider`}
                     >
@@ -556,46 +580,6 @@ export default function App() {
                   </div>
                 )}
               </>}
-              {/* Save panel */}
-              {showSave && (
-                <div className={`${m.surface} border ${m.border} rounded-lg p-3 flex flex-col gap-2`}>
-                  <span className={`text-xs ${m.textAlt} font-semibold uppercase tracking-wider`}>{editingId ? 'Update Prompt' : 'Save to Library'}</span>
-                  <input className={`${m.input} border rounded-lg px-3 py-1.5 text-sm focus:outline-none focus:border-violet-500 ${m.text}`}
-                    placeholder="Prompt title…" value={saveTitle} onChange={e => setSaveTitle(e.target.value)} />
-                  <div className="flex gap-2">
-                    <select value={saveCollection} onChange={e => setSaveCollection(e.target.value)}
-                      className={`flex-1 ${m.input} border rounded-lg px-2 py-1.5 text-xs ${m.text} focus:outline-none`}>
-                      <option value="">No Collection</option>
-                      {lib.collections.map(c => <option key={c} value={c}>{c}</option>)}
-                    </select>
-                    {showNewColl ? (
-                      <div className="flex gap-1">
-                        <input autoFocus className={`w-28 ${m.input} border rounded-lg px-2 py-1.5 text-xs ${m.text} focus:outline-none focus:border-violet-500`}
-                          placeholder="Name…" value={newCollName} onChange={e => setNewCollName(e.target.value)}
-                          onKeyDown={e => {
-                            if (e.key === 'Enter') { const n = newCollName.trim(); if (n && !lib.collections.includes(n)) { lib.setCollections(p => [...p, n]); setSaveCollection(n); } setNewCollName(''); setShowNewColl(false); }
-                            if (e.key === 'Escape') setShowNewColl(false);
-                          }} />
-                        <button onClick={() => { const n = newCollName.trim(); if (n && !lib.collections.includes(n)) { lib.setCollections(p => [...p, n]); setSaveCollection(n); } setNewCollName(''); setShowNewColl(false); }}
-                          className="px-2 py-1.5 bg-violet-600 hover:bg-violet-500 text-white rounded-lg text-xs transition-colors"><Ic n="Check" size={11} /></button>
-                      </div>
-                    ) : (
-                      <button onClick={() => setShowNewColl(true)} className={`px-2.5 ${m.btn} rounded-lg ${m.textAlt} text-xs transition-colors flex items-center gap-1`}><Ic n="Plus" size={11} /></button>
-                    )}
-                  </div>
-                  <div className="flex flex-wrap gap-1.5">
-                    {ALL_TAGS.map(t => <TagChip key={t} tag={t} selected={saveTags.includes(t)} onClick={() => setSaveTags(prev => prev.includes(t) ? prev.filter(x => x !== t) : [...prev, t])} />)}
-                  </div>
-                  {editingId && (
-                    <input className={`${m.input} border rounded-lg px-3 py-1.5 text-xs focus:outline-none focus:border-blue-500 ${m.text}`}
-                      placeholder="What changed? (optional)" value={changeNote} onChange={e => setChangeNote(e.target.value)} />
-                  )}
-                  <div className="flex gap-2 pt-1">
-                    <button onClick={() => doSave()} disabled={!hasSavablePrompt} className="flex-1 flex items-center justify-center gap-1.5 bg-green-600 hover:bg-green-500 disabled:opacity-40 text-white rounded-lg py-1.5 text-sm font-semibold transition-colors"><Ic n="Save" size={12} />Save ⌘S</button>
-                    <button onClick={() => { setShowSave(false); setEditingId(null); }} className={`px-4 ${m.btn} rounded-lg text-sm ${m.textBody} transition-colors`}>Cancel</button>
-                  </div>
-                </div>
-              )}
               {/* Quick Inject */}
               {lib.quickInject.length > 0 && (
                 <div>
@@ -613,6 +597,46 @@ export default function App() {
               )}
               </div>
             </div>
+            {/* Save panel — pinned outside scroll container */}
+            {showSave && (
+              <div className={`shrink-0 ${m.surface} border-t ${m.border} p-3 flex flex-col gap-2`}>
+                <span className={`text-xs ${m.textAlt} font-semibold uppercase tracking-wider`}>{editingId ? 'Update Prompt' : 'Save to Library'}</span>
+                <input autoFocus className={`${m.input} border rounded-lg px-3 py-1.5 text-sm focus:outline-none focus:border-violet-500 ${m.text}`}
+                  placeholder="Prompt title…" value={saveTitle} onChange={e => setSaveTitle(e.target.value)} />
+                <div className="flex gap-2">
+                  <select value={saveCollection} onChange={e => setSaveCollection(e.target.value)}
+                    className={`flex-1 ${m.input} border rounded-lg px-2 py-1.5 text-xs ${m.text} focus:outline-none`}>
+                    <option value="">No Collection</option>
+                    {lib.collections.map(c => <option key={c} value={c}>{c}</option>)}
+                  </select>
+                  {showNewColl ? (
+                    <div className="flex gap-1">
+                      <input autoFocus className={`w-28 ${m.input} border rounded-lg px-2 py-1.5 text-xs ${m.text} focus:outline-none focus:border-violet-500`}
+                        placeholder="Name…" value={newCollName} onChange={e => setNewCollName(e.target.value)}
+                        onKeyDown={e => {
+                          if (e.key === 'Enter') { const n = newCollName.trim(); if (n && !lib.collections.includes(n)) { lib.setCollections(p => [...p, n]); setSaveCollection(n); } setNewCollName(''); setShowNewColl(false); }
+                          if (e.key === 'Escape') setShowNewColl(false);
+                        }} />
+                      <button onClick={() => { const n = newCollName.trim(); if (n && !lib.collections.includes(n)) { lib.setCollections(p => [...p, n]); setSaveCollection(n); } setNewCollName(''); setShowNewColl(false); }}
+                        className="px-2 py-1.5 bg-violet-600 hover:bg-violet-500 text-white rounded-lg text-xs transition-colors"><Ic n="Check" size={11} /></button>
+                    </div>
+                  ) : (
+                    <button onClick={() => setShowNewColl(true)} className={`px-2.5 ${m.btn} rounded-lg ${m.textAlt} text-xs transition-colors flex items-center gap-1`}><Ic n="Plus" size={11} /></button>
+                  )}
+                </div>
+                <div className="flex flex-wrap gap-1.5">
+                  {ALL_TAGS.map(t => <TagChip key={t} tag={t} selected={saveTags.includes(t)} onClick={() => setSaveTags(prev => prev.includes(t) ? prev.filter(x => x !== t) : [...prev, t])} />)}
+                </div>
+                {editingId && (
+                  <input className={`${m.input} border rounded-lg px-3 py-1.5 text-xs focus:outline-none focus:border-blue-500 ${m.text}`}
+                    placeholder="What changed? (optional)" value={changeNote} onChange={e => setChangeNote(e.target.value)} />
+                )}
+                <div className="flex gap-2 pt-1">
+                  <button onClick={() => doSave()} disabled={!hasSavablePrompt} className="flex-1 flex items-center justify-center gap-1.5 bg-green-600 hover:bg-green-500 disabled:opacity-40 text-white rounded-lg py-1.5 text-sm font-semibold transition-colors"><Ic n="Save" size={12} />Save ⌘S</button>
+                  <button onClick={() => { setShowSave(false); setEditingId(null); }} className={`px-4 ${m.btn} rounded-lg text-sm ${m.textBody} transition-colors`}>Cancel</button>
+                </div>
+              </div>
+            )}
             </div>
           )}
           libraryPane={(
@@ -658,7 +682,7 @@ export default function App() {
           <div className={`${m.modal} border rounded-xl p-5 w-full max-w-md flex flex-col gap-4`} role="dialog" aria-modal="true" aria-labelledby="modal-vars">
             <div className="flex justify-between items-center">
               <h2 id="modal-vars" className={`font-bold text-sm ${m.text}`}>Fill Template Variables</h2>
-              <button onClick={() => setShowVarForm(false)} className={`${m.textSub} hover:text-white`}><Ic n="X" size={15} /></button>
+              <button type="button" onClick={() => setShowVarForm(false)} className={`${m.textSub} hover:text-white`}><Ic n="X" size={15} /></button>
             </div>
             <p className={`text-xs ${m.textAlt}`}>"{pendingTemplate.title}" contains template variables:</p>
             <div className="flex flex-col gap-2">
@@ -691,7 +715,7 @@ export default function App() {
           <div className={`${m.modal} border rounded-xl p-5 w-full max-w-sm flex flex-col gap-4`} role="dialog" aria-modal="true" aria-labelledby="modal-settings">
             <div className="flex justify-between items-center">
               <h2 id="modal-settings" className={`font-bold text-base ${m.text}`}>Settings</h2>
-              <button onClick={() => setShowSettings(false)} className={`${m.textSub} hover:text-white`}><Ic n="X" size={15} /></button>
+              <button type="button" onClick={() => setShowSettings(false)} className={`${m.textSub} hover:text-white`}><Ic n="X" size={15} /></button>
             </div>
             <label className={`flex items-center justify-between text-sm ${m.textBody} cursor-pointer`}>
               <span>Show enhancement notes</span>
@@ -729,7 +753,7 @@ export default function App() {
               <Ic n="Search" size={13} className={m.textSub} />
               <input autoFocus className={`flex-1 bg-transparent text-sm ${m.text} focus:outline-none placeholder-gray-500`}
                 placeholder="Search commands…" value={cmdQuery} onChange={e => setCmdQuery(e.target.value)} />
-              <span className={`text-xs ${m.textMuted} font-mono`}>ESC</span>
+              <span className={`text-xs ${m.textSub} font-mono`}>ESC</span>
             </div>
             <div className="max-h-72 overflow-y-auto">
               {filteredCmds.map((a, i) => (
@@ -739,7 +763,7 @@ export default function App() {
                   {a.hint && <kbd className={`text-xs font-mono px-1.5 py-0.5 ${m.pill} rounded`}>{a.hint}</kbd>}
                 </button>
               ))}
-              {filteredCmds.length === 0 && <p className={`text-xs ${m.textMuted} p-4 text-center`}>No commands found</p>}
+              {filteredCmds.length === 0 && <div className={`ui-empty-state text-xs ${m.textMuted}`}>No commands found</div>}
             </div>
           </div>
         </div>
@@ -750,7 +774,7 @@ export default function App() {
           <div className={`${m.modal} border rounded-xl p-5 w-full max-w-sm`} role="dialog" aria-modal="true" aria-labelledby="modal-shortcuts" onClick={e => e.stopPropagation()}>
             <div className="flex justify-between items-center mb-4">
               <h2 id="modal-shortcuts" className={`font-bold text-sm ${m.text}`}>Keyboard Shortcuts</h2>
-              <button onClick={() => setShowShortcuts(false)} className={m.textSub}><Ic n="X" size={14} /></button>
+              <button type="button" onClick={() => setShowShortcuts(false)} className={m.textSub}><Ic n="X" size={14} /></button>
             </div>
             <div className="flex flex-col gap-4">
               <div>
@@ -800,7 +824,7 @@ export default function App() {
           <div className={`${m.modal} border rounded-xl p-5 w-full max-w-md flex flex-col gap-4`} role="dialog" aria-modal="true" aria-labelledby="modal-pii">
             <div className="flex justify-between items-center">
               <h2 id="modal-pii" className={`font-bold text-sm ${m.text}`}>Sensitive Data Detected</h2>
-              <button onClick={piiCancel} className={`${m.textSub} hover:text-white`}><Ic n="X" size={15} /></button>
+              <button type="button" onClick={piiCancel} className={`${m.textSub} hover:text-white`}><Ic n="X" size={15} /></button>
             </div>
             <p className={`text-xs ${m.textAlt}`}>The following potentially sensitive items were found in your prompt:</p>
             <div className="flex flex-col gap-1 max-h-40 overflow-y-auto">

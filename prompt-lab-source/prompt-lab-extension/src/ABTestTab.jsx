@@ -29,11 +29,11 @@ export default function ABTestTab({ m, copy, notify, compact = false, pageScroll
         <p className={`text-xs font-semibold ${m.textSub} uppercase tracking-wider`}>A/B Prompt Testing</p>
         <div className={`flex items-center gap-3 ${compact ? 'flex-wrap justify-end' : ''}`}>
           {abWinner && <span className="text-xs font-bold text-green-400 flex items-center gap-1"><Ic n="Check" size={11} />Winner: {abWinner}</span>}
-          <button onClick={() => { runAB('a'); runAB('b'); }} disabled={abA.loading || abB.loading}
-            className="flex items-center gap-1.5 bg-violet-600 hover:bg-violet-500 disabled:opacity-40 text-white px-3 py-1.5 rounded-lg text-xs font-semibold transition-colors">
+          <button type="button" onClick={() => { runAB('a'); runAB('b'); }} disabled={abA.loading || abB.loading}
+            className="ui-control flex items-center gap-1.5 bg-violet-600 hover:bg-violet-500 disabled:opacity-40 text-white px-3 py-1.5 rounded-lg text-xs font-semibold transition-colors">
             <Ic n="FlaskConical" size={12} />Run Both
           </button>
-          <button onClick={resetAB} className={`px-2 py-1.5 ${m.btn} rounded-lg text-xs ${m.textAlt} transition-colors`}>Reset</button>
+          <button type="button" onClick={resetAB} className={`ui-control px-2 py-1.5 ${m.btn} rounded-lg text-xs ${m.textAlt} transition-colors`}>Reset</button>
         </div>
       </div>
       <div className={`px-4 py-2 border-b ${m.border}`}>
@@ -47,8 +47,8 @@ export default function ABTestTab({ m, copy, notify, compact = false, pageScroll
       {compact && (
         <div className={`px-3 py-2 border-b ${m.border} flex gap-1 overflow-x-auto shrink-0`}>
           {[['A', abA], ['B', abB]].map(([side, state]) => (
-            <button key={side} onClick={() => setActiveSide(side)}
-              className={`px-2.5 py-1 rounded-lg text-xs font-semibold whitespace-nowrap transition-colors ${activeSide === side ? 'bg-violet-600 text-white' : `${m.btn} ${m.textAlt}`}`}>
+            <button key={side} type="button" onClick={() => setActiveSide(side)}
+              className={`ui-control px-2.5 py-1 rounded-lg text-xs font-semibold whitespace-nowrap transition-colors ${activeSide === side ? 'bg-violet-600 text-white' : `${m.btn} ${m.textAlt}`}`}>
               Variant {side}{state.response ? ' Ready' : ''}
             </button>
           ))}
@@ -60,12 +60,12 @@ export default function ABTestTab({ m, copy, notify, compact = false, pageScroll
             <div className={`px-3 py-2 border-b ${m.border} flex items-center justify-between shrink-0`}>
               <span className="text-xs font-bold text-violet-400 uppercase">Variant {side}</span>
               <div className="flex gap-2">
-                <button onClick={() => runAB(side.toLowerCase())} disabled={state.loading || !state.prompt.trim()}
-                  className="flex items-center gap-1 text-xs bg-violet-600 hover:bg-violet-500 disabled:opacity-40 text-white px-2 py-1 rounded-lg transition-colors">
+                <button type="button" onClick={() => runAB(side.toLowerCase())} disabled={state.loading || !state.prompt.trim()}
+                  className="ui-control flex items-center gap-1 text-xs bg-violet-600 hover:bg-violet-500 disabled:opacity-40 text-white px-2 py-1 rounded-lg transition-colors">
                   {state.loading ? <span className="w-3 h-3 border-2 border-white border-t-transparent rounded-full animate-spin" /> : <Ic n="Wand2" size={10} />}Run {side}
                 </button>
                 {state.response && !abWinner && (
-                  <button onClick={() => pickWinner(side)} className="flex items-center gap-1 text-xs bg-green-600 hover:bg-green-500 text-white px-2 py-1 rounded-lg transition-colors"><Ic n="Check" size={10} />Pick {side}</button>
+                  <button type="button" onClick={() => pickWinner(side)} className="ui-control flex items-center gap-1 text-xs bg-green-600 hover:bg-green-500 text-white px-2 py-1 rounded-lg transition-colors"><Ic n="Check" size={10} />Pick {side}</button>
                 )}
               </div>
             </div>
@@ -83,15 +83,15 @@ export default function ABTestTab({ m, copy, notify, compact = false, pageScroll
                   {state.loading
                     ? <div className={`${m.codeBlock} border ${m.border} rounded-lg p-3 flex items-center gap-2`}><span className="w-3 h-3 border-2 border-violet-500 border-t-transparent rounded-full animate-spin shrink-0" /><span className={`text-xs ${m.textSub}`}>Generating…</span></div>
                     : state.error
-                      ? <div className="bg-red-950/40 border border-red-900 rounded-lg p-3 text-xs text-red-300 leading-relaxed">{state.response}</div>
+                      ? <div className={`${m.surface} border border-red-500/40 rounded-lg p-3 text-xs text-red-400 leading-relaxed`}>{state.response}</div>
                       : <div className={`${m.codeBlock} border ${m.border} rounded-lg p-3 text-xs ${m.textBody} leading-relaxed whitespace-pre-wrap max-h-72 overflow-y-auto`}>{state.response}</div>
                   }
                   {state.error && (
                     <div className="flex gap-3 mt-2">
-                      <button onClick={() => runAB(side.toLowerCase())} className="text-xs text-violet-400 hover:text-violet-300 transition-colors">Retry</button>
+                      <button type="button" onClick={() => runAB(side.toLowerCase())} className="text-xs text-violet-400 hover:text-violet-300 transition-colors">Retry</button>
                     </div>
                   )}
-                  {state.response && !state.error && <button onClick={() => copy(state.response)} className={`flex items-center gap-1 text-xs ${m.textSub} hover:text-white transition-colors mt-1`}><Ic n="Copy" size={10} />Copy response</button>}
+                  {state.response && !state.error && <button type="button" onClick={() => copy(state.response)} className={`flex items-center gap-1 text-xs ${m.textSub} hover:text-white transition-colors mt-1`}><Ic n="Copy" size={10} />Copy response</button>}
                 </div>
               )}
             </div>
@@ -99,7 +99,7 @@ export default function ABTestTab({ m, copy, notify, compact = false, pageScroll
         ))}
       </div>
       <div className={`border-t ${m.border} shrink-0`}>
-        <button onClick={() => setShowRuns(p => !p)}
+        <button type="button" onClick={() => setShowRuns(p => !p)}
           className={`w-full flex justify-between items-center px-4 py-2 text-xs font-semibold ${m.textSub} uppercase tracking-wider`}>
           <span>Recent Runs ({evalRuns.length})</span>
           <Ic n={showRuns ? 'ChevronUp' : 'ChevronDown'} size={10} />
@@ -122,12 +122,12 @@ export default function ABTestTab({ m, copy, notify, compact = false, pageScroll
           </div>
         )}
         {showRuns && evalRuns.length === 0 && (
-          <p className={`px-4 pb-3 text-xs ${m.textMuted}`}>No A/B runs saved yet.</p>
+          <div className={`ui-empty-state px-4 pb-3 text-xs ${m.textMuted}`}>No A/B runs saved yet.</div>
         )}
       </div>
       {/* Experiment History */}
       <div className={`border-t ${m.border} shrink-0`}>
-        <button onClick={() => setShowHistory(p => !p)}
+        <button type="button" onClick={() => setShowHistory(p => !p)}
           className={`w-full flex justify-between items-center px-4 py-2 text-xs font-semibold ${m.textSub} uppercase tracking-wider`}>
           <span>History ({history.length})</span>
           <Ic n={showHistory ? 'ChevronUp' : 'ChevronDown'} size={10} />
@@ -148,7 +148,7 @@ export default function ABTestTab({ m, copy, notify, compact = false, pageScroll
           </div>
         )}
         {showHistory && history.length === 0 && (
-          <p className={`px-4 pb-3 text-xs ${m.textMuted}`}>No experiments saved yet.</p>
+          <div className={`ui-empty-state px-4 pb-3 text-xs ${m.textMuted}`}>No experiments saved yet.</div>
         )}
       </div>
     </div>
