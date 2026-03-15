@@ -227,15 +227,7 @@ export function ngramSimilarity(a, b, n = 3) {
   return union === 0 ? 0 : intersection / union;
 }
 
-export function isTransientError(err) {
-  const msg = ensureString(err?.message || err).toLowerCase();
-  return msg.includes('429')
-    || msg.includes('rate')
-    || msg.includes('timeout')
-    || msg.includes('network')
-    || msg.includes('failed to fetch')
-    || msg.includes('temporar');
-}
+export { isRetryable as isTransientError } from './lib/errorTaxonomy.js';
 
 export {
   suggestTitleFromText,

@@ -1,13 +1,29 @@
+/**
+ * Provider execution layer.
+ *
+ * All provider-specific logic (endpoints, headers, payloads, response shapes)
+ * lives in the descriptor objects in providerRegistry.js. This module provides
+ * the generic execution pipeline: validate → build → fetch → normalize → return.
+ *
+ * Backward-compatible named exports (callAnthropic, callOllama, etc.) are
+ * preserved so existing call sites don't need to change yet.
+ */
+
 import {
   DEFAULTS,
   DEFAULT_PROVIDER,
   normalizeBaseUrl,
   normalizeProvider,
+  getProvider,
   toChatMessages,
   toGeminiContents,
 } from './providerRegistry.js';
+import { normalizeError, authError } from './errorTaxonomy.js';
 
-export { DEFAULT_PROVIDER, normalizeProvider } from './providerRegistry.js';
+export { DEFAULT_PROVIDER, normalizeProvider, getProvider, allProviders, providerHasCapability } from './providerRegistry.js';
+export { AppError, normalizeError, isRetryable, getUserMessage } from './errorTaxonomy.js';
+
+// ── Shared fetch helpers ────────────────────────────────────────────
 
 async function readErrorMessage(response, fallback) {
   try {
@@ -27,180 +43,77 @@ function fetchOrThrow(fetchImpl) {
   return fetchImpl;
 }
 
-export async function callAnthropic(payload, settings = {}, fetchImpl = globalThis.fetch) {
-  const apiKey = settings.apiKey;
-  if (!apiKey) {
-    throw new Error('No Anthropic API key set. Open extension Options to add one.');
+// ── Generic provider call via registry ──────────────────────────────
+
+async function executeProvider(descriptor, payload, settings, fetchImpl) {
+  // Auth gate
+  if (descriptor.requiresApiKey && !settings[descriptor.apiKeyField]) {
+    throw authError(descriptor.label);
   }
 
-  const requestBody = {
-    ...payload,
-    model: settings.anthropicModel || payload?.model || DEFAULTS.anthropicModel,
-  };
+  // Build request
+  const requestBody = descriptor.buildPayload(payload, settings);
+  const resolvedModel = descriptor.resolveModel(payload, settings);
+  const endpoint = typeof descriptor.resolveEndpoint === 'function'
+    ? descriptor.resolveEndpoint(settings, payload)
+    : descriptor.endpoint;
+  const headers = descriptor.buildHeaders(settings);
 
-  const response = await fetchOrThrow(fetchImpl)('https://api.anthropic.com/v1/messages', {
+  // Execute
+  const response = await fetchOrThrow(fetchImpl)(endpoint, {
     method: 'POST',
-    headers: {
-      'Content-Type': 'application/json',
-      'x-api-key': apiKey,
-      'anthropic-version': '2023-06-01',
-      'anthropic-dangerous-direct-browser-access': 'true',
-    },
+    headers,
     body: JSON.stringify(requestBody),
   });
 
   if (!response.ok) {
-    throw new Error(await readErrorMessage(response, `Anthropic request failed (${response.status})`));
+    throw new Error(await readErrorMessage(response, `${descriptor.label} request failed (${response.status})`));
   }
+
   const data = await response.json();
-  return { ...data, model: data?.model || requestBody.model, provider: 'anthropic' };
+  return descriptor.normalizeResponse(data, requestBody, resolvedModel);
+}
+
+// ── Public API ──────────────────────────────────────────────────────
+
+/**
+ * Call any registered provider by ID.
+ * Normalizes all errors into AppError at the boundary.
+ */
+export async function callProvider({ provider = DEFAULT_PROVIDER, payload, settings = {}, fetchImpl = globalThis.fetch }) {
+  const resolved = normalizeProvider(provider);
+  const descriptor = getProvider(resolved);
+  try {
+    return await executeProvider(descriptor, payload, settings, fetchImpl);
+  } catch (err) {
+    throw normalizeError(err, resolved);
+  }
+}
+
+// ── Backward-compatible named exports ───────────────────────────────
+// These preserve the existing call signatures so nothing else needs to change.
+
+export async function callAnthropic(payload, settings = {}, fetchImpl = globalThis.fetch) {
+  return executeProvider(getProvider('anthropic'), payload, settings, fetchImpl);
 }
 
 export async function callOllama(payload, settings = {}, fetchImpl = globalThis.fetch) {
-  const requestBody = {
-    model: settings.ollamaModel || payload?.model || DEFAULTS.ollamaModel,
-    stream: false,
-    messages: toChatMessages(payload),
-  };
-
-  const response = await fetchOrThrow(fetchImpl)(`${normalizeBaseUrl(settings.ollamaBaseUrl, DEFAULTS.ollamaBaseUrl)}/api/chat`, {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify(requestBody),
-  });
-
-  if (!response.ok) {
-    throw new Error(await readErrorMessage(response, `Ollama request failed (${response.status}). Is Ollama running?`));
-  }
-
-  const data = await response.json();
-  const text = data?.message?.content;
-  if (!text) throw new Error('Ollama returned empty content.');
-
-  return { content: [{ type: 'text', text }], model: requestBody.model, provider: 'ollama' };
+  return executeProvider(getProvider('ollama'), payload, settings, fetchImpl);
 }
 
 export async function callOpenAI(payload, settings = {}, fetchImpl = globalThis.fetch) {
-  const apiKey = settings.openaiApiKey;
-  if (!apiKey) {
-    throw new Error('No OpenAI API key set. Open extension Options to add one.');
-  }
-
-  const requestBody = {
-    model: settings.openaiModel || payload?.model || DEFAULTS.openaiModel,
-    max_tokens: payload.max_tokens || 1500,
-    messages: toChatMessages(payload),
-  };
-  if (typeof payload.temperature === 'number') requestBody.temperature = payload.temperature;
-
-  const response = await fetchOrThrow(fetchImpl)('https://api.openai.com/v1/chat/completions', {
-    method: 'POST',
-    headers: {
-      'Content-Type': 'application/json',
-      Authorization: `Bearer ${apiKey}`,
-    },
-    body: JSON.stringify(requestBody),
-  });
-
-  if (!response.ok) {
-    throw new Error(await readErrorMessage(response, `OpenAI request failed (${response.status})`));
-  }
-
-  const data = await response.json();
-  const text = data?.choices?.[0]?.message?.content;
-  if (!text) throw new Error('OpenAI returned empty content.');
-
-  return { content: [{ type: 'text', text }], model: requestBody.model, provider: 'openai' };
+  return executeProvider(getProvider('openai'), payload, settings, fetchImpl);
 }
 
 export async function callGemini(payload, settings = {}, fetchImpl = globalThis.fetch) {
-  const apiKey = settings.geminiApiKey;
-  if (!apiKey) {
-    throw new Error('No Gemini API key set. Open extension Options to add one.');
-  }
-
-  const modelId = settings.geminiModel || payload?.model || DEFAULTS.geminiModel;
-  const requestBody = {
-    contents: toGeminiContents(payload),
-    generationConfig: {},
-  };
-
-  if (typeof payload?.system === 'string' && payload.system.trim()) {
-    requestBody.systemInstruction = { parts: [{ text: payload.system }] };
-  }
-  if (payload.responseFormat === 'json') {
-    requestBody.generationConfig.responseMimeType = 'application/json';
-  }
-  if (payload.max_tokens) requestBody.generationConfig.maxOutputTokens = payload.max_tokens;
-  if (typeof payload.temperature === 'number') requestBody.generationConfig.temperature = payload.temperature;
-  // Cap thinking budget for 2.5+ models so output tokens aren't starved
-  if (modelId.includes('2.5')) {
-    requestBody.generationConfig.thinkingConfig = { thinkingBudget: 1024 };
-  }
-
-  const response = await fetchOrThrow(fetchImpl)(`https://generativelanguage.googleapis.com/v1beta/models/${modelId}:generateContent?key=${apiKey}`, {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify(requestBody),
-  });
-
-  if (!response.ok) {
-    throw new Error(await readErrorMessage(response, `Gemini request failed (${response.status})`));
-  }
-
-  const data = await response.json();
-  console.log('[Gemini raw response]', JSON.stringify(data, null, 2));
-  const candidate = data?.candidates?.[0];
-  const finishReason = candidate?.finishReason;
-  const text = candidate?.content?.parts?.map((part) => part.text || '').join('');
-  if (!text) {
-    if (finishReason === 'SAFETY') {
-      const ratings = candidate?.safetyRatings?.map((r) => `${r.category}: ${r.probability}`).join(', ');
-      throw new Error(`Gemini blocked this response due to safety filters (${ratings || 'no details'}).`);
-    }
-    if (data?.promptFeedback?.blockReason) {
-      throw new Error(`Gemini blocked the prompt: ${data.promptFeedback.blockReason}.`);
-    }
-    throw new Error('Gemini returned empty content.');
-  }
-
-  return { content: [{ type: 'text', text }], model: modelId, provider: 'gemini' };
+  return executeProvider(getProvider('gemini'), payload, settings, fetchImpl);
 }
 
 export async function callOpenRouter(payload, settings = {}, fetchImpl = globalThis.fetch) {
-  const apiKey = settings.openrouterApiKey;
-  if (!apiKey) {
-    throw new Error('No OpenRouter API key set. Open extension Options to add one.');
-  }
-
-  const requestBody = {
-    model: settings.openrouterModel || payload?.model || DEFAULTS.openrouterModel,
-    max_tokens: payload.max_tokens || 1500,
-    messages: toChatMessages(payload),
-  };
-  if (typeof payload.temperature === 'number') requestBody.temperature = payload.temperature;
-
-  const response = await fetchOrThrow(fetchImpl)('https://openrouter.ai/api/v1/chat/completions', {
-    method: 'POST',
-    headers: {
-      'Content-Type': 'application/json',
-      Authorization: `Bearer ${apiKey}`,
-      'HTTP-Referer': 'chrome-extension://prompt-lab',
-      'X-Title': 'Prompt Lab',
-    },
-    body: JSON.stringify(requestBody),
-  });
-
-  if (!response.ok) {
-    throw new Error(await readErrorMessage(response, `OpenRouter request failed (${response.status})`));
-  }
-
-  const data = await response.json();
-  const text = data?.choices?.[0]?.message?.content;
-  if (!text) throw new Error('OpenRouter returned empty content.');
-
-  return { content: [{ type: 'text', text }], model: requestBody.model, provider: 'openrouter' };
+  return executeProvider(getProvider('openrouter'), payload, settings, fetchImpl);
 }
+
+// ── Ollama model listing ────────────────────────────────────────────
 
 export async function listOllamaModels(baseUrl, fetchImpl = globalThis.fetch) {
   const response = await fetchOrThrow(fetchImpl)(`${normalizeBaseUrl(baseUrl, DEFAULTS.ollamaBaseUrl)}/api/tags`, {
@@ -217,19 +130,4 @@ export async function listOllamaModels(baseUrl, fetchImpl = globalThis.fetch) {
     family: model.details?.family || '',
     paramSize: model.details?.parameter_size || '',
   }));
-}
-
-export async function callProvider({ provider = DEFAULT_PROVIDER, payload, settings = {}, fetchImpl = globalThis.fetch }) {
-  switch (normalizeProvider(provider)) {
-    case 'ollama':
-      return callOllama(payload, settings, fetchImpl);
-    case 'openai':
-      return callOpenAI(payload, settings, fetchImpl);
-    case 'gemini':
-      return callGemini(payload, settings, fetchImpl);
-    case 'openrouter':
-      return callOpenRouter(payload, settings, fetchImpl);
-    default:
-      return callAnthropic(payload, settings, fetchImpl);
-  }
 }

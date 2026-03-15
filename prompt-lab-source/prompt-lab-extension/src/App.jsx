@@ -1,22 +1,27 @@
 import { useEffect, useState } from 'react';
 import Ic from './icons';
 import {
-  wordDiff, scorePrompt, extractVars,
-  looksSensitive, isGhostVar, ngramSimilarity,
+  wordDiff, scorePrompt,
+  isGhostVar, ngramSimilarity,
 } from './promptUtils';
-import { ALL_TAGS, MODES, T } from './constants';
+import { ALL_TAGS, T } from './constants';
 import useLibrary from './hooks/usePromptLibrary.js';
 import useUiState from './hooks/useUiState.js';
-import usePromptEditor from './hooks/usePromptEditor.js';
+import useEditorState from './hooks/useEditorState.js';
+import useExecutionFlow from './hooks/useExecutionFlow.js';
+import usePersistenceFlow from './hooks/usePersistenceFlow.js';
 import Toast from './Toast';
 import TagChip from './TagChip';
 import PadTab from './PadTab';
 import ComposerTab from './ComposerTab';
 import ABTestTab from './ABTestTab';
-import TestCasesPanel from './TestCasesPanel';
+import LibraryPanel from './LibraryPanel';
 import DesktopSettingsModal from './DesktopSettingsModal';
 import VersionDiffModal from './VersionDiffModal';
 import { isExtension } from './lib/platform.js';
+import MainWorkspace from './MainWorkspace';
+import EditorActions from './EditorActions';
+import { ThemeProvider } from './theme/ThemeProvider.jsx';
 
 // ── Main App ──────────────────────────────────────────────────────────────────
 export default function App() {
@@ -48,8 +53,21 @@ export default function App() {
   // ── Library hook ──
   const lib = useLibrary(notify);
 
-  // ── Editor hook ──
-  const ed = usePromptEditor(ui, lib);
+  // ── Editor controllers (state + execution + persistence) ──
+  const editorState = useEditorState();
+  const persistenceFlow = usePersistenceFlow({ ui, lib, editor: editorState });
+  const executionFlow = useExecutionFlow({ ui, lib, editor: editorState, persistence: persistenceFlow });
+  const ed = {
+    ...editorState,
+    ...persistenceFlow,
+    ...executionFlow,
+    doSave: () => persistenceFlow.doSave(executionFlow.refreshEvalRuns),
+    clearEditor: () => {
+      executionFlow.clearExecutionState();
+      persistenceFlow.clearPersistenceState();
+      editorState.clearEditorState();
+    },
+  };
   const {
     raw, setRaw, enhanced, setEnhanced, variants, notes, loading, error,
     enhMode, setEnhMode, showNotes, setShowNotes,
@@ -102,6 +120,10 @@ export default function App() {
   const goldenSimilarity = goldenResponse?.text && comparisonText
     ? ngramSimilarity(goldenResponse.text, comparisonText)
     : 0;
+  const goldenThreshold = currentEntry?.goldenThreshold ?? 0.7;
+  const goldenVerdict = goldenResponse?.text && comparisonText
+    ? (goldenSimilarity >= goldenThreshold ? 'pass' : 'fail')
+    : null;
 
   const loadTemplateWithoutVars = () => {
     if (!pendingTemplate) return;
@@ -172,7 +194,8 @@ export default function App() {
 
   // ─────────────────────────────────────────────────────────────────────────
   return (
-    <div className={`min-h-screen ${m.bg} ${m.text} flex flex-col`} style={{ fontFamily: 'system-ui,sans-serif' }}>
+    <ThemeProvider mode={colorMode}>
+      <div className={`min-h-screen ${m.bg} ${m.text} flex flex-col`} style={{ fontFamily: 'system-ui,sans-serif' }}>
       <h1 className="sr-only">Prompt Lab</h1>
 
       {/* Header */}
@@ -210,10 +233,15 @@ export default function App() {
       <main role="tabpanel" aria-label={tab} className="flex-1 flex flex-col overflow-hidden">
       {/* ══ EDITOR TAB ══ */}
       {tab === 'editor' && (
-        <div className={isWeb ? `flex ${compact ? 'flex-col' : ''}` : 'flex flex-1 overflow-hidden'}>
-          {showEditorPane && (
-          <div className={`${showLibraryPane && !compact ? `w-1/2 border-r ${m.border}` : 'w-full'} flex flex-col ${isWeb ? '' : 'overflow-y-auto'}`}>
-            <div className="p-4 flex flex-col gap-3">
+        <MainWorkspace
+          m={m}
+          compact={compact}
+          isWeb={isWeb}
+          showEditorPane={showEditorPane}
+          showLibraryPane={showLibraryPane}
+          editorPane={(
+            <div className="h-full min-h-0 flex flex-col overflow-hidden">
+              <div className="p-4 flex flex-col gap-3 h-full min-h-0 overflow-hidden">
               <div className="flex gap-1">
                 {[
                   ['editor', 'Editor'],
@@ -278,28 +306,22 @@ export default function App() {
                 </div>
               )}
               {/* Mode + Enhance */}
-              <div className={`flex gap-2 ${compact ? 'flex-col' : ''}`}>
-                <div className={`flex gap-2 ${compact ? 'w-full' : 'flex-1'}`}>
-                  <select value={enhMode} onChange={e => setEnhMode(e.target.value)}
-                    className={`${m.input} border rounded-lg px-2 py-1.5 text-xs ${m.text} focus:outline-none shrink-0 ${compact ? 'w-32' : 'max-w-36'}`}>
-                    {MODES.map(md => <option key={md.id} value={md.id}>{md.label}</option>)}
-                  </select>
-                  <button onClick={() => enhance()} disabled={loading || !raw.trim()}
-                    className="flex-1 flex items-center justify-center gap-2 bg-violet-600 hover:bg-violet-500 disabled:opacity-40 text-white rounded-lg py-2 text-sm font-semibold transition-colors">
-                    {loading ? <><span className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin" />Enhancing…</> : <><Ic n="Wand2" size={13} />Enhance ⌘↵</>}
-                  </button>
-                  <button onClick={runAllCases} disabled={loading || runningCases || currentTestCases.length === 0}
-                    className="flex items-center justify-center gap-1 px-3 bg-blue-600 hover:bg-blue-500 disabled:opacity-40 text-white rounded-lg py-2 text-xs font-semibold transition-colors">
-                    {runningCases ? <span className="w-3.5 h-3.5 border-2 border-white border-t-transparent rounded-full animate-spin" /> : <Ic n="FlaskConical" size={12} />}Run Cases
-                  </button>
-                </div>
-                <div className={`flex gap-2 ${compact ? 'w-full' : ''}`}>
-                  <button onClick={() => openSavePanel()} disabled={!hasSavablePrompt}
-                    className="flex-1 px-2.5 bg-green-600 hover:bg-green-500 disabled:opacity-40 text-white rounded-lg text-xs font-semibold transition-colors py-2">Save</button>
-                  <button onClick={clearEditor} disabled={loading}
-                    className="flex-1 px-2.5 bg-red-600 hover:bg-red-500 disabled:opacity-40 text-white rounded-lg text-xs font-semibold transition-colors py-2">Clear</button>
-                </div>
-              </div>
+              <EditorActions
+                m={m}
+                compact={compact}
+                enhMode={enhMode}
+                onEnhanceModeChange={setEnhMode}
+                onEnhance={enhance}
+                onRunCases={runAllCases}
+                onSave={() => openSavePanel()}
+                onClear={clearEditor}
+                loading={loading}
+                hasInput={Boolean(raw.trim())}
+                runningCases={runningCases}
+                testCaseCount={currentTestCases.length}
+                hasSavablePrompt={hasSavablePrompt}
+                enhanceShortcutLabel={`${primaryModKey}+Enter`}
+              />
               {editingId && currentTestCases.length > 0 && (
                 <div className={`flex items-center justify-between ${m.surface} border ${m.border} rounded-lg px-3 py-2`}>
                   <span className={`text-xs ${m.textSub} flex items-center gap-1.5`}>
@@ -331,11 +353,19 @@ export default function App() {
                   </div>
                 </div>
               )}
+              <div className="min-h-0 flex-1 overflow-y-auto pr-1 space-y-3">
               {/* Enhanced */}
               {enhanced && <>
                 <div>
                   <div className="flex justify-between items-center mb-1.5">
-                    <span className="text-xs text-violet-400 uppercase tracking-widest font-semibold">Enhanced</span>
+                    <span className="flex items-center gap-2">
+                      <span className="text-xs text-violet-400 uppercase tracking-widest font-semibold">Enhanced</span>
+                      {goldenVerdict && (
+                        <span className={`text-[10px] font-bold uppercase px-1.5 py-0.5 rounded ${goldenVerdict === 'pass' ? 'bg-emerald-500/20 text-emerald-400' : 'bg-red-500/20 text-red-400'}`}>
+                          {goldenVerdict === 'pass' ? '✓' : '✗'} {Math.round(goldenSimilarity * 100)}%
+                        </span>
+                      )}
+                    </span>
                     <div className={`flex items-center gap-3 ${compact ? 'flex-wrap justify-end' : ''}`}>
                       <button onClick={() => setShowDiff(p => !p)} className={`flex items-center gap-1 text-xs transition-colors ${showDiff ? 'text-violet-400' : `${m.textSub} hover:text-white`}`}>
                         <Ic n="GitBranch" size={10} />{showDiff ? 'Hide Diff' : 'Show Diff'}
@@ -417,6 +447,11 @@ export default function App() {
                             <span>{run.provider}</span>
                             <span>{run.model}</span>
                             <span>{run.latencyMs}ms</span>
+                            {run.goldenScore != null && (
+                              <span className={`font-semibold ${run.goldenScore >= goldenThreshold ? 'text-emerald-400' : 'text-red-400'}`}>
+                                golden {Math.round(run.goldenScore * 100)}%
+                              </span>
+                            )}
                           </div>
                           <p className={`${m.textBody} leading-relaxed whitespace-pre-wrap`}>{(run.output || '').slice(0, 220)}{run.output && run.output.length > 220 ? '…' : ''}</p>
                           {run.output && (
@@ -478,10 +513,26 @@ export default function App() {
                           </div>
                           <div className="flex items-center justify-between gap-3 mb-1">
                             <span className={`text-xs ${m.textSub}`}>Similarity vs {comparisonSourceLabel.toLowerCase()}</span>
-                            <span className="text-xs font-semibold text-emerald-400">{Math.round(goldenSimilarity * 100)}%</span>
+                            <span className={`text-xs font-semibold ${goldenVerdict === 'fail' ? 'text-red-400' : 'text-emerald-400'}`}>
+                              {Math.round(goldenSimilarity * 100)}%
+                              {goldenVerdict && <span className="ml-1">({goldenVerdict})</span>}
+                            </span>
                           </div>
-                          <div className={`w-full h-2 rounded-full overflow-hidden ${m.input} border ${m.border}`}>
-                            <div className="h-full bg-emerald-500 transition-all" style={{ width: `${Math.max(0, Math.min(100, goldenSimilarity * 100))}%` }} />
+                          <div className={`relative w-full h-2 rounded-full overflow-hidden ${m.input} border ${m.border}`}>
+                            <div className={`h-full transition-all ${goldenVerdict === 'fail' ? 'bg-red-500' : 'bg-emerald-500'}`} style={{ width: `${Math.max(0, Math.min(100, goldenSimilarity * 100))}%` }} />
+                            <div className="absolute top-0 bottom-0 w-px bg-white/50" style={{ left: `${goldenThreshold * 100}%` }} title={`Threshold: ${Math.round(goldenThreshold * 100)}%`} />
+                          </div>
+                          <div className="flex items-center justify-between gap-2 mt-2">
+                            <label className={`text-xs ${m.textMuted}`}>Pass threshold</label>
+                            <div className="flex items-center gap-2">
+                              <input
+                                type="range" min="0" max="100" step="5"
+                                value={Math.round(goldenThreshold * 100)}
+                                onChange={(e) => lib.setGoldenThreshold(editingId, Number(e.target.value) / 100)}
+                                className="w-20 h-1 accent-emerald-500"
+                              />
+                              <span className={`text-xs font-mono ${m.textSub} w-8 text-right`}>{Math.round(goldenThreshold * 100)}%</span>
+                            </div>
                           </div>
                         </div>
                         {comparisonText ? (
@@ -560,178 +611,32 @@ export default function App() {
                   ))}
                 </div>
               )}
-            </div>
-          </div>
-          )}
-
-          {/* Right — Library */}
-          {showLibraryPane && (
-          <div className={`${showEditorPane && !compact ? 'w-1/2' : 'w-full'} flex flex-col ${isWeb ? '' : 'overflow-hidden'}`}>
-            <div className={`p-3 border-b ${m.border} flex flex-col gap-2 shrink-0`}>
-              {!showEditorPane && (
-                <div className="flex gap-1">
-                  {[
-                    ['editor', 'Editor'],
-                    ['library', 'Library'],
-                    ...(!compact ? [['split', 'Split']] : []),
-                  ].map(([id, label]) => (
-                    <button key={id} onClick={() => setEditorLayout(id)}
-                      className={`text-xs px-2 py-1 rounded-lg transition-colors ${effectiveEditorLayout === id ? 'bg-violet-600 text-white' : `${m.btn} ${m.textAlt}`}`}>
-                      {label}
-                    </button>
-                  ))}
-                </div>
-              )}
-              <div className={`flex gap-2 ${compact ? 'flex-col' : ''}`}>
-                <div className="relative flex-1">
-                  <Ic n="Search" size={11} className={`absolute left-2.5 top-1/2 -translate-y-1/2 ${m.textMuted}`} />
-                  <input className={`w-full ${m.input} border rounded-lg pl-7 pr-3 py-1.5 text-xs focus:outline-none focus:border-violet-500 ${m.text}`}
-                    placeholder="Search…" value={lib.search} onChange={e => lib.setSearch(e.target.value)} />
-                </div>
-                <div className={`flex gap-2 ${compact ? 'w-full' : ''}`}>
-                  <select value={lib.sortBy} onChange={e => lib.setSortBy(e.target.value)}
-                    className={`${m.input} border rounded-lg px-2 py-1.5 text-xs ${m.textBody} focus:outline-none ${compact ? 'flex-1' : ''}`}>
-                    <option value="newest">Newest</option><option value="oldest">Oldest</option><option value="most-used">Most Used</option><option value="manual">Manual</option>
-                  </select>
-                  <button onClick={lib.exportLib} className={`px-2.5 rounded-lg text-xs ${m.btn} ${m.textAlt} transition-colors ${compact ? 'flex-1 py-1.5' : ''}`}>Export</button>
-                </div>
               </div>
-              {lib.collections.length > 0 && (
-                <div className="flex gap-1 flex-wrap">
-                  <button onClick={() => lib.setActiveCollection(null)} className={`px-2 py-0.5 rounded-full text-xs font-medium transition-colors ${!lib.activeCollection ? 'bg-violet-600 text-white' : `${m.btn} ${m.textAlt}`}`}>All</button>
-                  {lib.collections.map(c => (
-                    <button key={c} onClick={() => lib.setActiveCollection(p => p === c ? null : c)}
-                      className={`px-2 py-0.5 rounded-full text-xs font-medium transition-colors flex items-center gap-1 ${lib.activeCollection === c ? 'bg-violet-600 text-white' : `${m.btn} ${m.textAlt}`}`}>
-                      <Ic n="FolderOpen" size={9} />{c}
-                    </button>
-                  ))}
-                </div>
-              )}
-              {lib.allLibTags.length > 0 && (
-                <div className="flex flex-wrap gap-1">
-                  {lib.allLibTags.map(t => <TagChip key={t} tag={t} selected={lib.activeTag === t} onClick={() => lib.setActiveTag(p => p === t ? null : t)} />)}
-                </div>
-              )}
             </div>
-            <div className={`${isWeb ? '' : 'flex-1 overflow-y-auto'} p-3 flex flex-col gap-2`}>
-              {lib.filtered.length === 0 && (
-                <div className="flex flex-col items-center justify-center h-full gap-2 text-center">
-                  <Ic n="Wand2" size={24} className={m.textMuted} />
-                  <p className={`text-sm ${m.textSub}`}>{lib.library.length === 0 ? 'No saved prompts yet.' : 'No results found.'}</p>
-                </div>
-              )}
-              {lib.filtered.map(entry => {
-                const manual = lib.sortBy === 'manual';
-                const shareUrl = lib.shareId === entry.id ? lib.getShareUrl(entry) : null;
-                return (
-                  <div key={entry.id}
-                    draggable={manual}
-                    onDragStart={e => { if (!manual) return; e.dataTransfer.setData('libraryEntryId', entry.id); lib.setDraggingLibraryId(entry.id); }}
-                    onDragEnd={() => { lib.setDraggingLibraryId(null); lib.setDragOverLibraryId(null); }}
-                    onDragOver={e => { if (!manual) return; e.preventDefault(); lib.setDragOverLibraryId(entry.id); }}
-                    onDrop={e => { if (!manual) return; e.preventDefault(); lib.moveLibraryEntry(e.dataTransfer.getData('libraryEntryId'), entry.id); lib.setDragOverLibraryId(null); }}
-                    className={`${m.surface} border ${m.border} ${m.borderHov} rounded-lg overflow-hidden transition-colors ${manual ? 'cursor-grab active:cursor-grabbing' : ''} ${lib.dragOverLibraryId === entry.id ? 'border-violet-500' : ''} ${lib.draggingLibraryId === entry.id ? 'opacity-50' : ''}`}>
-                    <div className="flex items-start justify-between px-3 py-2.5 gap-2">
-                      <div className="flex-1 min-w-0">
-                        {lib.renamingId === entry.id ? (
-                          <div className="flex gap-1.5">
-                            <input autoFocus value={lib.renameValue} onChange={e => lib.setRenameValue(e.target.value)}
-                              className={`flex-1 ${m.input} border rounded-lg px-2 py-1 text-xs focus:outline-none focus:border-violet-500 ${m.text}`} />
-                            <button onClick={() => lib.renameEntry(entry.id, lib.renameValue, editingId, setSaveTitle)} className="px-2 py-1 text-xs bg-violet-600 hover:bg-violet-500 text-white rounded-lg transition-colors">Save</button>
-                            <button onClick={() => { lib.setRenamingId(null); lib.setRenameValue(''); }} className={`px-2 py-1 text-xs ${m.btn} ${m.textAlt} rounded-lg transition-colors`}>Cancel</button>
-                          </div>
-                        ) : (
-                          <p className={`text-sm font-semibold ${m.text} truncate`}>{entry.title}</p>
-                        )}
-                        <div className={`flex items-center gap-2 text-xs ${m.textMuted} mt-0.5 flex-wrap`}>
-                          {entry.collection && <span className="flex items-center gap-1"><Ic n="FolderOpen" size={8} />{entry.collection}</span>}
-                          <span>{new Date(entry.createdAt).toLocaleDateString()}</span>
-                          {entry.useCount > 0 && <span className="text-violet-400">{entry.useCount}×</span>}
-                          {(entry.versions || []).length > 0 && <span className="flex items-center gap-0.5 text-blue-400"><Ic n="Clock" size={8} />{entry.versions.length}v</span>}
-                          {extractVars(entry.enhanced).length > 0 && <span className="text-amber-400">{'{{vars}}'}</span>}
-                        </div>
-                      </div>
-                      <div className="flex items-center gap-1 shrink-0">
-                        {manual && <Ic n="GripVertical" size={12} className={m.textMuted} />}
-                        <button onClick={() => { copy(entry.enhanced); lib.bumpUse(entry.id); }} className={`p-1.5 rounded ${m.btn} ${m.textSub} hover:text-violet-400 transition-colors`}><Ic n="Copy" size={12} /></button>
-                        <button onClick={() => loadEntry(entry)} className={`px-2 py-1 rounded ${m.btn} text-violet-400 text-xs font-semibold transition-colors`}>Load</button>
-                        <button onClick={() => lib.setExpandedId(p => p === entry.id ? null : entry.id)} className={`p-1.5 rounded ${m.btn} ${m.textSub} transition-colors`}>
-                          {lib.expandedId === entry.id ? <Ic n="ChevronUp" size={12} /> : <Ic n="ChevronDown" size={12} />}
-                        </button>
-                      </div>
-                    </div>
-                    {(entry.tags || []).length > 0 && <div className="flex flex-wrap gap-1 px-3 pb-2">{entry.tags.map(t => <TagChip key={t} tag={t} />)}</div>}
-                    {lib.shareId === entry.id && (
-                      <div className={`border-t ${m.border} px-3 py-2 flex gap-2`}>
-                        <input readOnly className={`flex-1 ${m.input} border rounded-lg px-2 py-1 text-xs focus:outline-none ${m.text} font-mono`} value={shareUrl || 'Unable to create share URL'} />
-                        <button onClick={() => copy(shareUrl || '')} className="px-2 py-1 bg-violet-600 hover:bg-violet-500 text-white rounded-lg text-xs font-medium transition-colors">Copy URL</button>
-                      </div>
-                    )}
-                    {lib.expandedId === entry.id && (
-                      <div className={`border-t ${m.border} px-3 py-3 flex flex-col gap-3`}>
-                        <div className={`flex flex-wrap gap-2`}>
-                          <button onClick={() => addToComposer(entry)} className={`px-2 py-1 rounded ${m.btn} ${m.textAlt} text-xs transition-colors flex items-center gap-1`}><Ic n="Layers" size={11} />Add to Compose</button>
-                          <button onClick={() => {
-                            if ((looksSensitive(entry.original) || looksSensitive(entry.enhanced) || looksSensitive(entry.notes))
-                              && !window.confirm('This shared link may include sensitive content. Continue?')) return;
-                            lib.setShareId(p => p === entry.id ? null : entry.id);
-                          }} className={`px-2 py-1 rounded ${m.btn} ${m.textAlt} text-xs transition-colors flex items-center gap-1`}><Ic n="Share2" size={11} />Share</button>
-                          <button onClick={() => openSavePanel(entry)} className={`px-2 py-1 rounded ${m.btn} ${m.textAlt} text-xs transition-colors`}>Edit</button>
-                          <button onClick={() => { lib.setRenamingId(entry.id); lib.setRenameValue(entry.title); }} className={`px-2 py-1 rounded ${m.btn} ${m.textAlt} text-xs transition-colors`}>Rename</button>
-                          <button onClick={() => lib.del(entry.id)} className="px-2 py-1 rounded bg-red-600 hover:bg-red-500 text-white text-xs transition-colors flex items-center gap-1"><Ic n="Trash2" size={11} />Delete</button>
-                        </div>
-                        <TestCasesPanel
-                          m={m} entry={entry} cases={testCasesByPrompt[entry.id] || []}
-                          evalRuns={evalRuns} editingCaseId={editingCaseId}
-                          caseFormPromptId={caseFormPromptId}
-                          caseTitle={caseTitle} setCaseTitle={setCaseTitle}
-                          caseInput={caseInput} setCaseInput={setCaseInput}
-                          caseTraits={caseTraits} setCaseTraits={setCaseTraits}
-                          caseExclusions={caseExclusions} setCaseExclusions={setCaseExclusions}
-                          caseNotes={caseNotes} setCaseNotes={setCaseNotes}
-                          openCaseForm={openCaseForm} resetCaseForm={resetCaseForm}
-                          saveCaseForPrompt={saveCaseForPrompt}
-                          loadCaseIntoEditor={loadCaseIntoEditor}
-                          runSingleCase={runSingleCase} removeCase={removeCase}
-                        />
-                        {[['Original', m.textSub, entry.original], ['Enhanced', 'text-violet-400', entry.enhanced]].map(([lbl, col, txt]) => (
-                          <div key={lbl}><p className={`text-xs ${col} font-semibold mb-1 uppercase tracking-wider`}>{lbl}</p><p className={`text-xs ${m.textBody} leading-relaxed ${m.codeBlock} rounded-lg p-2`}>{txt}</p></div>
-                        ))}
-                        {entry.notes && <div><p className={`text-xs ${m.notesText} font-semibold mb-1 uppercase tracking-wider`}>Notes</p><p className={`text-xs ${m.textAlt} leading-relaxed`}>{entry.notes}</p></div>}
-                        {(entry.variants || []).length > 0 && (
-                          <div><p className={`text-xs ${m.textSub} font-semibold mb-1.5 uppercase tracking-wider`}>Variants</p>
-                            {entry.variants.map((v, i) => <div key={i} className="mb-1.5"><span className="text-xs text-violet-400 font-bold">{v.label}: </span><span className={`text-xs ${m.textAlt}`}>{v.content}</span></div>)}
-                          </div>
-                        )}
-                        {(entry.versions || []).length > 0 && (
-                          <div>
-                            <div className="flex items-center justify-between mb-1">
-                              <p className="text-xs text-blue-400 font-semibold uppercase tracking-wider flex items-center gap-1"><Ic n="Clock" size={9} />Version History ({entry.versions.length})</p>
-                              <button
-                                onClick={() => lib.openVersionHistory(entry.id, 0)}
-                                className={`text-xs ${m.textSub} hover:text-white transition-colors flex items-center gap-1`}
-                              >
-                                <Ic n="GitBranch" size={9} />
-                                Open History
-                              </button>
-                            </div>
-                            <div className={`${m.codeBlock} border ${m.border} rounded-lg p-2.5 text-xs ${m.textAlt}`}>
-                              <div className="flex items-center justify-between gap-3">
-                                <span>Latest snapshot: {new Date(entry.versions[entry.versions.length - 1].savedAt).toLocaleString()}</span>
-                                <span className={m.textMuted}>Restore and compare in modal</span>
-                              </div>
-                            </div>
-                          </div>
-                        )}
-                      </div>
-                    )}
-                  </div>
-                );
-              })}
             </div>
-          </div>
           )}
-        </div>
+          libraryPane={(
+            <LibraryPanel
+              m={m} lib={lib} compact={compact} isWeb={isWeb}
+              showEditorPane={showEditorPane}
+              effectiveEditorLayout={effectiveEditorLayout} setEditorLayout={setEditorLayout}
+              editingId={editingId} setSaveTitle={setSaveTitle}
+              testCasesByPrompt={testCasesByPrompt} evalRuns={evalRuns}
+              editingCaseId={editingCaseId} caseFormPromptId={caseFormPromptId}
+              caseTitle={caseTitle} setCaseTitle={setCaseTitle}
+              caseInput={caseInput} setCaseInput={setCaseInput}
+              caseTraits={caseTraits} setCaseTraits={setCaseTraits}
+              caseExclusions={caseExclusions} setCaseExclusions={setCaseExclusions}
+              caseNotes={caseNotes} setCaseNotes={setCaseNotes}
+              openCaseForm={openCaseForm} resetCaseForm={resetCaseForm}
+              saveCaseForPrompt={saveCaseForPrompt}
+              loadCaseIntoEditor={loadCaseIntoEditor}
+              runSingleCase={runSingleCase} removeCase={removeCase}
+              loadEntry={loadEntry} addToComposer={addToComposer}
+              openSavePanel={openSavePanel} copy={copy}
+            />
+          )}
+        />
       )}
 
       {/* ══ COMPOSER TAB ══ */}
@@ -935,6 +840,7 @@ export default function App() {
           notify={notify}
         />
       )}
-    </div>
+      </div>
+    </ThemeProvider>
   );
 }
