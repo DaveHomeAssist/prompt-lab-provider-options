@@ -122,11 +122,41 @@ export function decodeShare(str) {
   }
 }
 
+function extractTextFromContentBlocks(content) {
+  if (!Array.isArray(content)) return '';
+  return content
+    .map((block) => {
+      if (typeof block === 'string') return block;
+      if (typeof block?.text === 'string') return block.text;
+      if (typeof block?.content === 'string') return block.content;
+      return '';
+    })
+    .join('');
+}
+
 export function extractTextFromAnthropic(data) {
   if (data?.error?.message) throw new Error(data.error.message);
-  if (!Array.isArray(data?.content)) throw new Error('Model returned no content.');
-  const text = data.content.map(block => (typeof block.text === 'string' ? block.text : '')).join('').trim();
-  if (!text) throw new Error('Model returned empty content. Try again.');
+
+  const candidates = [];
+  const anthropicText = extractTextFromContentBlocks(data?.content);
+  if (anthropicText) candidates.push(anthropicText);
+  if (typeof data?.content === 'string') candidates.push(data.content);
+
+  const openAIContent = data?.choices?.[0]?.message?.content;
+  if (typeof openAIContent === 'string') candidates.push(openAIContent);
+  else {
+    const openAIBlocks = extractTextFromContentBlocks(openAIContent);
+    if (openAIBlocks) candidates.push(openAIBlocks);
+  }
+
+  const geminiText = Array.isArray(data?.candidates?.[0]?.content?.parts)
+    ? data.candidates[0].content.parts.map((part) => (typeof part?.text === 'string' ? part.text : '')).join('')
+    : '';
+  if (geminiText) candidates.push(geminiText);
+  if (typeof data?.output_text === 'string') candidates.push(data.output_text);
+
+  const text = candidates.map((value) => ensureString(value).trim()).find(Boolean);
+  if (!text) throw new Error('Model returned no text content. Try again.');
   return text;
 }
 
@@ -141,23 +171,49 @@ function stringifyPromptValue(value) {
   }
 }
 
+function coercePromptText(value) {
+  if (typeof value === 'string') return value.trim();
+  if (typeof value === 'number' || typeof value === 'boolean') return String(value);
+  if (!value || typeof value !== 'object') return '';
+
+  if (Array.isArray(value)) {
+    return value.map((item) => coercePromptText(item)).filter(Boolean).join('\n').trim();
+  }
+
+  for (const key of ['enhanced', 'content', 'prompt', 'text', 'rewrite', 'output', 'result']) {
+    const candidate = coercePromptText(value[key]);
+    if (candidate) return candidate;
+  }
+
+  const structured = ['role', 'task', 'context', 'format', 'constraints', 'tone', 'audience', 'goal']
+    .filter((key) => typeof value[key] === 'string' && value[key].trim())
+    .map((key) => `${key}: ${value[key].trim()}`);
+  if (structured.length) return structured.join('\n');
+
+  return Object.entries(value)
+    .filter(([, entry]) => typeof entry === 'string' && entry.trim())
+    .map(([key, entry]) => `${key}: ${entry.trim()}`)
+    .join('\n')
+    .trim();
+}
+
 function normalizeParsedPayload(payload) {
   if (!payload || typeof payload !== 'object' || Array.isArray(payload)) return payload;
   return {
     ...payload,
-    enhanced: stringifyPromptValue(payload.enhanced),
+    enhanced: coercePromptText(payload.enhanced),
     variants: Array.isArray(payload.variants)
       ? payload.variants
         .map((variant) => {
           if (!variant || typeof variant !== 'object') {
             return {
               label: 'Variant',
-              content: stringifyPromptValue(variant),
+              content: coercePromptText(variant),
             };
           }
           return {
             label: stringifyPromptValue(variant.label).trim() || 'Variant',
-            content: stringifyPromptValue(
+            content: coercePromptText(
               Object.prototype.hasOwnProperty.call(variant, 'content') ? variant.content : variant
             ),
           };
@@ -174,18 +230,33 @@ function normalizeParsedPayload(payload) {
 export function parseEnhancedPayload(rawText) {
   const cleaned = String(rawText || '').replace(/```json|```/g, '').trim();
   if (!cleaned) throw new Error('Model returned empty content. Try again.');
+
+  let parsed = null;
+
   try {
-    return normalizeParsedPayload(JSON.parse(cleaned));
+    parsed = JSON.parse(cleaned);
   } catch {
     const firstBrace = cleaned.indexOf('{');
     const lastBrace = cleaned.lastIndexOf('}');
     if (firstBrace >= 0 && lastBrace > firstBrace) {
       try {
-        return normalizeParsedPayload(JSON.parse(cleaned.slice(firstBrace, lastBrace + 1)));
+        parsed = JSON.parse(cleaned.slice(firstBrace, lastBrace + 1));
       } catch {}
     }
-    throw new Error('Model response was not valid JSON. Try again.');
   }
+
+  if (parsed === null) throw new Error('Model response was not valid JSON. Try again.');
+
+  const normalized = normalizeParsedPayload(parsed);
+  if (
+    !normalized ||
+    typeof normalized !== 'object' ||
+    typeof normalized.enhanced !== 'string' ||
+    !normalized.enhanced.trim()
+  ) {
+    throw new Error('Model response JSON is missing an enhanced prompt string. Try again.');
+  }
+  return normalized;
 }
 
 const SECRET_PATTERN = /\b(sk-ant-|api[_-]?key|password|secret|access[_-]?token|bearer)\b/i;

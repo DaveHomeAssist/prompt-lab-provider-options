@@ -90,8 +90,10 @@ const PROVIDERS = Object.freeze({
     },
 
     normalizeResponse(data, requestBody, _resolvedModel) {
+      const text = anthropicBlocksToText(data?.content);
+      if (!text) throw new Error('Anthropic returned empty content.');
       return {
-        ...data,
+        content: [{ type: 'text', text }],
         model: data?.model || requestBody.model,
         provider: 'anthropic',
       };
