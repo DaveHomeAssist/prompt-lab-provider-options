@@ -25,7 +25,7 @@ After months of pasting prompts between ChatGPT, Claude, and Gemini tabs to comp
 
 **Links:**
 
-- Try it: https://promptlab.tools/app
+- Try it: https://prompt-lab-tawny.vercel.app/app/
 - Starter templates: https://promptlab.tools/templates/ (importable JSON — code review, tech writing, API docs)
 - Source: https://github.com/DaveHomeAssist/prompt-lab-provider-options
 

@@ -16,7 +16,7 @@ Updated: 2026-03-14
 | `prompt-lab-extension/VERSION_REPORT.md` | Current release snapshot | Active | High-level technical state for v1.5.0 across the shared codebase. |
 | `prompt-lab-extension/CHANGELOG_PLAIN_ENGLISH.md` | Non-technical release notes | Active | Product-facing summary of the current release. |
 | `NOTION_DOCS_AGENT.md` | Notion automation setup | Active | Documents the GitHub Actions driven Notion docs sync agent, required secrets, and trigger behavior. |
-| `prompt-lab-web/README.md` | Web deployment quickstart | Active | Documents the public `promptlab.tools` deploy, including `/` landing page, `/app/` SPA routing, local dev, and Vercel deploy flow. |
+| `prompt-lab-web/README.md` | Web deployment quickstart | Active | Documents the public `promptlab.tools` landing page, the currently public hosted app URL, local dev, and Vercel deploy flow. |
 | `vercel.json` | Vercel config | Active | Root build config for the hosted web deployment, including `/app` rewrites and `/api` passthrough. |
 | `api/proxy.js` | CORS proxy edge function | Active | Domain-allowlisted pass-through proxy for provider APIs. |
 | `.vercelignore` | Vercel upload filter | Active | Excludes local dependencies, build artifacts, and Tauri output from deployments. |
@@ -43,5 +43,5 @@ Updated: 2026-03-14
 ## Maintenance notes
 
 - Prefer updating docs under `prompt-lab-source/`; treat material outside that tree as legacy unless there is an explicit migration task.
-- When shared frontend behavior changes, update extension, web, and desktop docs together. The public web deploy is now split between the landing page on `/` and the shared app shell on `/app/`.
+- When shared frontend behavior changes, update extension, web, and desktop docs together. The public web deploy is currently split between the landing page on `promptlab.tools/` and the hosted app at `https://prompt-lab-tawny.vercel.app/app/`.
 - Keep release docs aligned with the latest verified commands and current deploy shape.

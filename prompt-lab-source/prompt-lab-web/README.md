@@ -5,7 +5,7 @@ Prompt Lab's public web deployment lives at `https://promptlab.tools` and is bui
 The public site has two routes:
 
 - `/` — landing page and product marketing surface
-- `/app/` — shared Prompt Lab React application
+- `https://prompt-lab-tawny.vercel.app/app/` — current public hosted Prompt Lab application
 
 The `/app/` shell reuses the same frontend source as the extension and desktop app.
 

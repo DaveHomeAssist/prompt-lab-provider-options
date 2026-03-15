@@ -18,7 +18,7 @@ The idea: instead of switching between different UIs to compare how local vs. cl
 
 **How to try it:**
 
-- Web app: https://promptlab.tools/app (works in any browser)
+- Web app: https://prompt-lab-tawny.vercel.app/app/ (works in any browser)
 - Chrome extension: install from the setup page for a persistent side panel
 - Source: https://github.com/DaveHomeAssist/prompt-lab-provider-options
 

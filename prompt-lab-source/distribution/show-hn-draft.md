@@ -8,7 +8,7 @@
 
 I built Prompt Lab because I was tired of keeping five AI tabs open to test the same prompt across different models.
 
-It's a prompt engineering workbench that runs as a web app (promptlab.tools/app) or Chrome extension. You bring your own API keys — they stay in localStorage, never touch a server.
+It's a prompt engineering workbench that runs as a web app (https://prompt-lab-tawny.vercel.app/app/) or Chrome extension. You bring your own API keys — they stay in localStorage, never touch a server.
 
 What it does:
 

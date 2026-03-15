@@ -12,7 +12,7 @@
 
 - Shared frontend source lives in `prompt-lab-extension/src/`.
 - The Chrome extension packages that source into an MV3 side panel build.
-- The hosted web deployment serves a landing page at `promptlab.tools/` and the shared app at `promptlab.tools/app/`.
+- The hosted web deployment serves a landing page at `promptlab.tools/` and the shared app at `https://prompt-lab-tawny.vercel.app/app/`.
 - The Tauri desktop app loads the same `main.jsx` entry through `prompt-lab-desktop/index.html`.
 - Supported providers are Anthropic, OpenAI, Gemini, OpenRouter, and Ollama.
 
