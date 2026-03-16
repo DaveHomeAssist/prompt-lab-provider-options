@@ -203,13 +203,240 @@ Constraints:
 - Include exact names/versions/values
 - Use user terminology
 - No assumptions, no added facts`,
+    tags: ['Writing', 'System'],
+    collection: 'Handoff Templates',
+  },
+  // ── Code Generation ───────────────────────────────────────────────────────
+  {
+    title: 'Code Review',
+    original: `You are a senior software engineer performing a thorough code review.
+
+Review the code between <code> tags and provide feedback in these categories:
+
+## Bugs & Correctness
+Identify logic errors, off-by-one issues, null/undefined risks, race conditions.
+
+## Security
+Flag injection risks, unsafe inputs, missing validation, exposed secrets.
+
+## Performance
+Note unnecessary allocations, O(n²) where O(n) is possible, missing caching opportunities.
+
+## Readability
+Suggest naming improvements, structural simplifications, or clearer patterns.
+
+## Summary
+One paragraph: overall quality assessment and the single highest-priority fix.
+
+Rules:
+- Be specific. Reference line numbers or function names.
+- Distinguish critical issues from suggestions.
+- Do not rewrite the code unless asked.`,
+    tags: ['Code', 'Analysis'],
+    collection: 'Code',
+  },
+  {
+    title: 'Function Generator',
+    original: `Write a function that meets this specification:
+
+Language: {{language}}
+Function name: {{function name}}
+Purpose: {{description}}
+
+Requirements:
+- Include input validation and error handling
+- Add a JSDoc/docstring comment explaining parameters and return value
+- Handle edge cases (empty input, null, out-of-range)
+- Return meaningful error messages, not silent failures
+
+Return only the function. No explanation unless the logic is non-obvious.`,
+    tags: ['Code'],
+    collection: 'Code',
+  },
+  // ── Writing & Content ─────────────────────────────────────────────────────
+  {
+    title: 'Technical Blog Post',
+    original: `You are a technical writer creating content for a developer audience.
+
+Write a blog post about {{topic}}.
+
+Structure:
+1. Hook — one sentence that frames why this matters now
+2. Problem — what the reader is struggling with (2-3 sentences)
+3. Solution — the approach, explained step by step with code examples where relevant
+4. Tradeoffs — what this approach costs and when not to use it
+5. Conclusion — one paragraph summarizing the key takeaway
+
+Tone: Clear, direct, no filler. Write like you're explaining to a smart colleague, not a beginner.
+Length: 800-1200 words.
+Format: Markdown with code blocks.`,
+    tags: ['Writing', 'Creative'],
+    collection: 'Writing',
+  },
+  {
+    title: 'Email Drafter',
+    original: `Draft a professional email.
+
+Context: {{context}}
+Recipient: {{recipient}}
+Goal: {{goal}}
+
+Requirements:
+- Subject line: clear and specific, under 60 characters
+- Opening: one sentence, no pleasantries
+- Body: concise, action-oriented, bulleted if multiple points
+- Closing: explicit next step with timeline if applicable
+- Tone: professional but not stiff
+
+Return the email with Subject: header followed by the body.`,
+    tags: ['Writing'],
+    collection: 'Writing',
+  },
+  // ── Analysis & Research ───────────────────────────────────────────────────
+  {
+    title: 'Decision Matrix',
+    original: `You are a strategic analyst helping evaluate options.
+
+Compare the following options: {{options}}
+
+For each option, evaluate against these criteria:
+- Cost / effort
+- Risk
+- Time to implement
+- Impact / value
+- Reversibility
+
+Output format:
+1. Criteria × Options matrix (markdown table, score 1-5)
+2. Weighted recommendation (state your assumed weights)
+3. Key tradeoff: the single most important tension in this decision
+4. Recommendation: one clear sentence
+
+Be specific. Do not hedge unless genuinely uncertain.`,
+    tags: ['Analysis', 'Research'],
+    collection: 'Analysis',
+  },
+  {
+    title: 'Root Cause Analysis',
+    original: `You are a systems analyst investigating an incident.
+
+Problem: {{problem description}}
+
+Apply the "5 Whys" method:
+1. State the problem clearly
+2. Ask "Why?" and answer with evidence
+3. Repeat until you reach a root cause (typically 3-5 levels)
+4. Distinguish symptoms from causes at each level
+
+Then provide:
+## Root Cause
+One sentence.
+
+## Contributing Factors
+Bulleted list of conditions that allowed this to happen.
+
+## Recommended Fix
+The single highest-leverage intervention.
+
+## Preventive Measures
+2-3 changes that would prevent recurrence.
+
+Rules:
+- Be specific, not generic
+- Reference actual system components when possible
+- Do not blame individuals`,
+    tags: ['Analysis', 'System'],
+    collection: 'Analysis',
+  },
+  // ── Creative & Ideation ───────────────────────────────────────────────────
+  {
+    title: 'Product Feature Spec',
+    original: `You are a product manager writing a feature specification.
+
+Feature: {{feature name}}
+Context: {{product context}}
+
+Write a one-page spec covering:
+
+## Problem
+What user pain does this solve? Include evidence or signal.
+
+## Proposal
+What we're building, in plain language. No jargon.
+
+## User Stories
+3-5 stories in "As a [user], I want [action] so that [benefit]" format.
+
+## Scope
+What's in v1. What's explicitly out.
+
+## Success Metrics
+2-3 measurable outcomes that prove this worked.
+
+## Open Questions
+Decisions that need input before engineering starts.
+
+Keep it concise. One page max. Optimize for alignment, not completeness.`,
+    tags: ['Creative', 'Analysis'],
+    collection: 'Product',
+  },
+  {
+    title: 'Brainstorm Facilitator',
+    original: `You are a creative strategist facilitating a brainstorm session.
+
+Topic: {{topic}}
+Constraint: {{constraint}}
+
+Generate ideas in three rounds:
+
+## Round 1 — Obvious (5 ideas)
+The straightforward approaches anyone would consider.
+
+## Round 2 — Lateral (5 ideas)
+Borrow from adjacent domains. What would [another industry] do?
+
+## Round 3 — Contrarian (3 ideas)
+Invert assumptions. What if the opposite of the obvious answer is correct?
+
+For each idea: one sentence description + one sentence on why it might work.
+
+End with: "Strongest signal" — which single idea has the most unexplored potential and why.`,
+    tags: ['Creative'],
+    collection: 'Creative',
+  },
+  // ── Prompt Engineering ────────────────────────────────────────────────────
+  {
+    title: 'System Prompt Builder',
+    original: `You are an expert prompt engineer designing a system prompt.
+
+Target model: {{model}}
+Use case: {{use case}}
+User type: {{audience}}
+
+Build a system prompt that includes:
+1. Role definition (who the model is)
+2. Task scope (what it should and should not do)
+3. Output format (how to structure responses)
+4. Constraints (hard rules, safety boundaries)
+5. Tone guidance (voice, formality level)
+
+Rules for the system prompt you generate:
+- Be specific over generic
+- Include at least one "do not" constraint
+- Define output format explicitly
+- Keep under 500 tokens
+- Test against edge cases mentally before finalizing
+
+Return only the system prompt, ready to paste.`,
+    tags: ['System', 'Writing'],
+    collection: 'Prompt Engineering',
   },
 ].map(seed => ({
   ...seed,
   enhanced: seed.original,
-  notes: 'Default PromptLab library seed for transcript/context handoff.',
-  tags: ['Writing', 'System'],
-  collection: 'Handoff Templates',
+  notes: seed.notes || `PromptLab starter prompt — ${seed.collection || 'General'}.`,
+  tags: seed.tags || ['Other'],
+  collection: seed.collection || '',
   variants: [],
 }));
 

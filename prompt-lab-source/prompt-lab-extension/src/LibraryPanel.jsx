@@ -88,7 +88,7 @@ const LibraryPanel = memo(function LibraryPanel({
               onDragEnd={() => { lib.setDraggingLibraryId(null); lib.setDragOverLibraryId(null); }}
               onDragOver={e => { if (!manual) return; e.preventDefault(); lib.setDragOverLibraryId(entry.id); }}
               onDrop={e => { if (!manual) return; e.preventDefault(); lib.moveLibraryEntry(e.dataTransfer.getData('libraryEntryId'), entry.id); lib.setDragOverLibraryId(null); }}
-              className={`${m.surface} border ${m.border} ${m.borderHov} rounded-lg overflow-hidden transition-colors ${manual ? 'cursor-grab active:cursor-grabbing' : ''} ${lib.dragOverLibraryId === entry.id ? 'border-violet-500' : ''} ${lib.draggingLibraryId === entry.id ? 'opacity-50' : ''}`}>
+              className={`${m.surface} border ${editingId === entry.id ? 'border-violet-500 ring-1 ring-violet-500/30' : `${m.border} ${m.borderHov}`} rounded-lg overflow-hidden transition-colors ${manual ? 'cursor-grab active:cursor-grabbing' : ''} ${lib.dragOverLibraryId === entry.id ? 'border-violet-500' : ''} ${lib.draggingLibraryId === entry.id ? 'opacity-50' : ''}`}>
               <div className="flex items-start justify-between px-3 py-2.5 gap-2">
                 <div className="flex-1 min-w-0">
                   {lib.renamingId === entry.id ? (

@@ -223,7 +223,7 @@ export default function App() {
             </div>
           </div>
           <div className={`flex items-center gap-1 ${compact ? 'overflow-x-auto pb-1' : ''}`} role="tablist" aria-label="Prompt Lab views">
-            {[['editor', 'Editor'], ['composer', 'Compose'], ['abtest', 'A/B Test'], ['pad', 'Scratchpad']].map(([id, label]) => (
+            {[['editor', 'Prompt Editor'], ['composer', 'Compose'], ['abtest', 'A/B Test'], ['pad', 'Scratchpad']].map(([id, label]) => (
               <button key={id} type="button" onClick={() => setTab(id)} role="tab" aria-selected={tab === id}
                 className={`ui-control px-3 py-1.5 text-xs font-semibold rounded-lg transition-colors whitespace-nowrap ${tab === id ? 'bg-violet-600 text-white' : `${m.btn} ${m.textAlt}`}`}>
                 {label}

@@ -528,112 +528,113 @@ export default function PadTab({ m, notify, pageScroll = false }) {
   }, [text, padsState]);
 
   return (
-    <div className={`${shellMinHeightClass} flex flex-col ${pageScroll ? '' : 'flex-1 overflow-hidden'}`}>
-      <div className={`flex flex-wrap items-center gap-3 px-4 py-2 border-b ${m.border} shrink-0`}>
-        <div className="flex-1 overflow-x-auto">
-          <div className="flex items-center gap-2 min-w-max">
-            {padsState.pads.map((pad) => {
-              const isActive = pad.id === padsState.activePadId;
-              return (
-                <button
-                  key={pad.id}
-                  type="button"
-                  onClick={() => handleSelectPad(pad.id)}
-                  className={`px-3 py-1.5 text-xs rounded-lg border transition-colors ${
-                    isActive
-                      ? 'bg-violet-600/20 border-violet-500/60 text-violet-200'
-                      : `${m.btn} ${m.textAlt} ${m.border}`
-                  }`}
-                  title={pad.name}
-                >
-                  {pad.name}
-                </button>
-              );
-            })}
-          </div>
-        </div>
-        <div className="flex flex-wrap items-center gap-1 shrink-0">
+    <div className={`${shellMinHeightClass} flex ${pageScroll ? '' : 'flex-1 overflow-hidden'}`}>
+      {/* ── Sidebar: pad list ── */}
+      <div className={`w-[220px] shrink-0 flex flex-col border-r ${m.border} ${pageScroll ? '' : 'overflow-hidden'}`}>
+        <div className={`flex items-center justify-between px-3 py-2 border-b ${m.border} shrink-0`}>
+          <span className={`text-xs font-semibold ${m.text}`}>Scratchpads</span>
           <button
             type="button"
             onClick={handleCreatePad}
             className={`flex items-center gap-1 text-xs ${m.btn} ${m.textAlt} px-2 py-1 rounded-lg transition-colors`}
-            title="New pad"
+            title="New pad (⌘T)"
           >
             <Ic n="Plus" size={11} />
-            New
-          </button>
-          <button
-            type="button"
-            onClick={handleRenamePad}
-            className={`flex items-center gap-1 text-xs ${m.btn} ${m.textAlt} px-2 py-1 rounded-lg transition-colors`}
-            title="Rename active pad"
-          >
-            Rename
-          </button>
-          <button
-            type="button"
-            onClick={handleDeletePad}
-            disabled={padsState.pads.length <= 1}
-            className={`flex items-center gap-1 text-xs px-2 py-1 rounded-lg transition-colors ${
-              padsState.pads.length > 1
-                ? 'text-red-400 hover:bg-red-950/30'
-                : `${m.textMuted} opacity-40 cursor-not-allowed`
-            }`}
-            title={padsState.pads.length > 1 ? 'Delete active pad' : 'At least one pad is required'}
-          >
-            <Ic n="Trash2" size={11} />
-            Delete
           </button>
         </div>
-      </div>
-      <div className={`flex flex-wrap items-center justify-between gap-2 px-4 py-2 border-b ${m.border} shrink-0`}>
-        <span className={`text-xs font-mono ${m.textMuted}`}>{wc} word{wc !== 1 ? 's' : ''} · {text.length} chars</span>
-        <div className="flex flex-wrap gap-2">
-          <button type="button" onClick={insertDate} className={`flex items-center gap-1 text-xs ${m.btn} ${m.textAlt} px-2 py-1 rounded-lg transition-colors`}>📅 Date</button>
-          <button
-            type="button"
-            onClick={exportPad}
-            disabled={!text.trim()}
-            title="Download as text file"
-            className={`flex items-center gap-1 text-xs px-2 py-1 rounded-lg transition-colors ${
-              text.trim() ? `${m.btn} ${m.textAlt}` : `${m.btn} ${m.textMuted} opacity-40 cursor-not-allowed`
-            }`}
-          >
-            <Ic n="Download" size={11} />Download
-          </button>
-          <button type="button" onClick={handleCopy} className={`flex items-center gap-1 text-xs px-2.5 py-1.5 rounded-lg font-semibold transition-colors ${copyBtnClass}`}><Ic n="Copy" size={11} />Copy</button>
-          <button type="button" onClick={handleClear} className="flex items-center gap-1 text-xs px-2 py-1 rounded-lg transition-colors text-red-400 hover:bg-red-950/30"><Ic n="Trash2" size={11} />Clear</button>
+        <div className={`flex-1 ${pageScroll ? '' : 'overflow-y-auto'} py-1`}>
+          {padsState.pads.map((pad) => {
+            const isActive = pad.id === padsState.activePadId;
+            const preview = pad.content ? pad.content.slice(0, 60).replace(/\n/g, ' ') : '';
+            const timeStr = pad.timestamp ? formatRelativeTime(new Date(pad.timestamp).toISOString()) : '';
+            return (
+              <button
+                key={pad.id}
+                type="button"
+                onClick={() => handleSelectPad(pad.id)}
+                className={`w-full text-left px-3 py-2.5 transition-colors ${
+                  isActive
+                    ? 'bg-violet-600/15 border-r-2 border-violet-500'
+                    : `hover:bg-gray-800/50`
+                }`}
+              >
+                <div className={`text-xs font-medium truncate ${isActive ? 'text-violet-200' : m.text}`}>{pad.name}</div>
+                {preview && <div className={`text-[10px] truncate mt-0.5 ${m.textMuted}`}>{preview}</div>}
+                {timeStr && <div className={`text-[10px] mt-0.5 ${m.textMuted}`}>{timeStr}</div>}
+              </button>
+            );
+          })}
         </div>
       </div>
-      <div className={`flex-1 p-4 flex flex-col gap-2 ${editorPaneMinHeightClass} ${pageScroll ? '' : 'overflow-hidden'}`}>
-        <textarea
-          id="plPadArea"
-          ref={textareaRef}
-          className={`flex-1 w-full ${textareaMinHeightClass} resize-none rounded-xl border ${m.input} border p-4 text-sm leading-relaxed focus:outline-none focus:border-violet-500 transition-colors ${m.text}`}
-          placeholder={'Notes, ideas, prompt snippets…\n\nUse 📅 Date to timestamp entries.'}
-          value={text} onChange={onChange} spellCheck />
-        <div className="flex items-center justify-start min-h-5">
-          {saveError ? (
-            <div className="flex items-center gap-1.5 text-xs font-mono text-red-400 transition-colors">
-              <Ic n="X" size={11} />
-              <span>{saveError}</span>
-            </div>
-          ) : saveState === 'pending' ? (
-            <div className={`flex items-center gap-1.5 text-xs font-mono text-gray-500 transition-colors ${m.textMuted}`}>
-              <span className="w-3 h-3 border-2 border-current border-t-transparent rounded-full animate-spin" />
-              <span>Saving...</span>
-            </div>
-          ) : saveState === 'saved' ? (
-            <div className="flex items-center gap-1.5 text-xs font-mono text-green-500 transition-opacity duration-200">
-              <Ic n="Check" size={11} />
-              <span>Saved</span>
-            </div>
-          ) : lastSavedAt ? (
-            <div className={`flex items-center gap-1.5 text-xs font-mono text-gray-500 transition-colors ${m.textMuted}`}>
-              <Ic n="Clock" size={11} />
-              <span>Last saved {relativeSavedAt}</span>
-            </div>
-          ) : null}
+
+      {/* ── Editor pane ── */}
+      <div className={`flex-1 flex flex-col min-w-0 ${pageScroll ? '' : 'overflow-hidden'}`}>
+        <div className={`flex flex-wrap items-center justify-between gap-2 px-4 py-2 border-b ${m.border} shrink-0`}>
+          <div className="flex items-center gap-3">
+            <span className={`text-sm font-semibold ${m.text}`}>{activePad?.name || 'Scratchpad'}</span>
+            <span className={`text-xs font-mono ${m.textMuted}`}>{wc} word{wc !== 1 ? 's' : ''} · {text.length} chars</span>
+          </div>
+          <div className="flex flex-wrap items-center gap-1">
+            <button type="button" onClick={handleRenamePad} className={`flex items-center gap-1 text-xs ${m.btn} ${m.textAlt} px-2 py-1 rounded-lg transition-colors`} title="Rename pad">Rename</button>
+            <button type="button" onClick={insertDate} className={`flex items-center gap-1 text-xs ${m.btn} ${m.textAlt} px-2 py-1 rounded-lg transition-colors`} title="Insert date separator">📅</button>
+            <button
+              type="button"
+              onClick={exportPad}
+              disabled={!text.trim()}
+              title="Download as text file"
+              className={`flex items-center gap-1 text-xs px-2 py-1 rounded-lg transition-colors ${
+                text.trim() ? `${m.btn} ${m.textAlt}` : `${m.btn} ${m.textMuted} opacity-40 cursor-not-allowed`
+              }`}
+            >
+              <Ic n="Download" size={11} />
+            </button>
+            <button type="button" onClick={handleCopy} className={`flex items-center gap-1 text-xs px-2.5 py-1.5 rounded-lg font-semibold transition-colors ${copyBtnClass}`}><Ic n="Copy" size={11} />Copy</button>
+            <button type="button" onClick={handleClear} className="flex items-center gap-1 text-xs px-2 py-1 rounded-lg transition-colors text-red-400 hover:bg-red-950/30"><Ic n="Trash2" size={11} />Clear</button>
+            <button
+              type="button"
+              onClick={handleDeletePad}
+              disabled={padsState.pads.length <= 1}
+              className={`flex items-center gap-1 text-xs px-2 py-1 rounded-lg transition-colors ${
+                padsState.pads.length > 1
+                  ? 'text-red-400 hover:bg-red-950/30'
+                  : `${m.textMuted} opacity-40 cursor-not-allowed`
+              }`}
+              title={padsState.pads.length > 1 ? 'Delete pad' : 'At least one pad required'}
+            >
+              <Ic n="Trash2" size={11} />
+            </button>
+          </div>
+        </div>
+        <div className={`flex-1 p-4 flex flex-col gap-2 ${editorPaneMinHeightClass} ${pageScroll ? '' : 'overflow-hidden'}`}>
+          <textarea
+            id="plPadArea"
+            ref={textareaRef}
+            className={`flex-1 w-full ${textareaMinHeightClass} resize-none rounded-xl border ${m.input} border p-4 text-sm leading-relaxed focus:outline-none focus:border-violet-500 transition-colors ${m.text}`}
+            placeholder={'Notes, ideas, prompt snippets…\n\nUse 📅 Date to timestamp entries.'}
+            value={text} onChange={onChange} spellCheck />
+          <div className="flex items-center justify-start min-h-5">
+            {saveError ? (
+              <div className="flex items-center gap-1.5 text-xs font-mono text-red-400 transition-colors">
+                <Ic n="X" size={11} />
+                <span>{saveError}</span>
+              </div>
+            ) : saveState === 'pending' ? (
+              <div className={`flex items-center gap-1.5 text-xs font-mono text-gray-500 transition-colors ${m.textMuted}`}>
+                <span className="w-3 h-3 border-2 border-current border-t-transparent rounded-full animate-spin" />
+                <span>Saving...</span>
+              </div>
+            ) : saveState === 'saved' ? (
+              <div className="flex items-center gap-1.5 text-xs font-mono text-green-500 transition-opacity duration-200">
+                <Ic n="Check" size={11} />
+                <span>Saved</span>
+              </div>
+            ) : lastSavedAt ? (
+              <div className={`flex items-center gap-1.5 text-xs font-mono text-gray-500 transition-colors ${m.textMuted}`}>
+                <Ic n="Clock" size={11} />
+                <span>Last saved {relativeSavedAt}</span>
+              </div>
+            ) : null}
+          </div>
         </div>
       </div>
     </div>
