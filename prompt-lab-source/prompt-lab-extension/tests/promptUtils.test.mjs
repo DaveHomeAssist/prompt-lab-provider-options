@@ -4,13 +4,16 @@ import assert from 'node:assert/strict';
 import {
   scorePrompt,
   extractVars,
-  normalizeEntry,
-  normalizeLibrary,
-  suggestTitleFromText,
   parseEnhancedPayload,
   isTransientError,
   looksSensitive,
 } from '../src/promptUtils.js';
+
+import {
+  normalizeEntry,
+  normalizeLibrary,
+  suggestTitleFromText,
+} from '../src/lib/promptSchema.js';
 
 test('scorePrompt handles non-string safely', () => {
   assert.equal(scorePrompt(null), null);
@@ -60,7 +63,7 @@ test('parseEnhancedPayload handles fenced JSON and noisy wrappers', () => {
   assert.equal(payload2.enhanced, 'x');
 });
 
-test('parseEnhancedPayload stringifies structured prompt fields', () => {
+test('parseEnhancedPayload coerces structured prompt fields to text', () => {
   const payload = parseEnhancedPayload(JSON.stringify({
     enhanced: {
       role: 'designer',
@@ -82,12 +85,38 @@ test('parseEnhancedPayload stringifies structured prompt fields', () => {
     tags: ['Creative', { name: 'Other' }],
   }));
 
-  assert.match(payload.enhanced, /"role": "designer"/);
+  assert.match(payload.enhanced, /role: designer/);
+  assert.match(payload.enhanced, /task: visualize/);
+  assert.match(payload.enhanced, /format: brief/);
+  assert.match(payload.enhanced, /constraints: strict/);
+  assert.match(payload.enhanced, /clarity_specificity: high/);
   assert.equal(payload.variants[0].label, 'Blueprint');
-  assert.match(payload.variants[0].content, /"role": "draftsman"/);
-  assert.match(payload.notes, /"source": "gemini"/);
+  assert.match(payload.variants[0].content, /role: draftsman/);
+  assert.match(payload.variants[0].content, /task: diagram/);
+  assert.match(payload.notes, /source: gemini/);
   assert.equal(payload.tags[0], 'Creative');
-  assert.match(payload.tags[1], /"name": "Other"/);
+  assert.match(payload.tags[1], /name: Other/);
+});
+
+test('parseEnhancedPayload unwraps JSON string in enhanced field', () => {
+  const inner = JSON.stringify({
+    role: 'You are an expert content creator',
+    task: 'Create a blog post',
+    format: 'Markdown',
+    constraints: ['1000 words', 'Include a CTA'],
+  });
+  const payload = parseEnhancedPayload(JSON.stringify({
+    enhanced: inner,
+    variants: [],
+    notes: '',
+    tags: [],
+  }));
+
+  assert.match(payload.enhanced, /role: You are an expert content creator/);
+  assert.match(payload.enhanced, /task: Create a blog post/);
+  assert.match(payload.enhanced, /format: Markdown/);
+  assert.match(payload.enhanced, /constraints: 1000 words; Include a CTA/);
+  assert.ok(!payload.enhanced.includes('{'));
 });
 
 test('isTransientError detects retryable conditions', () => {
