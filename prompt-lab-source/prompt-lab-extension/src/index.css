@@ -144,6 +144,8 @@ textarea:disabled {
 /* ── Density modes ── */
 .pl-density-compact {
   --pl-spacing: 0.5;
+  --pl-gap-xs: 2px; --pl-gap-sm: 4px; --pl-gap-md: 8px; --pl-gap-lg: 12px;
+  --pl-pad-panel: 8px; --pl-text-xs: 10px; --pl-text-sm: 12px; --pl-radius: 6px;
   font-size: 13px;
 }
 .pl-density-compact header { padding-top: 0.35rem; padding-bottom: 0.35rem; }
@@ -162,11 +164,15 @@ textarea:disabled {
 
 .pl-density-comfortable {
   --pl-spacing: 1;
-  /* default — no overrides needed */
+  --pl-gap-xs: 4px; --pl-gap-sm: 8px; --pl-gap-md: 12px; --pl-gap-lg: 16px;
+  --pl-pad-panel: 12px; --pl-text-xs: 11px; --pl-text-sm: 13px; --pl-radius: 8px;
+  /* default — no Tailwind overrides needed */
 }
 
 .pl-density-spacious {
   --pl-spacing: 1.5;
+  --pl-gap-xs: 6px; --pl-gap-sm: 12px; --pl-gap-md: 16px; --pl-gap-lg: 24px;
+  --pl-pad-panel: 16px; --pl-text-xs: 12px; --pl-text-sm: 14px; --pl-radius: 10px;
   font-size: 15px;
 }
 .pl-density-spacious header { padding-top: 0.75rem; padding-bottom: 0.75rem; }
@@ -182,3 +188,18 @@ textarea:disabled {
 .pl-density-spacious .text-sm { font-size: 0.9rem; }
 .pl-density-spacious .text-xs { font-size: 0.75rem; }
 .pl-density-spacious .ui-control { min-height: 2.5rem; }
+
+/* ── Light-mode markdown overrides ── */
+[data-theme="light"] .md-preview pre {
+  background: rgba(0, 0, 0, 0.04);
+  border-color: rgba(0, 0, 0, 0.1);
+}
+[data-theme="light"] .md-preview code {
+  background: rgba(139, 92, 246, 0.1);
+}
+[data-theme="light"] .md-preview hr {
+  border-top-color: rgba(0, 0, 0, 0.1);
+}
+[data-theme="light"] .md-preview blockquote {
+  border-left-color: rgba(139, 92, 246, 0.3);
+}
