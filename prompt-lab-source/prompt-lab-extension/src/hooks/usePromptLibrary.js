@@ -1,4 +1,4 @@
-import { useEffect, useState, useCallback } from 'react';
+import { useEffect, useState, useCallback, useRef } from 'react';
 import { DEFAULT_LIBRARY_SEEDS } from '../constants.js';
 import { encodeShare, looksSensitive } from '../promptUtils.js';
 import {
@@ -47,8 +47,8 @@ export default function usePromptLibrary(notify) {
   }, [library, libReady]);
 
   useEffect(() => {
-    saveJson(storageKeys.collections, collections);
-  }, [collections]);
+    if (libReady) saveJson(storageKeys.collections, collections);
+  }, [collections, libReady]);
 
   const updateLibraryEntry = (entryId, updater) => {
     let changed = false;
@@ -225,15 +225,20 @@ export default function usePromptLibrary(notify) {
 
   const starterLibraries = getStarterLibraries();
 
+  const libraryRef = useRef(library);
+  const collectionsRef = useRef(collections);
+  useEffect(() => { libraryRef.current = library; }, [library]);
+  useEffect(() => { collectionsRef.current = collections; }, [collections]);
+
   const loadStarterPack = useCallback((packId) => {
-    const result = loadPack(packId, library, setLibrary, collections, setCollections);
+    const result = loadPack(packId, libraryRef.current, setLibrary, collectionsRef.current, setCollections);
     if (result && result.count > 0) {
       notify(`Loaded ${result.count} prompts into ${result.collection}`);
     } else if (result && result.count === 0) {
       notify('Pack already loaded.');
     }
     return result;
-  }, [library, collections, notify]);
+  }, [notify]);
 
   const allLibTags = [...new Set(library.flatMap(entry => entry.tags || []))];
   const filtered = [...library]
