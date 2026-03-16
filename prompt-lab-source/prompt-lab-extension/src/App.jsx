@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import Ic from './icons';
 import {
   wordDiff, scorePrompt,
@@ -99,6 +99,10 @@ export default function App() {
     hasSavablePrompt, currentTestCases,
   } = ed;
 
+  // Keep latest handler fns in a ref so the keydown effect never goes stale
+  const kbFns = useRef({ enhance, doSave, openSavePanel });
+  useEffect(() => { kbFns.current = { enhance, doSave, openSavePanel }; });
+
   // ── Derived (view-only) ──
   const score = scorePrompt(raw);
   const wc = typeof raw === 'string' && raw.trim() ? raw.trim().split(/\s+/).length : 0;
@@ -154,11 +158,11 @@ export default function App() {
   useEffect(() => {
     const h = e => {
       const mod = e.metaKey || e.ctrlKey;
-      if (mod && e.key === 'Enter') { e.preventDefault(); if (!loading && raw.trim()) enhance(); }
+      if (mod && e.key === 'Enter') { e.preventDefault(); if (!loading && raw.trim()) kbFns.current.enhance(); }
       if (mod && e.key === 's') {
         e.preventDefault();
-        if (hasSavablePrompt && !showSave) openSavePanel();
-        else if (hasSavablePrompt && showSave) doSave();
+        if (hasSavablePrompt && !showSave) kbFns.current.openSavePanel();
+        else if (hasSavablePrompt && showSave) kbFns.current.doSave();
       }
       if (mod && e.key === 'k') { e.preventDefault(); setShowCmdPalette(p => !p); setCmdQuery(''); }
       if (e.key === '?' && !['INPUT', 'TEXTAREA'].includes(e.target.tagName)) setShowShortcuts(p => !p);
