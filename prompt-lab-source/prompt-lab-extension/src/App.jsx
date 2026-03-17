@@ -40,6 +40,12 @@ export default function App() {
     setColorMode,
     density,
     setDensity,
+    primaryView,
+    setPrimaryView,
+    workspaceView,
+    setWorkspaceView,
+    runsView,
+    setRunsView,
     tab,
     setTab,
     toast,
@@ -134,6 +140,33 @@ export default function App() {
   const goldenVerdict = goldenResponse?.text && comparisonText
     ? (goldenSimilarity >= goldenThreshold ? 'pass' : 'fail')
     : null;
+  const createView = workspaceView === 'composer' ? 'composer' : effectiveEditorLayout;
+
+  useEffect(() => {
+    if (tab !== 'editor') return;
+    if (workspaceView === 'composer') return;
+    if (editorLayout !== workspaceView) {
+      setEditorLayout(workspaceView);
+    }
+  }, [editorLayout, setEditorLayout, tab, workspaceView]);
+
+  useEffect(() => {
+    if (tab !== 'editor') return;
+    if (workspaceView === 'composer') return;
+    if (effectiveEditorLayout !== workspaceView) {
+      setWorkspaceView(effectiveEditorLayout);
+    }
+  }, [effectiveEditorLayout, setWorkspaceView, tab, workspaceView]);
+
+  const openCreateView = (nextView) => {
+    setPrimaryView('create');
+    setWorkspaceView(nextView);
+  };
+
+  const openRunsView = (nextView) => {
+    setPrimaryView('runs');
+    setRunsView(nextView);
+  };
 
   const loadTemplateWithoutVars = () => {
     if (!pendingTemplate) return;
@@ -190,10 +223,12 @@ export default function App() {
     { label: 'Enhance Prompt', hint: '⌘↵', action: () => { if (!loading && raw.trim()) enhance(); setShowCmdPalette(false); } },
     { label: 'Save Prompt', hint: '⌘S', action: () => { if (hasSavablePrompt) openSavePanel(); setShowCmdPalette(false); } },
     { label: 'Clear Editor', hint: '', action: () => { clearEditor(); setShowCmdPalette(false); } },
-    { label: 'Go to Editor', hint: '', action: () => { setTab('editor'); setShowCmdPalette(false); } },
-    { label: 'Go to Composer', hint: '', action: () => { setTab('composer'); setShowCmdPalette(false); } },
-    { label: 'Go to A/B Test', hint: '', action: () => { setTab('abtest'); setShowCmdPalette(false); } },
-    { label: 'Go to Pad', hint: '', action: () => { setTab('pad'); setShowCmdPalette(false); } },
+    { label: 'Go to Create', hint: '', action: () => { openCreateView('editor'); setShowCmdPalette(false); } },
+    { label: 'Go to Library', hint: '', action: () => { openCreateView('library'); setShowCmdPalette(false); } },
+    { label: 'Go to Build', hint: '', action: () => { openCreateView('composer'); setShowCmdPalette(false); } },
+    { label: 'Go to Runs', hint: '', action: () => { openRunsView('history'); setShowCmdPalette(false); } },
+    { label: 'Go to Compare', hint: '', action: () => { openRunsView('compare'); setShowCmdPalette(false); } },
+    { label: 'Go to Notebook', hint: '', action: () => { setPrimaryView('notebook'); setShowCmdPalette(false); } },
     { label: 'Toggle Light / Dark', hint: '', action: () => { setColorMode(p => p === 'dark' ? 'light' : 'dark'); setShowCmdPalette(false); } },
     { label: 'Export Library', hint: '', action: () => { lib.exportLib(); setShowCmdPalette(false); } },
     { label: 'Open Settings', hint: '', action: () => { setShowSettings(true); setShowCmdPalette(false); } },
@@ -229,14 +264,39 @@ export default function App() {
               <button type="button" onClick={() => setShowSettings(true)} className={`ui-control p-1.5 rounded-lg ${m.btn} ${m.textAlt} hover:text-violet-400 transition-colors`}><Ic n="Settings" size={13} /></button>
             </div>
           </div>
-          <div className={`flex items-center gap-1 ${compact ? 'overflow-x-auto pb-1' : ''}`} role="tablist" aria-label="Prompt Lab views">
-            {[['editor', 'Prompt Editor'], ['composer', 'Compose'], ['abtest', 'A/B Test'], ['pad', 'Scratchpad'], ['history', 'History']].map(([id, label]) => (
-              <button key={id} type="button" onClick={() => setTab(id)} role="tab" aria-selected={tab === id}
-                className={`ui-control px-3 py-1.5 text-xs font-semibold rounded-lg transition-colors whitespace-nowrap ${tab === id ? 'bg-violet-600 text-white' : `${m.btn} ${m.textAlt}`}`}>
+          <div className={`flex items-center gap-1 ${compact ? 'overflow-x-auto pb-1' : ''}`} role="tablist" aria-label="Prompt Lab sections">
+            {[['create', 'Create'], ['runs', 'Runs'], ['notebook', 'Notebook']].map(([id, label]) => (
+              <button key={id} type="button" onClick={() => setPrimaryView(id)} role="tab" aria-selected={primaryView === id}
+                className={`ui-control px-3 py-1.5 text-xs font-semibold rounded-lg transition-colors whitespace-nowrap ${primaryView === id ? 'bg-violet-600 text-white' : `${m.btn} ${m.textAlt}`}`}>
                 {label}
               </button>
             ))}
           </div>
+        </div>
+        <div className={`flex items-center gap-1 mt-2 ${compact ? 'overflow-x-auto pb-1' : ''}`} role="tablist" aria-label={primaryView === 'create' ? 'Create views' : primaryView === 'runs' ? 'Run views' : 'Notebook views'}>
+          {primaryView === 'create' && (
+            <>
+              {[['editor', 'Create'], ['library', 'Library'], ['composer', 'Build'], ['split', 'Dual Pane']].map(([id, label]) => (
+                <button key={id} type="button" onClick={() => openCreateView(id)} role="tab" aria-selected={createView === id}
+                  className={`ui-control px-2.5 py-1 text-[11px] font-semibold rounded-lg transition-colors whitespace-nowrap ${createView === id ? 'bg-violet-600 text-white' : `${m.btn} ${m.textAlt}`}`}>
+                  {label}
+                </button>
+              ))}
+            </>
+          )}
+          {primaryView === 'runs' && (
+            <>
+              {[['history', 'History'], ['compare', 'Compare']].map(([id, label]) => (
+                <button key={id} type="button" onClick={() => openRunsView(id)} role="tab" aria-selected={runsView === id}
+                  className={`ui-control px-2.5 py-1 text-[11px] font-semibold rounded-lg transition-colors whitespace-nowrap ${runsView === id ? 'bg-violet-600 text-white' : `${m.btn} ${m.textAlt}`}`}>
+                  {label}
+                </button>
+              ))}
+            </>
+          )}
+          {primaryView === 'notebook' && (
+            <span className={`text-[11px] ${m.textMuted}`}>Multi-pad notes with library handoff</span>
+          )}
         </div>
       </header>
 
@@ -254,11 +314,11 @@ export default function App() {
               <div className="p-4 flex flex-col gap-3 h-full min-h-0 overflow-hidden">
               <div className="flex gap-1">
                 {[
-                  ['editor', 'Editor'],
-                  ['library', 'Prompt Library'],
-                  ...(!compact ? [['split', 'Split']] : []),
+                  ['editor', 'Create'],
+                  ['library', 'Library'],
+                  ...(!compact ? [['split', 'Dual Pane']] : []),
                 ].map(([id, label]) => (
-                  <button key={id} type="button" onClick={() => setEditorLayout(id)}
+                  <button key={id} type="button" onClick={() => openCreateView(id)}
                     className={`ui-control text-xs px-2.5 py-1 rounded-lg transition-colors ${effectiveEditorLayout === id ? 'bg-violet-600 text-white' : `${m.btn} ${m.textAlt}`}`}>
                     {label}
                   </button>
