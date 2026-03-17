@@ -1,8 +1,8 @@
 # Prompt Lab Changelog (Plain English)
 
-Date: 2026-03-13
+Date: 2026-03-17
 
-## What changed in v1.5.0
+## What changed in v1.7.0
 
 1. Prompt Lab now has a hosted web app and a matching Tauri desktop shell in addition to the MV3 extension.
 2. The web app and desktop app reuse the same React frontend as the extension, so product behavior stays aligned across all three targets.

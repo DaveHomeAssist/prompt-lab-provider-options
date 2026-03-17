@@ -1,12 +1,12 @@
 # Prompt Lab Version Report
 
-- Date: 2026-03-13
-- Release: `v1.5.0`
+- Date: 2026-03-17
+- Release: `v1.7.0`
 - Scope: extension runtime, shared frontend architecture, hosted web shell, desktop shell, CI, and packaging
 
 ## Release summary
 
-`v1.5.0` is the first release where Prompt Lab is documented and maintained as a shared extension-plus-web-plus-desktop product instead of only an MV3 extension.
+`v1.7.0` is the current maintained Prompt Lab release across the extension, hosted web shell, and desktop shell.
 
 ## Technical state
 
