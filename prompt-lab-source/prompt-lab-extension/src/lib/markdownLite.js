@@ -19,7 +19,13 @@ function renderInline(text) {
     .replace(/__(.+?)__/g, '<strong>$1</strong>')
     .replace(/\*(.+?)\*/g, '<em>$1</em>')
     .replace(/_(.+?)_/g, '<em>$1</em>')
-    .replace(/\[([^\]]+)\]\(([^)]+)\)/g, '<a href="$2" rel="noopener">$1</a>');
+    .replace(/\[([^\]]+)\]\(([^)]+)\)/g, (_match, label, href) => {
+      const url = href.trim();
+      if (/^(https?:\/\/|mailto:|#)/i.test(url)) {
+        return `<a href="${url}" rel="noopener">${label}</a>`;
+      }
+      return label;
+    });
 }
 
 export function renderMarkdown(src) {

@@ -146,8 +146,12 @@ function updateActivePadContent(prev, nextContent) {
 }
 
 function persistPadsState(nextState) {
-  localStorage.setItem(PADS_KEY, JSON.stringify(nextState));
-  localStorage.setItem(PADS_SCHEMA_VERSION_KEY, PADS_SCHEMA_VERSION);
+  try {
+    localStorage.setItem(PADS_KEY, JSON.stringify(nextState));
+    localStorage.setItem(PADS_SCHEMA_VERSION_KEY, PADS_SCHEMA_VERSION);
+  } catch (e) {
+    console.warn('[PadTab] persistPadsState failed (quota exceeded?)', e);
+  }
 }
 
 function buildPadId() {
@@ -186,7 +190,9 @@ export default function PadTab({ m, notify, pageScroll = false, onPromoteToLibra
   const shellMinHeightClass = pageScroll ? 'min-h-[calc(100vh-9rem)]' : 'min-h-[calc(100vh-7rem)]';
   const editorPaneMinHeightClass = pageScroll ? 'min-h-[calc(100vh-13rem)]' : 'min-h-[calc(100vh-11rem)]';
   const textareaMinHeightClass = pageScroll ? 'min-h-[calc(100vh-16rem)]' : 'min-h-[calc(100vh-14rem)]';
-  const copyBtnClass = 'border border-violet-400/30 bg-violet-500/15 text-violet-200 hover:border-violet-300 hover:bg-violet-500/25';
+  const copyBtnClass = m.text?.includes('gray-100')
+    ? 'border border-violet-400/30 bg-violet-500/15 text-violet-200 hover:border-violet-300 hover:bg-violet-500/25'
+    : 'border border-violet-300 bg-violet-50 text-violet-700 hover:border-violet-400 hover:bg-violet-100';
 
   const formatRelativeTime = (value) => {
     if (!value) return '';
@@ -283,6 +289,10 @@ export default function PadTab({ m, notify, pageScroll = false, onPromoteToLibra
     scheduleIdleStatus();
     return nextState;
   };
+
+  // Keep a stable ref to the latest flushActivePad for event listeners.
+  const flushRef = useRef(flushActivePad);
+  useEffect(() => { flushRef.current = flushActivePad; });
 
   const buildFilename = () => {
     const now = new Date();
@@ -480,9 +490,27 @@ export default function PadTab({ m, notify, pageScroll = false, onPromoteToLibra
     return () => clearInterval(intervalId);
   }, [lastSavedAt]);
 
+  // Fix 3: Flush pending content on unmount before clearing timers.
   useEffect(() => () => {
+    flushRef.current({ silent: true });
     clearTimeout(timerRef.current);
     clearTimeout(savedStateTimerRef.current);
+  }, []);
+
+  // Fix 2: Flush pending content on tab/browser close or visibility change.
+  useEffect(() => {
+    const onBeforeUnload = () => { flushRef.current({ silent: true }); };
+    const onVisibilityChange = () => {
+      if (document.visibilityState === 'hidden') {
+        flushRef.current({ silent: true });
+      }
+    };
+    window.addEventListener('beforeunload', onBeforeUnload);
+    document.addEventListener('visibilitychange', onVisibilityChange);
+    return () => {
+      window.removeEventListener('beforeunload', onBeforeUnload);
+      document.removeEventListener('visibilitychange', onVisibilityChange);
+    };
   }, []);
 
   const cyclePad = (direction) => {
@@ -575,7 +603,7 @@ export default function PadTab({ m, notify, pageScroll = false, onPromoteToLibra
                 className={`w-full text-left px-3 py-2.5 transition-colors ${
                   isActive
                     ? 'bg-violet-600/15 border-r-2 border-violet-500'
-                    : `hover:bg-gray-800/50`
+                    : m.btn
                 }`}
               >
                 <div className={`text-xs font-medium truncate ${isActive ? 'text-violet-200' : m.text}`}>{pad.name}</div>

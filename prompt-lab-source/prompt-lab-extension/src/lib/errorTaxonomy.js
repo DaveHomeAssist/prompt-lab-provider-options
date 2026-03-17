@@ -213,7 +213,7 @@ export function normalizeError(err, source = 'unknown') {
     return networkError(source, rawMessage);
   }
 
-  if (msg.includes('storage') || msg.includes('indexeddb') || msg.includes('quota') && msg.includes('local')) {
+  if (msg.includes('storage') || msg.includes('indexeddb') || (msg.includes('quota') && msg.includes('local'))) {
     return storageError(source, rawMessage);
   }
 

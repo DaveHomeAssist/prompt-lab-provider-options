@@ -3,12 +3,16 @@
   "version": "1.7.0",
   "private": true,
   "type": "module",
+  "engines": {
+    "node": "22.x"
+  },
   "scripts": {
-    "dev": "vite",
-    "build": "vite build",
-    "tauri": "tauri",
-    "tauri:dev": "tauri dev",
-    "tauri:build": "tauri build"
+    "check:node": "node ../scripts/require-node-22.mjs",
+    "dev": "npm run check:node && vite",
+    "build": "npm run check:node && vite build",
+    "tauri": "npm run check:node && tauri",
+    "tauri:dev": "npm run check:node && tauri dev",
+    "tauri:build": "npm run check:node && tauri build"
   },
   "dependencies": {
     "react": "^18.3.1",
