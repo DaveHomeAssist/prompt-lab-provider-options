@@ -15,6 +15,7 @@
 <meta name="twitter:description" content="A multi-provider prompt engineering workbench for Chromium browsers. Enhance, A/B test, and compose prompts from a single panel.">
 <meta name="twitter:image" content="https://davehomeassist.github.io/prompt-lab-provider-options/og-image.png?v=2">
 <title>Prompt Lab | AI Prompt Engineering Workbench for Chrome</title>
+    <link rel="icon" type="image/svg+xml" href="../assets/icons/favicon/favicon.svg">
     <link rel="icon" type="image/png" sizes="32x32" href="../assets/icons/favicon/favicon-32.png" />
     <link rel="icon" type="image/png" sizes="16x16" href="../assets/icons/favicon/favicon-16.png" />
     <link rel="apple-touch-icon" sizes="180x180" href="../assets/icons/favicon/apple-touch-icon.png" />
@@ -100,6 +101,15 @@ body {
   font-weight: 400;
   line-height: 1.65;
   overflow-x: hidden;
+}
+
+a:focus-visible,
+button:focus-visible,
+input:focus-visible,
+select:focus-visible,
+textarea:focus-visible {
+  outline: 2px solid var(--lab-teal);
+  outline-offset: 3px;
 }
 
 /* ============================
@@ -985,9 +995,9 @@ footer .lab-mark {
   </a>
   <div class="site-nav-links">
     <a href="#features">Features</a>
-    <a href="/guide">Guide</a>
-    <a href="/setup">Setup</a>
-    <a href="/privatepolicy">Privacy</a>
+    <a href="./guide.html">Guide</a>
+    <a href="./setup.html">Setup</a>
+    <a href="./privacy.html">Privacy</a>
     <a href="https://github.com/DaveHomeAssist/prompt-lab-provider-options" target="_blank" rel="noopener">GitHub</a>
     <a href="https://prompt-lab-tawny.vercel.app/app/" class="nav-cta">Open App</a>
   </div>
@@ -1216,7 +1226,7 @@ footer .lab-mark {
 <!-- ========== FOOTER ========== -->
 <footer>
   <span class="lab-mark">&aleph;</span> Prompt Lab v1.5.0 — Built for prompt engineers who ship.
-  <br><a href="/guide" style="color:var(--lab-violet-light); text-decoration:none; font-size:0.72rem;">How-To Guide</a> &middot; <a href="/setup" style="color:var(--lab-violet-light); text-decoration:none; font-size:0.72rem;">Setup</a> &middot; <a href="/privatepolicy" style="color:var(--lab-violet-light); text-decoration:none; font-size:0.72rem;">Privacy</a> &middot; <a href="https://github.com/DaveHomeAssist/prompt-lab-provider-options" style="color:var(--lab-violet-light); text-decoration:none; font-size:0.72rem;">Source</a>
+  <br><a href="./guide.html" style="color:var(--lab-violet-light); text-decoration:none; font-size:0.72rem;">How-To Guide</a> &middot; <a href="./setup.html" style="color:var(--lab-violet-light); text-decoration:none; font-size:0.72rem;">Setup</a> &middot; <a href="./privacy.html" style="color:var(--lab-violet-light); text-decoration:none; font-size:0.72rem;">Privacy</a> &middot; <a href="https://github.com/DaveHomeAssist/prompt-lab-provider-options" style="color:var(--lab-violet-light); text-decoration:none; font-size:0.72rem;">Source</a>
 </footer>
 
 <!-- ========== INTERACTIVE JS ========== -->

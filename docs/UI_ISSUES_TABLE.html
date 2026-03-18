@@ -425,6 +425,7 @@
   <a href="./index.html">Home</a>
   <a href="./setup.html">Setup</a>
   <a href="./guide.html">Guide</a>
+  <a href="./privacy.html">Privacy</a>
   <a href="../revised-plb-redesign-spec.html" class="bridge">Redesign Spec &rarr;</a>
 </nav>
 
@@ -459,8 +460,8 @@
 
   <section class="issue-group open" data-status="done">
     <button class="group-toggle" type="button" aria-expanded="true">
-      <span>Verified Fixed (<span class="g-count">7</span>)</span>
-      <span style="display:flex;align-items:center;gap:.5rem"><span class="badge badge-done g-count-badge">7</span><span class="chev">&rsaquo;</span></span>
+      <span>Verified Fixed (<span class="g-count">10</span>)</span>
+      <span style="display:flex;align-items:center;gap:.5rem"><span class="badge badge-done g-count-badge">10</span><span class="chev">&rsaquo;</span></span>
     </button>
     <div class="group-body">
       <div class="card-grid">
@@ -508,6 +509,28 @@
           </dl>
         </div>
 
+        <div class="issue-card" tabindex="0" data-surface="create">
+          <div class="card-top"><span class="card-area">Recovery</span><span class="status status-done">Fixed</span></div>
+          <div class="card-title">Create error handling now presents compact recovery actions instead of a heavy alert block</div>
+          <div class="card-expand-hint">click to expand</div>
+          <dl class="card-detail">
+            <dt>Verified state</dt><dd>Error feedback is now framed as a recovery card with next steps and direct action buttons like Try Again or Open Provider Settings.</dd>
+            <dt>Location</dt><dd><code>App.jsx:554-586</code></dd>
+            <dt>What changed</dt><dd>Provider-response failures no longer dominate the page visually while offering weak guidance. The state is now lighter and more actionable.</dd>
+          </dl>
+        </div>
+
+        <div class="issue-card" tabindex="0" data-surface="create">
+          <div class="card-top"><span class="card-area">Discoverability</span><span class="status status-done">Fixed</span></div>
+          <div class="card-title">Frequently Used no longer competes with the result area</div>
+          <div class="card-expand-hint">click to expand</div>
+          <dl class="card-detail">
+            <dt>Verified state</dt><dd>Frequently Used now lives in its own collapsible helper section above authoring instead of beneath generated results.</dd>
+            <dt>Location</dt><dd><code>App.jsx:416-454</code></dd>
+            <dt>What changed</dt><dd>Reuse helpers are now positioned as authoring support, with explicit Copy and Load actions and clearer expectations around what each action does.</dd>
+          </dl>
+        </div>
+
         <div class="issue-card" tabindex="0" data-surface="library">
           <div class="card-top"><span class="card-area">Action overload</span><span class="status status-done">Fixed</span></div>
           <div class="card-title">Library rows no longer expose the full action set inline</div>
@@ -530,6 +553,17 @@
           </dl>
         </div>
 
+        <div class="issue-card" tabindex="0" data-surface="composer">
+          <div class="card-top"><span class="card-area">Interaction</span><span class="status status-done">Fixed</span></div>
+          <div class="card-title">Composer no longer teaches drag-and-drop as the only obvious ordering model</div>
+          <div class="card-expand-hint">click to expand</div>
+          <dl class="card-detail">
+            <dt>Verified state</dt><dd>Library rows now use explicit Add buttons, and composer blocks expose Move Up and Move Down controls alongside optional drag reordering.</dd>
+            <dt>Location</dt><dd><code>ComposerTab.jsx:11-18</code>, <code>ComposerTab.jsx:29-47</code>, <code>ComposerTab.jsx:139-166</code></dd>
+            <dt>What changed</dt><dd>Keyboard-friendly sequencing is now first-class instead of being subordinate to a drag-canvas mental model.</dd>
+          </dl>
+        </div>
+
         <div class="issue-card" tabindex="0" data-surface="connection">
           <div class="card-top"><span class="card-area">Setup</span><span class="status status-done">Fixed</span></div>
           <div class="card-title">Provider setup no longer misrepresents supported providers</div>
@@ -546,33 +580,11 @@
 
   <section class="issue-group open" data-status="open">
     <button class="group-toggle" type="button" aria-expanded="true">
-      <span>Open (<span class="g-count">2</span>)</span>
-      <span style="display:flex;align-items:center;gap:.5rem"><span class="badge badge-open g-count-badge">2</span><span class="chev">&rsaquo;</span></span>
+      <span>Open (<span class="g-count">0</span>)</span>
+      <span style="display:flex;align-items:center;gap:.5rem"><span class="badge badge-open g-count-badge">0</span><span class="chev">&rsaquo;</span></span>
     </button>
     <div class="group-body">
-      <div class="card-grid">
-        <div class="issue-card" tabindex="0" data-surface="create">
-          <div class="card-top"><span class="card-area">Discoverability</span><span class="card-sev card-sev-low">Low</span></div>
-          <div class="card-title">Quick Inject / Frequently Used competes with the result area</div>
-          <div class="card-expand-hint">click to expand</div>
-          <dl class="card-detail">
-            <dt>Impact</dt><dd>Helpful reuse shortcuts appear in the same visual lane as output, notes, and save actions.</dd>
-            <dt>Location</dt><dd><code>App.jsx:720-733</code></dd>
-            <dt>Active issue</dt><dd>Frequently Used still sits in the main Create stack directly beneath generation output, so reuse helpers continue to compete with evaluation and save behaviors.</dd>
-          </dl>
-        </div>
-
-        <div class="issue-card" tabindex="0" data-surface="composer">
-          <div class="card-top"><span class="card-area">Interaction</span><span class="card-sev card-sev-med">Med</span></div>
-          <div class="card-title">Composer still teaches drag-and-drop first, explicit sequencing controls second</div>
-          <div class="card-expand-hint">click to expand</div>
-          <dl class="card-detail">
-            <dt>Impact</dt><dd>Keyboard and narrow-panel users get a worse mental model and a weaker path through the feature.</dd>
-            <dt>Location</dt><dd><code>ComposerTab.jsx:18-32</code>, <code>ComposerTab.jsx:83-99</code></dd>
-            <dt>Active issue</dt><dd>The first-run copy and dominant controls still frame Composer as a drag canvas. Explicit sequencing and keyboard-first ordering are still secondary.</dd>
-          </dl>
-        </div>
-      </div>
+      <p style="padding:.3rem .2rem;color:var(--text-muted);font-size:.88rem;">No active implementation issues are currently tracked as open. Remaining items are follow-up validation or deferred structural work.</p>
     </div>
   </section>
 
@@ -588,7 +600,7 @@
           <div class="card-title">Create is clearer, but the authoring surface above results is still dense and sequentially heavy</div>
           <div class="card-expand-hint">click to expand</div>
           <dl class="card-detail">
-            <dt>Why follow-up</dt><dd>The new result tabs reduce the bottom-half sprawl, but input, prompt quality, lint, action controls, error handling, run history, and quick inject still read as one long authoring stack.</dd>
+            <dt>Why follow-up</dt><dd>The result area, error state, and helper placement are improved, but input, prompt quality, lint, action controls, and run history still read as one dense authoring sequence.</dd>
             <dt>Location</dt><dd><code>App.jsx:395-735</code></dd>
           </dl>
         </div>

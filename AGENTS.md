@@ -28,8 +28,10 @@ Prompt Lab is a multi surface prompt engineering tool with extension, desktop, a
 | 002 | P2 | in-progress | Create workflow remains too vertically stacked | Layout is improved, but Create still carries too many stages in one scroll path |
 | 003 | P2 | in-progress | Experiments and run history are still split | A B flow and run analysis are improved but not fully unified |
 | 004 | P2 | open | Accessibility parity remains incomplete | Header icon labeling and light mode body background still need cleanup |
+| 005 | P2 | resolved | Privacy policy page missing, all nav links dead | Created docs/privacy.html, fixed all nav/footer links to relative paths |
 
 ## Session Log
 
 [2026-03-18] [PLB] [docs] Add AGENTS baseline
+[2026-03-18] [PLB] [fix] Create privacy page and fix dead nav links across all docs pages
 
