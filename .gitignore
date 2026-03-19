@@ -11,6 +11,7 @@ prompt-lab-source/prompt-lab-desktop/dist/
 
 # Archive
 prompt-lab-source/_archive/
+archives/
 
 brand-assets/
 .DS_Store
