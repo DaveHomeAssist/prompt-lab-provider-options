@@ -26,7 +26,7 @@ export default function ComposerTab({ m, library, composerBlocks, setComposerBlo
       <div className={`${compact ? 'hidden' : 'w-64 shrink-0'} flex flex-col border-r ${m.border} ${pageScroll ? '' : 'overflow-hidden'}`}>
         <div className={`px-3 py-2 border-b ${m.border} shrink-0`}>
           <p className={`text-xs font-semibold ${m.textSub} uppercase tracking-wider`}>Library</p>
-          <p className={`text-xs ${m.textMuted} mt-1`}>Add blocks explicitly or drag when it is faster.</p>
+          <p className={`text-xs ${m.textMuted} mt-1`}>Click Add to insert a block. Drag is available if you prefer.</p>
         </div>
         <div className="flex-1 overflow-y-auto p-2 flex flex-col gap-1.5">
           {library.length === 0 && <p className={`text-xs ${m.textMuted} p-2`}>No saved prompts yet.</p>}
@@ -59,7 +59,7 @@ export default function ComposerTab({ m, library, composerBlocks, setComposerBlo
             <p className={`text-xs font-semibold ${m.textSub} uppercase tracking-wider`}>Canvas ({composerBlocks.length} blocks)</p>
             <p className={`text-xs ${m.textMuted} mt-1`}>Use Add, Move up, and Move down for precise ordering. Drag remains optional.</p>
           </div>
-          <div className="flex gap-2">
+          <div className="flex flex-wrap gap-2">
             {composerBlocks.length > 0 && <>
               <button onClick={() => copy(composedPrompt, 'Composed prompt copied!')} className={`flex items-center gap-1 text-xs ${m.btn} ${m.textAlt} px-2 py-1 rounded-lg transition-colors`}><Ic n="Copy" size={11} />Copy All</button>
               <button onClick={() => { setRaw(composedPrompt); setTab('editor'); notify('Loaded into editor!'); }} className="flex items-center gap-1.5 text-xs bg-violet-600 hover:bg-violet-500 text-white px-2 py-1 rounded-lg transition-colors"><Ic n="ArrowRight" size={11} />Send to Editor</button>
@@ -82,7 +82,7 @@ export default function ComposerTab({ m, library, composerBlocks, setComposerBlo
           <div className={`${compact ? 'min-h-0 max-h-44' : 'hidden'} rounded-xl border ${m.border} overflow-hidden`}>
             <div className={`px-3 py-2 border-b ${m.border} shrink-0`}>
               <p className={`text-xs font-semibold ${m.textSub} uppercase tracking-wider`}>Library</p>
-              <p className={`text-xs ${m.textMuted} mt-1`}>Add blocks directly or drag into the canvas.</p>
+              <p className={`text-xs ${m.textMuted} mt-1`}>Click Add on any prompt to add it to the canvas.</p>
             </div>
             <div className="overflow-y-auto p-2 flex flex-col gap-1.5 h-full">
               {library.length === 0 && <p className={`text-xs ${m.textMuted} p-2`}>No saved prompts yet.</p>}
@@ -115,7 +115,7 @@ export default function ComposerTab({ m, library, composerBlocks, setComposerBlo
             {composerBlocks.length === 0 && (
               <div className="flex flex-col items-center justify-center h-full gap-2 pointer-events-none">
                 <Ic n="Layers" size={28} className={m.textMuted} />
-                <p className={`text-sm ${m.textSub}`}>Add prompts from the library or drop them here</p>
+                <p className={`text-sm ${m.textSub}`}>Click Add on any library prompt to start building</p>
               </div>
             )}
             {composerBlocks.map((block, idx) => (
@@ -147,7 +147,7 @@ export default function ComposerTab({ m, library, composerBlocks, setComposerBlo
                         type="button"
                         onClick={() => moveBlock(idx, idx - 1)}
                         disabled={idx === 0}
-                        className={`ui-control px-2 py-1 rounded text-xs font-semibold transition-colors ${idx === 0 ? `${m.btn} ${m.textMuted} opacity-40 cursor-not-allowed` : `${m.btn} ${m.textAlt}`}`}
+                        className={`ui-control px-2 py-1 rounded-lg text-xs font-semibold transition-colors ${idx === 0 ? `${m.btn} ${m.textMuted} opacity-40 cursor-not-allowed` : `${m.btn} ${m.textAlt}`}`}
                       >
                         Move Up
                       </button>
@@ -155,13 +155,13 @@ export default function ComposerTab({ m, library, composerBlocks, setComposerBlo
                         type="button"
                         onClick={() => moveBlock(idx, idx + 1)}
                         disabled={idx === composerBlocks.length - 1}
-                        className={`ui-control px-2 py-1 rounded text-xs font-semibold transition-colors ${idx === composerBlocks.length - 1 ? `${m.btn} ${m.textMuted} opacity-40 cursor-not-allowed` : `${m.btn} ${m.textAlt}`}`}
+                        className={`ui-control px-2 py-1 rounded-lg text-xs font-semibold transition-colors ${idx === composerBlocks.length - 1 ? `${m.btn} ${m.textMuted} opacity-40 cursor-not-allowed` : `${m.btn} ${m.textAlt}`}`}
                       >
                         Move Down
                       </button>
                     </div>
                     <div className={`text-[11px] ${m.textMuted} mb-1`}>
-                      Drag to reorder if you prefer, but explicit controls stay available.
+                      Use Move Up / Move Down to reorder. Drag to reorder is also available.
                     </div>
                     <p className={`text-xs ${m.textBody} leading-relaxed line-clamp-3`}>{block.content}</p>
                   </div>

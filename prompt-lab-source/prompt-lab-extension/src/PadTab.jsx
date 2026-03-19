@@ -637,7 +637,7 @@ export default function PadTab({ m, notify, pageScroll = false, onPromoteToLibra
                 <Ic n="BookmarkPlus" size={11} />Library
               </button>
             )}
-            <button type="button" onClick={insertDate} className={`flex items-center gap-1 text-xs ${m.btn} ${m.textAlt} px-2 py-1 rounded-lg transition-colors`} title="Insert date separator">📅</button>
+            <button type="button" onClick={insertDate} className={`flex items-center gap-1 text-xs ${m.btn} ${m.textAlt} px-2 py-1 rounded-lg transition-colors min-w-[2rem]`} title="Insert date separator">📅</button>
             <button
               type="button"
               onClick={exportPad}
@@ -679,7 +679,8 @@ export default function PadTab({ m, notify, pageScroll = false, onPromoteToLibra
           <textarea
             id="plPadArea"
             ref={textareaRef}
-            className={`flex-1 w-full ${textareaMinHeightClass} resize-none rounded-xl border ${m.input} border p-4 text-sm leading-relaxed focus:outline-none focus:border-violet-500 transition-colors ${m.text}`}
+            className={`flex-1 w-full ${textareaMinHeightClass} resize-none rounded-xl border ${m.input} p-4 text-sm leading-relaxed focus:outline-none focus:border-violet-500 transition-colors ${m.text}`}
+            aria-label="Scratchpad"
             placeholder={'Notes, ideas, prompt snippets…\n\nUse 📅 Date to timestamp entries.'}
             value={text} onChange={onChange} spellCheck />
           <div className="flex items-center justify-start min-h-5">

@@ -238,7 +238,7 @@ const LibraryPanel = memo(function LibraryPanel({
                         <p className="text-xs text-blue-400 font-semibold uppercase tracking-wider flex items-center gap-1"><Ic n="Clock" size={9} />Version History ({entry.versions.length})</p>
                         <button
                           onClick={() => lib.openVersionHistory(entry.id, 0)}
-                          className={`text-xs ${m.textSub} hover:text-white transition-colors flex items-center gap-1`}
+                          className={`text-xs ${m.textSub} hover:text-white transition-colors flex items-center gap-1 rounded-lg px-1.5 py-0.5`}
                         >
                           <Ic n="GitBranch" size={9} />
                           Open History

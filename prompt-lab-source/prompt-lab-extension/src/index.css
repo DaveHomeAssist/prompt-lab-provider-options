@@ -72,6 +72,26 @@ textarea:disabled {
   transform: translateY(1px) scale(0.985);
 }
 
+.pl-scroll-row {
+  display: flex;
+  align-items: center;
+  gap: 0.25rem;
+  min-width: max-content;
+}
+
+.pl-scroll-row > * {
+  flex: 0 0 auto;
+}
+
+.pl-tab-btn {
+  flex: 0 0 auto;
+}
+
+.pl-subtle-scroll {
+  scrollbar-width: thin;
+  scrollbar-color: rgba(107, 114, 128, 0.65) transparent;
+}
+
 .pl-toast {
   animation: pl-toast-in 180ms ease-out both;
 }
@@ -229,9 +249,10 @@ textarea:disabled {
 .pl-density-compact .gap-2 { gap: 0.35rem; }
 .pl-density-compact .gap-3 { gap: 0.5rem; }
 .pl-density-compact textarea { font-size: 0.8rem; padding: 0.5rem; }
-.pl-density-compact .text-sm { font-size: 0.75rem; }
-.pl-density-compact .text-xs { font-size: 0.65rem; }
-.pl-density-compact .ui-control { min-height: 1.6rem; }
+.pl-density-compact .text-sm { font-size: 0.79rem; }
+.pl-density-compact .text-xs { font-size: 0.72rem; }
+.pl-density-compact .ui-control { min-height: 1.9rem; }
+.pl-density-compact .pl-tab-btn { padding-left: 0.7rem; padding-right: 0.7rem; }
 
 .pl-density-comfortable {
   --pl-spacing: 1;

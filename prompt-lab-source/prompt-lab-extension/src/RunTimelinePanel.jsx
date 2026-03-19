@@ -253,7 +253,7 @@ function ComparePanel({ runs, m, compact, copy, onClose }) {
           </span>
         </div>
       </div>
-      <div className="grid grid-cols-2 gap-3">
+      <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
         {[a, b].map(run => (
           <div key={run.id} className={`${m.codeBlock} border ${m.border} rounded-lg p-2.5 text-xs`}>
             <div className="flex items-center gap-2 mb-1">
@@ -368,31 +368,31 @@ export default function RunTimelinePanel({ m, prompt, copy, compact, pageScroll 
 
         {/* Filters */}
         <div className={`flex items-center gap-2 flex-wrap ${m.surface} border ${m.border} rounded-lg p-2`}>
-          <select value={mode} onChange={e => setMode(e.target.value)}
+          <select value={mode} onChange={e => setMode(e.target.value)} aria-label="Filter by mode"
             className={`text-xs ${m.input} border rounded px-2 py-1.5 focus:outline-none focus:border-violet-500`}>
             <option value="">All modes</option>
             <option value="enhance">Enhance</option>
             <option value="ab">A/B</option>
             <option value="test-case">Test Case</option>
           </select>
-          <select value={provider} onChange={e => setProvider(e.target.value)}
+          <select value={provider} onChange={e => setProvider(e.target.value)} aria-label="Filter by provider"
             className={`text-xs ${m.input} border rounded px-2 py-1.5 focus:outline-none focus:border-violet-500`}>
             <option value="">All providers</option>
             {availableProviders.map(p => <option key={p} value={p}>{p}</option>)}
           </select>
-          <select value={model} onChange={e => setModel(e.target.value)}
+          <select value={model} onChange={e => setModel(e.target.value)} aria-label="Filter by model"
             className={`text-xs ${m.input} border rounded px-2 py-1.5 focus:outline-none focus:border-violet-500`}>
             <option value="">All models</option>
             {availableModels.map(item => <option key={item} value={item}>{item}</option>)}
           </select>
-          <select value={status} onChange={e => setStatus(e.target.value)}
+          <select value={status} onChange={e => setStatus(e.target.value)} aria-label="Filter by status"
             className={`text-xs ${m.input} border rounded px-2 py-1.5 focus:outline-none focus:border-violet-500`}>
             <option value="">All statuses</option>
             <option value="success">Success</option>
             <option value="error">Error</option>
             <option value="blocked">Blocked</option>
           </select>
-          <select value={dateRange} onChange={e => setDateRange(e.target.value)}
+          <select value={dateRange} onChange={e => setDateRange(e.target.value)} aria-label="Filter by date range"
             className={`text-xs ${m.input} border rounded px-2 py-1.5 focus:outline-none focus:border-violet-500`}>
             <option value="7d">Last 7 days</option>
             <option value="30d">Last 30 days</option>

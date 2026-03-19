@@ -1,4 +1,4 @@
-import { createContext, useContext, useMemo } from 'react';
+import { createContext, useContext, useEffect, useMemo } from 'react';
 
 const ThemeContext = createContext({
   mode: 'dark',
@@ -45,6 +45,10 @@ export function ThemeProvider({ mode = 'dark', children }) {
     mode,
     getTagChipClass: ({ tag, selected = false, clickable = false }) => buildTagChipClass(mode, tag, selected, clickable),
   }), [mode]);
+
+  useEffect(() => {
+    document.body.style.background = mode === 'light' ? '#f9fafb' : '#030712';
+  }, [mode]);
 
   return <ThemeContext.Provider value={value}>{children}</ThemeContext.Provider>;
 }

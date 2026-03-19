@@ -24,10 +24,10 @@ Prompt Lab is a multi surface prompt engineering tool with extension, desktop, a
 
 | ID | Severity | Status | Title | Notes |
 |----|----------|--------|-------|-------|
-| 001 | P2 | open | Composer still teaches drag first interaction | Current composer still leads with drag to add and drag reorder |
+| 001 | P2 | resolved | Composer still teaches drag first interaction | Fixed all help text strings; empty state and block hints now lead with Add/Move controls |
 | 002 | P2 | in-progress | Create workflow remains too vertically stacked | Layout is improved, but Create still carries too many stages in one scroll path |
 | 003 | P2 | in-progress | Experiments and run history are still split | A B flow and run analysis are improved but not fully unified |
-| 004 | P2 | open | Accessibility parity remains incomplete | Header icon labeling and light mode body background still need cleanup |
+| 004 | P2 | resolved | Accessibility parity remains incomplete | Added aria-labels to theme/shortcuts/settings buttons; ThemeProvider now syncs body bg |
 | 005 | P2 | resolved | Privacy policy page missing, all nav links dead | Created docs/privacy.html, fixed all nav/footer links to relative paths |
 | 006 | P2 | resolved | No diff viewer for A/B test outputs | Added DiffEngine.js, DiffPane.jsx, and Sync View button in ABTestTab |
 
@@ -35,4 +35,4 @@ Prompt Lab is a multi surface prompt engineering tool with extension, desktop, a
 
 [2026-03-18] [PLB] [docs] Add AGENTS baseline
 [2026-03-18] [PLB] [fix] Create privacy page and fix dead nav links across all docs pages
-
+[2026-03-18] [PLB] [fix] Prevent create pane action rows and diff output from overflowing at narrow widths

@@ -324,44 +324,49 @@ export default function App() {
             </div>
             <div className="flex items-center gap-1">
               <button type="button" onClick={() => { setShowCmdPalette(true); setCmdQuery(''); }} className={`ui-control px-2 py-1 rounded-lg ${m.btn} ${m.textAlt} text-[11px] font-mono hover:text-violet-400 transition-colors`}>⌘K</button>
-              <button type="button" onClick={() => setColorMode(p => p === 'dark' ? 'light' : 'dark')} className={`ui-control p-1.5 rounded-lg ${m.btn} ${m.textAlt} hover:text-violet-400 transition-colors`}>
+              <button type="button" aria-label={colorMode === 'dark' ? 'Switch to light mode' : 'Switch to dark mode'} onClick={() => setColorMode(p => p === 'dark' ? 'light' : 'dark')} className={`ui-control p-1.5 rounded-lg ${m.btn} ${m.textAlt} hover:text-violet-400 transition-colors`}>
                 {colorMode === 'dark' ? <Ic n="Sun" size={13} /> : <Ic n="Moon" size={13} />}
               </button>
-              <button type="button" onClick={() => setShowShortcuts(true)} className={`ui-control p-1.5 rounded-lg ${m.btn} ${m.textAlt} hover:text-violet-400 transition-colors`}><Ic n="Keyboard" size={13} /></button>
-              <button type="button" onClick={() => setShowSettings(true)} className={`ui-control p-1.5 rounded-lg ${m.btn} ${m.textAlt} hover:text-violet-400 transition-colors`}><Ic n="Settings" size={13} /></button>
+              <button type="button" aria-label="Keyboard shortcuts" onClick={() => setShowShortcuts(true)} className={`ui-control p-1.5 rounded-lg ${m.btn} ${m.textAlt} hover:text-violet-400 transition-colors`}><Ic n="Keyboard" size={13} /></button>
+              <button type="button" aria-label="Settings" onClick={() => setShowSettings(true)} className={`ui-control p-1.5 rounded-lg ${m.btn} ${m.textAlt} hover:text-violet-400 transition-colors`}><Ic n="Settings" size={13} /></button>
             </div>
           </div>
         </div>
         <div className={`flex items-center justify-between gap-2 mt-2 ${compact ? 'flex-col items-stretch' : ''}`}>
-          <div className={`flex items-center gap-1 ${compact ? 'overflow-x-auto pb-1' : ''}`} role="tablist" aria-label="Primary workspaces">
+          <div className={`${compact ? 'overflow-x-auto pb-1 pl-subtle-scroll' : ''}`} role="tablist" aria-label="Primary workspaces">
+            <div className="pl-scroll-row">
             {[
               ['create', 'Create'],
               ['library', 'Library'],
               ['experiments', 'Experiments'],
             ].map(([id, label]) => (
               <button key={id} type="button" onClick={() => openSection(id)} role="tab" aria-selected={activeSection === id}
-                className={`ui-control px-3 py-1.5 text-xs font-semibold rounded-lg transition-colors whitespace-nowrap ${activeSection === id ? 'bg-violet-600 text-white' : `${m.btn} ${m.textAlt}`}`}>
+                className={`pl-tab-btn ui-control px-3 py-1.5 text-xs font-semibold rounded-lg transition-colors whitespace-nowrap ${activeSection === id ? 'bg-violet-600 text-white' : `${m.btn} ${m.textAlt}`}`}>
                 {label}
               </button>
             ))}
+            </div>
           </div>
-          <div className={`flex items-center gap-1 ${compact ? 'overflow-x-auto pb-1' : ''}`} aria-label="Prompt Lab utilities">
+          <div className={`${compact ? 'overflow-x-auto pb-1 pl-subtle-scroll' : ''}`} aria-label="Prompt Lab utilities">
+            <div className="pl-scroll-row">
             <button type="button" onClick={() => openCreateView('composer')}
-              className={`ui-control px-2.5 py-1 text-[11px] font-semibold rounded-lg transition-colors whitespace-nowrap ${workspaceView === 'composer' ? 'bg-violet-600 text-white' : `${m.btn} ${m.textAlt}`}`}>
+              className={`pl-tab-btn ui-control px-2.5 py-1 text-[11px] font-semibold rounded-lg transition-colors whitespace-nowrap ${workspaceView === 'composer' ? 'bg-violet-600 text-white' : `${m.btn} ${m.textAlt}`}`}>
               Build
             </button>
             <button type="button" onClick={() => setPrimaryView('notebook')}
-              className={`ui-control px-2.5 py-1 text-[11px] font-semibold rounded-lg transition-colors whitespace-nowrap ${primaryView === 'notebook' ? 'bg-violet-600 text-white' : `${m.btn} ${m.textAlt}`}`}>
+              className={`pl-tab-btn ui-control px-2.5 py-1 text-[11px] font-semibold rounded-lg transition-colors whitespace-nowrap ${primaryView === 'notebook' ? 'bg-violet-600 text-white' : `${m.btn} ${m.textAlt}`}`}>
               Notebook
             </button>
+            </div>
           </div>
         </div>
-        <div className={`flex items-center gap-1 mt-2 ${compact ? 'overflow-x-auto pb-1' : ''}`} role="tablist" aria-label={activeSection === 'experiments' ? 'Experiment views' : primaryView === 'notebook' ? 'Notebook status' : 'Create workspace controls'}>
+        <div className={`mt-2 ${compact ? 'overflow-x-auto pb-1 pl-subtle-scroll' : ''}`} role="tablist" aria-label={activeSection === 'experiments' ? 'Experiment views' : primaryView === 'notebook' ? 'Notebook status' : 'Create workspace controls'}>
+          <div className="pl-scroll-row">
           {activeSection === 'experiments' && (
             <>
               {SUBVIEWS.runs.map(({ id, label }) => (
                 <button key={id} type="button" onClick={() => openRunsView(id)} role="tab" aria-selected={runsView === id}
-                  className={`ui-control px-2.5 py-1 text-[11px] font-semibold rounded-lg transition-colors whitespace-nowrap ${runsView === id ? 'bg-violet-600 text-white' : `${m.btn} ${m.textAlt}`}`}>
+                  className={`pl-tab-btn ui-control px-2.5 py-1 text-[11px] font-semibold rounded-lg transition-colors whitespace-nowrap ${runsView === id ? 'bg-violet-600 text-white' : `${m.btn} ${m.textAlt}`}`}>
                   {label}
                 </button>
               ))}
@@ -374,7 +379,7 @@ export default function App() {
             <>
               {createLayoutOptions.map(([id, label]) => (
                 <button key={id} type="button" onClick={() => setEditorLayout(id)}
-                  className={`ui-control px-2.5 py-1 text-[11px] font-semibold rounded-lg transition-colors whitespace-nowrap ${effectiveEditorLayout === id ? 'bg-violet-600 text-white' : `${m.btn} ${m.textAlt}`}`}>
+                  className={`pl-tab-btn ui-control px-2.5 py-1 text-[11px] font-semibold rounded-lg transition-colors whitespace-nowrap ${effectiveEditorLayout === id ? 'bg-violet-600 text-white' : `${m.btn} ${m.textAlt}`}`}>
                   {label}
                 </button>
               ))}
@@ -383,6 +388,7 @@ export default function App() {
           {activeSection === 'library' && (
             <span className={`text-[11px] ${m.textMuted}`}>Browse, filter, and reuse saved prompts</span>
           )}
+          </div>
         </div>
       </header>
 
@@ -399,13 +405,15 @@ export default function App() {
             <div className="pl-tab-panel h-full min-h-0 flex flex-col overflow-hidden">
               <div className="p-4 flex flex-col gap-3 h-full min-h-0 overflow-hidden">
               {activeSection === 'create' && createLayoutOptions.length > 0 && (
-                <div className="flex gap-1">
+                <div className={`${compact ? 'overflow-x-auto pb-1 pl-subtle-scroll' : ''}`}>
+                  <div className="pl-scroll-row">
                   {createLayoutOptions.map(([id, label]) => (
                     <button key={id} type="button" onClick={() => setEditorLayout(id)}
-                      className={`ui-control text-xs px-2.5 py-1 rounded-lg transition-colors ${effectiveEditorLayout === id ? 'bg-violet-600 text-white' : `${m.btn} ${m.textAlt}`}`}>
+                      className={`pl-tab-btn ui-control text-xs px-2.5 py-1 rounded-lg transition-colors whitespace-nowrap ${effectiveEditorLayout === id ? 'bg-violet-600 text-white' : `${m.btn} ${m.textAlt}`}`}>
                       {label}
                     </button>
                   ))}
+                  </div>
                 </div>
               )}
               {lib.quickInject.length > 0 && (
@@ -426,9 +434,9 @@ export default function App() {
                       <p className={`text-xs ${m.textMuted}`}>Reuse saved prompts without leaving Create. Load replaces the current draft; Copy keeps your editor state intact.</p>
                       <div className="flex flex-col gap-1.5">
                         {lib.quickInject.map((entry) => (
-                          <div key={entry.id} className={`flex items-center justify-between ${m.codeBlock} border ${m.border} rounded-lg px-3 py-2 gap-2`}>
-                            <span className={`text-xs ${m.textBody} truncate flex-1`}>{entry.title}</span>
-                            <div className="flex gap-2 shrink-0">
+                          <div key={entry.id} className={`flex flex-wrap items-center justify-between ${m.codeBlock} border ${m.border} rounded-lg px-3 py-2 gap-2`}>
+                            <span className={`text-xs ${m.textBody} min-w-0 flex-1 truncate`}>{entry.title}</span>
+                            <div className="flex flex-wrap gap-2 shrink-0">
                               <button
                                 type="button"
                                 onClick={() => { copy(entry.enhanced, `Copied: ${entry.title}`); lib.bumpUse(entry.id); }}
@@ -456,7 +464,7 @@ export default function App() {
                 <div className={`flex justify-between items-center mb-1.5 ${compact ? 'gap-2 flex-wrap' : ''}`}>
                   <div className="flex items-center gap-2">
                     <span className={`text-xs ${m.textSub} uppercase tracking-widest font-semibold`}>Input</span>
-                    <div className="flex rounded-md overflow-hidden border" style={{ borderColor: 'rgba(255,255,255,0.1)' }}>
+                    <div className="flex rounded-md overflow-visible border" style={{ borderColor: 'rgba(255,255,255,0.1)' }}>
                       <button type="button" onClick={() => setMdPreview(false)} aria-pressed={!mdPreview}
                         className={`text-[10px] px-2 py-0.5 transition-colors ${!mdPreview ? 'bg-violet-600 text-white' : `${m.btn} ${m.textAlt}`}`}>Write</button>
                       <button type="button" onClick={() => setMdPreview(true)} aria-pressed={mdPreview}
@@ -597,20 +605,20 @@ export default function App() {
                 </div>
               )}
               {error && (
-                <div className="border border-red-500/35 bg-red-950/20 rounded-xl p-3">
+                <div className={`rounded-xl border p-3 ${colorMode === 'dark' ? 'border-red-500/35 bg-red-950/24' : 'border-red-300 bg-red-50'}`}>
                   <div className="flex items-start justify-between gap-3">
                     <div className="min-w-0">
-                      <p className="text-[11px] font-semibold uppercase tracking-wider text-red-300">Recovery</p>
-                      <p className="mt-1 text-sm font-semibold text-red-200">{error.userMessage}</p>
+                      <p className={`text-[11px] font-semibold uppercase tracking-wider ${colorMode === 'dark' ? 'text-red-300' : 'text-red-700'}`}>Recovery</p>
+                      <p className={`mt-1 text-sm font-semibold ${colorMode === 'dark' ? 'text-red-100' : 'text-red-800'}`}>{error.userMessage}</p>
                     </div>
-                    <Ic n="AlertTriangle" size={14} className="text-red-300 shrink-0 mt-0.5" />
+                    <Ic n="AlertTriangle" size={14} className={`${colorMode === 'dark' ? 'text-red-300' : 'text-red-600'} shrink-0 mt-0.5`} />
                   </div>
                   {error.suggestions?.length > 0 && (
                     <div className="mt-3">
-                      <p className={`text-[11px] font-semibold uppercase tracking-wider ${m.textMuted}`}>Next steps</p>
+                      <p className={`text-[11px] font-semibold uppercase tracking-wider ${colorMode === 'dark' ? 'text-red-200/80' : 'text-red-700/80'}`}>Next steps</p>
                       <div className="mt-2 flex flex-wrap gap-2">
                         {error.suggestions.map((suggestion, index) => (
-                          <span key={index} className="inline-flex items-center rounded-full border border-red-400/20 bg-red-500/10 px-2.5 py-1 text-xs text-red-100">
+                          <span key={index} className={`inline-flex items-center rounded-full border px-2.5 py-1 text-xs ${colorMode === 'dark' ? 'border-red-400/20 bg-red-500/10 text-red-100' : 'border-red-200 bg-white text-red-700'}`}>
                             {suggestion}
                           </span>
                         ))}
@@ -684,9 +692,9 @@ export default function App() {
                       </div>
                       <p className={`mt-1 text-xs ${m.textMuted}`}>Review output, compare changes, and decide what to keep.</p>
                     </div>
-                    <div className={`flex items-center gap-2 ${compact ? 'w-full flex-wrap' : 'justify-end flex-wrap'}`}>
+                    <div className={`flex items-center gap-2 ${compact ? 'w-full flex-wrap' : 'justify-end flex-wrap'} min-w-0`}>
                       {activeResultTab === 'improved' && (
-                        <button onClick={() => setEnhMdPreview(p => !p)} className={`flex items-center gap-1 text-xs transition-colors ${enhMdPreview ? 'text-violet-400' : `${m.textSub} hover:text-white`}`}>
+                        <button onClick={() => setEnhMdPreview(p => !p)} className={`flex items-center gap-1 text-xs transition-colors ${enhMdPreview ? 'text-violet-400' : `${m.textSub} hover:text-white`} shrink-0`}>
                           <Ic n="Eye" size={10} />{enhMdPreview ? 'Edit' : 'Preview'}
                         </button>
                       )}
@@ -699,7 +707,7 @@ export default function App() {
                             model: latestEvalRun?.model,
                           })}
                           disabled={!enhanced.trim()}
-                          className={`flex items-center gap-1.5 text-xs px-2 py-1 rounded transition-colors ${
+                          className={`flex items-center gap-1.5 text-xs px-2 py-1 rounded transition-colors shrink-0 ${
                             enhanced.trim() ? 'bg-emerald-500/15 text-emerald-300 hover:bg-emerald-500/25' : `${m.btn} ${m.textMuted} opacity-40 cursor-not-allowed`
                           }`}
                         >
@@ -708,7 +716,7 @@ export default function App() {
                       )}
                       <button
                         onClick={() => copy(enhanced)}
-                        className={`flex items-center gap-1.5 text-xs px-2.5 py-1.5 rounded-md font-semibold transition-colors ${copyBtn}`}
+                        className={`flex items-center gap-1.5 text-xs px-2.5 py-1.5 rounded-md font-semibold transition-colors ${copyBtn} shrink-0`}
                       ><Ic n="Copy" size={12} />Copy</button>
                     </div>
                   </div>
@@ -742,9 +750,9 @@ export default function App() {
                   )}
 
                   {activeResultTab === 'diff' && (
-                    <div className={`${m.codeBlock} border ${m.border} rounded-lg p-3 text-sm leading-loose`}>
+                    <div className={`${m.codeBlock} border ${m.border} rounded-lg p-3 text-sm leading-loose overflow-x-auto whitespace-pre-wrap break-words [overflow-wrap:anywhere]`}>
                       {wordDiff(raw, enhanced).map((d, i) => (
-                        <span key={i} className={`${d.t === 'add' ? m.diffAdd : d.t === 'del' ? m.diffDel : m.diffEq} px-0.5 rounded mr-0.5`}>{d.v}</span>
+                        <span key={i} className={`${d.t === 'add' ? m.diffAdd : d.t === 'del' ? m.diffDel : m.diffEq} px-0.5 rounded mr-0.5 break-words [overflow-wrap:anywhere]`}>{d.v}</span>
                       ))}
                     </div>
                   )}
@@ -1226,7 +1234,7 @@ export default function App() {
           <div className={`pl-modal-panel ${m.modal} border rounded-xl p-5 w-full max-w-sm`} role="dialog" aria-modal="true" aria-labelledby="modal-shortcuts" onClick={e => e.stopPropagation()}>
             <div className="flex justify-between items-center mb-4">
               <h2 id="modal-shortcuts" className={`font-bold text-sm ${m.text}`}>Keyboard Shortcuts</h2>
-              <button type="button" onClick={() => setShowShortcuts(false)} className={m.textSub}><Ic n="X" size={14} /></button>
+              <button type="button" onClick={() => setShowShortcuts(false)} className={`${m.textSub} rounded-lg p-2 hover:bg-white/10 transition-colors`}><Ic n="X" size={14} /></button>
             </div>
             <div className="flex flex-col gap-4">
               <div>

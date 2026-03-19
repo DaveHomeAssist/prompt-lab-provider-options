@@ -328,7 +328,7 @@ export default function DesktopSettingsModal({ show, onClose, m, notify }) {
             </>
           )}
 
-          <div className="space-y-3 border-t border-white/10 pt-4">
+          <div className={`space-y-3 border-t ${m.border} pt-4`}>
             {connectionStatus && <p className={`text-sm ${statusClass}`}>{connectionStatus}</p>}
             <div className="flex items-center justify-end gap-2">
               <button

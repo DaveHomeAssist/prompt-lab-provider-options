@@ -95,10 +95,10 @@ export default function TestCasesPanel({
                   <VerdictBadge evalRuns={evalRuns} testCaseId={testCase.id} />
                 </div>
                 <div className="flex gap-2 shrink-0">
-                  <button onClick={() => openCaseForm(entry.id, testCase)} className={`text-xs ${m.textSub} hover:text-violet-400 transition-colors`}>Edit</button>
-                  <button onClick={() => loadCaseIntoEditor(testCase)} className={`text-xs ${m.textSub} hover:text-white transition-colors`}>Use</button>
-                  <button onClick={() => runSingleCase(testCase, entry.title)} className="text-xs text-blue-400 hover:text-blue-300 transition-colors">Run</button>
-                  <button onClick={() => removeCase(testCase)} className="text-xs text-red-400 hover:text-red-300 transition-colors">Delete</button>
+                  <button onClick={() => openCaseForm(entry.id, testCase)} className={`text-xs ${m.textSub} hover:text-violet-400 hover:bg-white/5 rounded-lg px-1.5 py-0.5 transition-colors`}>Edit</button>
+                  <button onClick={() => loadCaseIntoEditor(testCase)} className={`text-xs ${m.textSub} hover:text-white hover:bg-white/5 rounded-lg px-1.5 py-0.5 transition-colors`}>Use</button>
+                  <button onClick={() => runSingleCase(testCase, entry.title)} className="text-xs text-blue-400 hover:text-blue-300 hover:bg-white/5 rounded-lg px-1.5 py-0.5 transition-colors">Run</button>
+                  <button onClick={() => removeCase(testCase)} className="text-xs text-red-400 hover:text-red-300 hover:bg-white/5 rounded-lg px-1.5 py-0.5 transition-colors">Delete</button>
                 </div>
               </div>
               <p className={`text-xs ${m.textBody} leading-relaxed whitespace-pre-wrap`}>{testCase.input}</p>
