@@ -1,284 +1,179 @@
-import { useEffect, useRef, useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import Ic from './icons';
 import { logWarn } from './lib/logger.js';
+import {
+  buildDefaultNotebookPayload,
+  createNotebookEntry,
+  DEFAULT_PROJECT,
+  filterNotebookEntries,
+  formatNotebookTimestamp,
+  getNotebookEntryStats,
+  migrateNotebookStorage,
+  normalizeNotebookProject,
+  normalizeNotebookStatus,
+  normalizeNotebookTitle,
+  NOTEBOOK_STATUS,
+  persistNotebookState,
+  readNotebookPayload,
+} from './lib/notebookModel.js';
 import { matchPadShortcut } from './lib/padShortcuts.js';
-import { storageKeys } from './lib/storage.js';
+import { preparePromptLabHandoff } from './lib/promptLabBridge.js';
 
-/* ── Multi-pad storage constants ── */
-const LEGACY_PAD_KEY = storageKeys.pad;                 // "pl2-pad"
-const LEGACY_PAD_META_KEY = `${storageKeys.pad}_meta`;  // "pl2-pad_meta"
-const PADS_KEY = 'pl2-pads';
-const PADS_SCHEMA_VERSION_KEY = 'pl2-pads-schema-version';
-const PADS_SCHEMA_VERSION = '2';
-
-const DEFAULT_PAD_ID = 'default';
-const DEFAULT_PAD_NAME = 'Scratchpad';
-const NEW_PAD_NAME_PREFIX = 'Pad';
-
-/* ── Migration helpers ── */
-
-function parseSavedTimestamp(raw) {
-  if (!raw) return Date.now();
-  const iso = new Date(raw).getTime();
-  if (!Number.isNaN(iso)) return iso;
-  return Date.now();
-}
-
-function buildDefaultPadsPayload(content = '', timestamp = Date.now()) {
+function buildEditorDraft(entry) {
   return {
-    pads: [
-      {
-        id: DEFAULT_PAD_ID,
-        name: DEFAULT_PAD_NAME,
-        content,
-        timestamp,
-      },
-    ],
-    activePadId: DEFAULT_PAD_ID,
+    title: entry?.title || 'Scratchpad',
+    body: entry?.body || '',
+    project: entry?.project || DEFAULT_PROJECT,
+    status: entry?.status || 'draft',
   };
 }
 
-function isValidPadsPayload(value) {
-  return Boolean(
-    value &&
-    Array.isArray(value.pads) &&
-    value.pads.length > 0 &&
-    typeof value.activePadId === 'string' &&
-    value.pads.every(
-      (pad) =>
-        pad &&
-        typeof pad.id === 'string' &&
-        typeof pad.name === 'string' &&
-        typeof pad.content === 'string' &&
-        typeof pad.timestamp === 'number'
-    )
-  );
+function buildEmptyEntryName(entries) {
+  return `Note ${entries.length + 1}`;
 }
 
-function readPadsPayload() {
-  try {
-    const raw = localStorage.getItem(PADS_KEY);
-    if (!raw) return null;
-    const parsed = JSON.parse(raw);
-    return isValidPadsPayload(parsed) ? parsed : null;
-  } catch (error) {
-    logWarn('read pads payload', error);
-    return null;
+function sanitizeFilename(value) {
+  const base = String(value || 'notebook-entry')
+    .trim()
+    .toLowerCase()
+    .replace(/[^a-z0-9]+/g, '-')
+    .replace(/^-+|-+$/g, '');
+  return base || 'notebook-entry';
+}
+
+function statusTone(status) {
+  if (status === 'archived') {
+    return 'border-slate-500/40 bg-slate-500/10 text-slate-300';
   }
-}
-
-function migratePadStorage() {
-  try {
-    const version = localStorage.getItem(PADS_SCHEMA_VERSION_KEY);
-
-    // Already migrated and readable.
-    if (version === PADS_SCHEMA_VERSION) {
-      const existing = readPadsPayload();
-      if (existing) {
-        return { migrated: false, payload: existing, error: null };
-      }
-    }
-
-    // Recover if pads payload exists but version flag was never written.
-    const existingPayload = readPadsPayload();
-    if (existingPayload) {
-      localStorage.setItem(PADS_SCHEMA_VERSION_KEY, PADS_SCHEMA_VERSION);
-      return { migrated: true, payload: existingPayload, error: null };
-    }
-
-    // Migrate from legacy single-pad keys (pl2-pad / pl2-pad_meta).
-    // Also handles the pl-pad → pl2-pad hop if it was never completed.
-    let legacyContent = localStorage.getItem(LEGACY_PAD_KEY) || '';
-    let legacyMeta = localStorage.getItem(LEGACY_PAD_META_KEY) || '';
-
-    // Check for pre-pl2 key ("pl-pad") in case that migration never ran.
-    if (!legacyContent) {
-      const prePl2 = localStorage.getItem('pl-pad');
-      if (prePl2) {
-        legacyContent = prePl2;
-        legacyMeta = localStorage.getItem('pl-pad_meta') || '';
-      }
-    }
-
-    const payload = buildDefaultPadsPayload(
-      legacyContent,
-      parseSavedTimestamp(legacyMeta)
-    );
-
-    // Write new schema first.
-    localStorage.setItem(PADS_KEY, JSON.stringify(payload));
-    localStorage.setItem(PADS_SCHEMA_VERSION_KEY, PADS_SCHEMA_VERSION);
-
-    // Only remove legacy keys after successful write.
-    localStorage.removeItem(LEGACY_PAD_KEY);
-    localStorage.removeItem(LEGACY_PAD_META_KEY);
-    localStorage.removeItem('pl-pad');
-    localStorage.removeItem('pl-pad_meta');
-
-    return { migrated: true, payload, error: null };
-  } catch (error) {
-    logWarn('pad schema migration', error);
-
-    // Quota exceeded or write failure: do not destroy legacy data.
-    const fallbackPayload = buildDefaultPadsPayload(
-      localStorage.getItem(LEGACY_PAD_KEY) || '',
-      parseSavedTimestamp(localStorage.getItem(LEGACY_PAD_META_KEY) || '')
-    );
-
-    return {
-      migrated: false,
-      payload: fallbackPayload,
-      error,
-    };
+  if (status === 'in_test') {
+    return 'border-blue-500/35 bg-blue-500/12 text-blue-300';
   }
+  return 'border-violet-500/35 bg-violet-500/12 text-violet-200';
 }
 
-/* ── Persistence helpers (write to pl2-pads) ── */
-
-function updateActivePadContent(prev, nextContent) {
-  return {
-    ...prev,
-    pads: prev.pads.map((pad) =>
-      pad.id === prev.activePadId
-        ? { ...pad, content: nextContent, timestamp: Date.now() }
-        : pad
-    ),
-  };
-}
-
-function persistPadsState(nextState) {
-  try {
-    localStorage.setItem(PADS_KEY, JSON.stringify(nextState));
-    localStorage.setItem(PADS_SCHEMA_VERSION_KEY, PADS_SCHEMA_VERSION);
-  } catch (e) {
-    console.warn('[PadTab] persistPadsState failed (quota exceeded?)', e);
-  }
-}
-
-function buildPadId() {
-  if (typeof crypto !== 'undefined' && typeof crypto.randomUUID === 'function') {
-    return crypto.randomUUID();
-  }
-  return `pad-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`;
-}
-
-/* ── Component ── */
-
-export default function PadTab({ m, notify, pageScroll = false, onPromoteToLibrary }) {
+export default function PadTab({
+  m,
+  notify,
+  pageScroll = false,
+  onPromoteToLibrary,
+  onSendToEditor,
+}) {
   const migrationCheckedRef = useRef(false);
   const textareaRef = useRef(null);
-
-  const [padsState, setPadsState] = useState(() => {
-    const payload = readPadsPayload();
-    return payload || buildDefaultPadsPayload('', Date.now());
-  });
-
-  const activePad =
-    padsState.pads.find((pad) => pad.id === padsState.activePadId) ||
-    padsState.pads[0];
-
-  const [text, setText] = useState(activePad?.content || '');
-  const [saveState, setSaveState] = useState('idle');
-  const [saveError, setSaveError] = useState('');
-  const [lastSavedAt, setLastSavedAt] = useState(() => {
-    if (!activePad?.timestamp) return '';
-    return new Date(activePad.timestamp).toISOString();
-  });
-  const [relativeSavedAt, setRelativeSavedAt] = useState('');
+  const notebookRef = useRef(null);
   const timerRef = useRef(null);
   const savedStateTimerRef = useRef(null);
-  const wc = text.trim() ? text.trim().split(/\s+/).length : 0;
+
+  const [notebookState, setNotebookState] = useState(() => {
+    const payload = readNotebookPayload();
+    return payload || buildDefaultNotebookPayload('', Date.now());
+  });
+  const [filters, setFilters] = useState({ query: '', status: 'all', project: 'all' });
+  const [saveState, setSaveState] = useState('idle');
+  const [saveError, setSaveError] = useState('');
+  const [lastSavedAt, setLastSavedAt] = useState(0);
+  const [selectionText, setSelectionText] = useState('');
+  const [draft, setDraft] = useState(() => buildEditorDraft(notebookState.entries[0]));
+  const [clipboardBanner, setClipboardBanner] = useState('');
+  const [clockTick, setClockTick] = useState(Date.now());
+  const draftRef = useRef(draft);
+
+  notebookRef.current = notebookState;
+  draftRef.current = draft;
+
+  const activeEntry = useMemo(() => (
+    notebookState.entries.find((entry) => entry.id === notebookState.selectedEntryId) || notebookState.entries[0]
+  ), [notebookState]);
+  const filteredEntries = useMemo(() => (
+    filterNotebookEntries(notebookState.entries, filters)
+  ), [filters, notebookState.entries]);
+  const projectOptions = useMemo(() => (
+    Array.from(new Set(notebookState.entries.map((entry) => entry.project.trim()).filter(Boolean))).sort((a, b) => a.localeCompare(b))
+  ), [notebookState.entries]);
+
+  const stats = getNotebookEntryStats(draft.body);
   const shellMinHeightClass = pageScroll ? 'min-h-[calc(100vh-9rem)]' : 'min-h-[calc(100vh-7rem)]';
   const editorPaneMinHeightClass = pageScroll ? 'min-h-[calc(100vh-13rem)]' : 'min-h-[calc(100vh-11rem)]';
-  const textareaMinHeightClass = pageScroll ? 'min-h-[calc(100vh-16rem)]' : 'min-h-[calc(100vh-14rem)]';
+  const textareaMinHeightClass = pageScroll ? 'min-h-[calc(100vh-19rem)]' : 'min-h-[calc(100vh-17rem)]';
   const copyBtnClass = m.text?.includes('gray-100')
     ? 'border border-violet-400/30 bg-violet-500/15 text-violet-200 hover:border-violet-300 hover:bg-violet-500/25'
     : 'border border-violet-300 bg-violet-50 text-violet-700 hover:border-violet-400 hover:bg-violet-100';
 
-  const formatRelativeTime = (value) => {
-    if (!value) return '';
-    const diffMs = Date.now() - new Date(value).getTime();
-    if (Number.isNaN(diffMs) || diffMs < 0) return 'just now';
-    const seconds = Math.floor(diffMs / 1000);
-    if (seconds < 10) return 'just now';
-    if (seconds < 60) return `${seconds} sec ago`;
-    const minutes = Math.floor(seconds / 60);
-    if (minutes < 60) return `${minutes} min ago`;
-    const hours = Math.floor(minutes / 60);
-    if (hours < 24) return `${hours} hr ago`;
-    const days = Math.floor(hours / 24);
-    return `${days} day${days === 1 ? '' : 's'} ago`;
+  const scheduleIdleStatus = () => {
+    clearTimeout(savedStateTimerRef.current);
+    savedStateTimerRef.current = setTimeout(() => setSaveState('idle'), 1800);
   };
 
-  const focusTextarea = () => {
+  const syncSelectionState = () => {
+    const textarea = textareaRef.current;
+    if (!textarea) {
+      setSelectionText('');
+      return '';
+    }
+    const nextSelection = draft.body.slice(textarea.selectionStart, textarea.selectionEnd);
+    setSelectionText(nextSelection);
+    return nextSelection;
+  };
+
+  const loadEntryIntoEditor = (entry) => {
+    const nextDraft = buildEditorDraft(entry);
+    setDraft(nextDraft);
+    setSaveState('idle');
+    setSaveError('');
+    setLastSavedAt(entry?.updatedAt || 0);
+    setSelectionText('');
+    setClipboardBanner('');
     setTimeout(() => textareaRef.current?.focus(), 0);
   };
 
-  const loadPadView = (pad) => {
-    setText(pad?.content || '');
-    setSaveState('idle');
-    setSaveError('');
-    const savedAt = pad?.timestamp ? new Date(pad.timestamp).toISOString() : '';
-    setLastSavedAt(savedAt);
-    setRelativeSavedAt(savedAt ? formatRelativeTime(savedAt) : '');
-    focusTextarea();
-  };
+  const commitDraft = (nextDraft = draftRef.current, { silent = false } = {}) => {
+    const baseState = notebookRef.current;
+    const selectedId = baseState?.selectedEntryId;
+    if (!selectedId) return baseState;
 
-  // Run migration once on mount.
-  useEffect(() => {
-    if (migrationCheckedRef.current) return;
-    migrationCheckedRef.current = true;
+    const currentEntry = baseState.entries.find((entry) => entry.id === selectedId);
+    if (!currentEntry) return baseState;
 
-    const { payload, error, migrated } = migratePadStorage();
-    setPadsState(payload);
-    const active = payload.pads.find((pad) => pad.id === payload.activePadId) || payload.pads[0];
-    setText(active?.content || '');
-    if (active?.timestamp) {
-      setLastSavedAt(new Date(active.timestamp).toISOString());
+    const normalized = {
+      title: normalizeNotebookTitle(nextDraft.title, nextDraft.body),
+      body: String(nextDraft.body || ''),
+      project: normalizeNotebookProject(nextDraft.project),
+      status: normalizeNotebookStatus(nextDraft.status),
+    };
+
+    const changed = (
+      currentEntry.title !== normalized.title ||
+      currentEntry.body !== normalized.body ||
+      currentEntry.project !== normalized.project ||
+      currentEntry.status !== normalized.status
+    );
+
+    if (!changed) {
+      if (silent) return baseState;
+      setSaveState('idle');
+      setSaveError('');
+      return baseState;
     }
 
-    if (error) {
-      notify?.('Pad storage migration failed; using fallback data');
-      return;
-    }
+    const updatedAt = Date.now();
+    const nextState = {
+      ...baseState,
+      entries: baseState.entries.map((entry) => (
+        entry.id === selectedId
+          ? {
+              ...entry,
+              ...normalized,
+              updatedAt,
+            }
+          : entry
+      )),
+    };
 
-    if (migrated) {
-      notify?.('Scratchpad migrated to multi-pad storage');
-    }
-  }, [notify]);
-
-  const scheduleIdleStatus = () => {
-    clearTimeout(savedStateTimerRef.current);
-    savedStateTimerRef.current = setTimeout(() => setSaveState('idle'), 2000);
-  };
-
-  const commitSave = (value) => {
-    const savedAt = new Date().toISOString();
-    const nextState = updateActivePadContent(padsState, value);
-    persistPadsState(nextState);
-    setPadsState(nextState);
-    setLastSavedAt(savedAt);
-    setRelativeSavedAt(formatRelativeTime(savedAt));
-    setSaveError('');
-    setSaveState('saved');
-    scheduleIdleStatus();
-  };
-
-  const flushActivePad = ({ silent = false } = {}) => {
-    clearTimeout(timerRef.current);
-    if (!activePad || text === activePad.content) {
-      return padsState;
-    }
-
-    const nextState = updateActivePadContent(padsState, text);
-    persistPadsState(nextState);
-    setPadsState(nextState);
-
-    const savedAt = new Date(
-      nextState.pads.find((pad) => pad.id === nextState.activePadId)?.timestamp || Date.now()
-    ).toISOString();
-    setLastSavedAt(savedAt);
-    setRelativeSavedAt(formatRelativeTime(savedAt));
+    persistNotebookState(nextState);
+    notebookRef.current = nextState;
+    setNotebookState(nextState);
+    setDraft(normalized);
+    setLastSavedAt(updatedAt);
     setSaveError('');
 
     if (silent) {
@@ -291,239 +186,322 @@ export default function PadTab({ m, notify, pageScroll = false, onPromoteToLibra
     return nextState;
   };
 
-  // Keep a stable ref to the latest flushActivePad for event listeners.
-  const flushRef = useRef(flushActivePad);
-  useEffect(() => { flushRef.current = flushActivePad; });
-
-  const buildFilename = () => {
-    const now = new Date();
-    const yyyy = String(now.getFullYear());
-    const mm = String(now.getMonth() + 1).padStart(2, '0');
-    const dd = String(now.getDate()).padStart(2, '0');
-    const hh = String(now.getHours()).padStart(2, '0');
-    const min = String(now.getMinutes()).padStart(2, '0');
-    const ss = String(now.getSeconds()).padStart(2, '0');
-    return `pad-${yyyy}-${mm}-${dd}-${hh}${min}${ss}.txt`;
+  const flushDraft = ({ silent = false } = {}) => {
+    clearTimeout(timerRef.current);
+    return commitDraft(draftRef.current, { silent });
   };
 
-  const onChange = e => {
-    const v = e.target.value;
-    setText(v);
+  const updateEntryMeta = (mutator) => {
+    const baseState = flushDraft({ silent: true });
+    const selectedId = baseState.selectedEntryId;
+    const nextState = {
+      ...baseState,
+      entries: baseState.entries.map((entry) => (
+        entry.id === selectedId ? mutator(entry) : entry
+      )),
+    };
+    persistNotebookState(nextState);
+    notebookRef.current = nextState;
+    setNotebookState(nextState);
+    const nextEntry = nextState.entries.find((entry) => entry.id === selectedId);
+    if (nextEntry) {
+      loadEntryIntoEditor(nextEntry);
+    }
+    return nextEntry;
+  };
+
+  const queueDraftChange = (patch, { immediate = false } = {}) => {
+    const nextDraft = {
+      ...draft,
+      ...patch,
+    };
+    setDraft(nextDraft);
     setSaveError('');
-    setSaveState('pending');
-    clearTimeout(timerRef.current);
     clearTimeout(savedStateTimerRef.current);
+    clearTimeout(timerRef.current);
+
+    if (immediate) {
+      commitDraft(nextDraft);
+      return;
+    }
+
+    setSaveState('pending');
     timerRef.current = setTimeout(() => {
       try {
-        commitSave(v);
-      } catch (e) {
-        logWarn('pad save', e);
+        commitDraft(nextDraft);
+      } catch (error) {
+        logWarn('notebook autosave', error);
         setSaveState('idle');
         setSaveError('Save failed');
       }
-    }, 600);
-  };
-
-  const insertDate = () => {
-    const d = new Date().toLocaleDateString(undefined, { weekday: 'short', year: 'numeric', month: 'short', day: 'numeric' });
-    const entry = `\n── ${d} ──\n`;
-    const ta = textareaRef.current;
-    if (!ta) return;
-    const pos = ta.selectionStart;
-    const next = text.slice(0, pos) + entry + text.slice(ta.selectionEnd);
-    setText(next);
-    setTimeout(() => { ta.selectionStart = ta.selectionEnd = pos + entry.length; ta.focus(); }, 0);
-    try {
-      clearTimeout(timerRef.current);
-      commitSave(next);
-    } catch (e) { logWarn('pad insert date', e); }
-    notify('Date separator inserted');
-  };
-
-  const insertAtCursor = (prefix, suffix = '') => {
-    const ta = textareaRef.current;
-    if (!ta) return;
-    const start = ta.selectionStart;
-    const end = ta.selectionEnd;
-    const selected = text.slice(start, end);
-    const insert = prefix + selected + suffix;
-    const next = text.slice(0, start) + insert + text.slice(end);
-    setText(next);
-    const cursorPos = selected ? start + insert.length : start + prefix.length;
-    setTimeout(() => { ta.selectionStart = ta.selectionEnd = cursorPos; ta.focus(); }, 0);
-    try { clearTimeout(timerRef.current); commitSave(next); } catch (e) { logWarn('pad format', e); }
-  };
-
-  const insertHeading = () => insertAtCursor('\n## ', '\n');
-  const insertBullet = () => insertAtCursor('\n- ');
-  const insertNumbered = () => insertAtCursor('\n1. ');
-  const insertCodeBlock = () => insertAtCursor('\n```\n', '\n```\n');
-  const insertQuote = () => insertAtCursor('\n> ');
-
-  const handleCopy = () => {
-    if (!text.trim()) return;
-    try { navigator.clipboard.writeText(text); }
-    catch {
-      const el = document.createElement('textarea'); el.value = text;
-      el.style.cssText = 'position:fixed;top:-9999px;opacity:0';
-      document.body.appendChild(el); el.focus(); el.select();
-      document.execCommand('copy'); document.body.removeChild(el);
-    }
-    notify('Pad copied!');
-  };
-
-  const exportPad = () => {
-    if (!text.trim()) return;
-    const filename = buildFilename();
-    const blob = new Blob([text], { type: 'text/plain;charset=utf-8' });
-    try {
-      if (typeof navigator !== 'undefined' && typeof navigator.msSaveOrOpenBlob === 'function') {
-        navigator.msSaveOrOpenBlob(blob, filename);
-        notify('Pad downloaded!');
-        return;
-      }
-      const url = URL.createObjectURL(blob);
-      const anchor = document.createElement('a');
-      anchor.href = url;
-      anchor.download = filename;
-      document.body.appendChild(anchor);
-      anchor.click();
-      document.body.removeChild(anchor);
-      setTimeout(() => URL.revokeObjectURL(url), 0);
-      notify('Pad downloaded!');
-    } catch (e) {
-      logWarn('pad download', e);
-      notify('Download unavailable');
-    }
-  };
-
-  const handleSelectPad = (padId) => {
-    if (padId === padsState.activePadId) return;
-    const baseState = flushActivePad({ silent: true });
-    const nextState = { ...baseState, activePadId: padId };
-    persistPadsState(nextState);
-    setPadsState(nextState);
-    const nextPad = nextState.pads.find((pad) => pad.id === padId) || nextState.pads[0];
-    loadPadView(nextPad);
-  };
-
-  const handleCreatePad = () => {
-    const baseState = flushActivePad({ silent: true });
-    const suggestedName = `${NEW_PAD_NAME_PREFIX} ${baseState.pads.length + 1}`;
-    const requestedName = window.prompt('Name the new pad:', suggestedName);
-    if (requestedName === null) return;
-    const name = requestedName.trim() || suggestedName;
-    const newPad = {
-      id: buildPadId(),
-      name,
-      content: '',
-      timestamp: 0,
-    };
-    const nextState = {
-      pads: [...baseState.pads, newPad],
-      activePadId: newPad.id,
-    };
-    persistPadsState(nextState);
-    setPadsState(nextState);
-    loadPadView(newPad);
-    notify(`Created pad: ${name}`);
-  };
-
-  const handleRenamePad = () => {
-    if (!activePad) return;
-    const requestedName = window.prompt('Rename pad:', activePad.name);
-    if (requestedName === null) return;
-    const name = requestedName.trim();
-    if (!name || name === activePad.name) return;
-    const nextState = {
-      ...padsState,
-      pads: padsState.pads.map((pad) =>
-        pad.id === activePad.id ? { ...pad, name } : pad
-      ),
-    };
-    persistPadsState(nextState);
-    setPadsState(nextState);
-    notify(`Renamed pad: ${name}`);
-  };
-
-  const handleDeletePad = () => {
-    if (!activePad || padsState.pads.length <= 1) return;
-    if (!window.confirm(`Delete pad "${activePad.name}"?`)) return;
-
-    const currentIndex = padsState.pads.findIndex((pad) => pad.id === activePad.id);
-    const remainingPads = padsState.pads.filter((pad) => pad.id !== activePad.id);
-    const fallbackPad = remainingPads[Math.max(0, currentIndex - 1)] || remainingPads[0];
-    const nextState = {
-      pads: remainingPads,
-      activePadId: fallbackPad.id,
-    };
-    persistPadsState(nextState);
-    setPadsState(nextState);
-    loadPadView(fallbackPad);
-    notify(`Deleted pad: ${activePad.name}`);
-  };
-
-  const handleClear = () => {
-    if (!window.confirm('Clear all notes?')) return;
-    setText('');
-    setSaveState('idle');
-    setSaveError('');
-    setLastSavedAt('');
-    setRelativeSavedAt('');
-    clearTimeout(timerRef.current);
-    clearTimeout(savedStateTimerRef.current);
-    try {
-      const cleared = updateActivePadContent(padsState, '');
-      persistPadsState(cleared);
-      setPadsState(cleared);
-    } catch (e) { logWarn('pad clear', e); }
-    notify('Pad cleared');
+    }, 500);
   };
 
   useEffect(() => {
-    if (!lastSavedAt) {
-      setRelativeSavedAt('');
-      return undefined;
+    if (migrationCheckedRef.current) return;
+    migrationCheckedRef.current = true;
+    const { payload, error, migrated } = migrateNotebookStorage();
+    notebookRef.current = payload;
+    setNotebookState(payload);
+    const selected = payload.entries.find((entry) => entry.id === payload.selectedEntryId) || payload.entries[0];
+    loadEntryIntoEditor(selected);
+
+    if (error) {
+      notify?.('Notebook migration failed; using fallback note.');
+      return;
     }
-    const update = () => setRelativeSavedAt(formatRelativeTime(lastSavedAt));
-    update();
-    const intervalId = setInterval(update, 30000);
+    if (migrated) {
+      notify?.('Notebook upgraded to structured entries.');
+    }
+  }, [notify]);
+
+  useEffect(() => {
+    const selected = notebookState.entries.find((entry) => entry.id === notebookState.selectedEntryId) || notebookState.entries[0];
+    if (!selected) return;
+    if (
+      draft.title === selected.title &&
+      draft.body === selected.body &&
+      draft.project === selected.project &&
+      draft.status === selected.status
+    ) {
+      return;
+    }
+    loadEntryIntoEditor(selected);
+  }, [notebookState.selectedEntryId]); // eslint-disable-line react-hooks/exhaustive-deps
+
+  useEffect(() => {
+    if (!lastSavedAt) return undefined;
+    const intervalId = setInterval(() => setClockTick(Date.now()), 30000);
     return () => clearInterval(intervalId);
   }, [lastSavedAt]);
 
-  // Fix 3: Flush pending content on unmount before clearing timers.
   useEffect(() => () => {
-    flushRef.current({ silent: true });
+    flushDraft({ silent: true });
     clearTimeout(timerRef.current);
     clearTimeout(savedStateTimerRef.current);
-  }, []);
+  }, []); // eslint-disable-line react-hooks/exhaustive-deps
 
-  // Fix 2: Flush pending content on tab/browser close or visibility change.
   useEffect(() => {
-    const onBeforeUnload = () => { flushRef.current({ silent: true }); };
-    const onVisibilityChange = () => {
+    const handleBeforeUnload = () => {
+      flushDraft({ silent: true });
+    };
+    const handleVisibilityChange = () => {
       if (document.visibilityState === 'hidden') {
-        flushRef.current({ silent: true });
+        flushDraft({ silent: true });
       }
     };
-    window.addEventListener('beforeunload', onBeforeUnload);
-    document.addEventListener('visibilitychange', onVisibilityChange);
+    window.addEventListener('beforeunload', handleBeforeUnload);
+    document.addEventListener('visibilitychange', handleVisibilityChange);
     return () => {
-      window.removeEventListener('beforeunload', onBeforeUnload);
-      document.removeEventListener('visibilitychange', onVisibilityChange);
+      window.removeEventListener('beforeunload', handleBeforeUnload);
+      document.removeEventListener('visibilitychange', handleVisibilityChange);
     };
-  }, []);
+  }, []); // eslint-disable-line react-hooks/exhaustive-deps
+
+  const handleCreateEntry = () => {
+    const baseState = flushDraft({ silent: true });
+    const newEntry = createNotebookEntry({
+      title: buildEmptyEntryName(baseState.entries),
+      body: '',
+      project: DEFAULT_PROJECT,
+      status: 'draft',
+    });
+    const nextState = {
+      entries: [newEntry, ...baseState.entries],
+      selectedEntryId: newEntry.id,
+    };
+    persistNotebookState(nextState);
+    notebookRef.current = nextState;
+    setNotebookState(nextState);
+    loadEntryIntoEditor(newEntry);
+    notify?.(`Created ${newEntry.title}`);
+  };
+
+  const handleSelectEntry = (entryId) => {
+    if (entryId === notebookState.selectedEntryId) return;
+    const baseState = flushDraft({ silent: true });
+    const nextState = {
+      ...baseState,
+      selectedEntryId: entryId,
+    };
+    persistNotebookState(nextState);
+    notebookRef.current = nextState;
+    setNotebookState(nextState);
+    const nextEntry = nextState.entries.find((entry) => entry.id === entryId) || nextState.entries[0];
+    loadEntryIntoEditor(nextEntry);
+  };
+
+  const handleDeleteEntry = () => {
+    if (notebookState.entries.length <= 1) return;
+    if (!window.confirm(`Delete "${draft.title}"? This cannot be undone.`)) return;
+    const currentIndex = notebookState.entries.findIndex((entry) => entry.id === notebookState.selectedEntryId);
+    const remainingEntries = notebookState.entries.filter((entry) => entry.id !== notebookState.selectedEntryId);
+    const fallbackEntry = remainingEntries[Math.max(0, currentIndex - 1)] || remainingEntries[0];
+    const nextState = {
+      entries: remainingEntries,
+      selectedEntryId: fallbackEntry.id,
+    };
+    persistNotebookState(nextState);
+    notebookRef.current = nextState;
+    setNotebookState(nextState);
+    loadEntryIntoEditor(fallbackEntry);
+    notify?.('Notebook entry deleted.');
+  };
+
+  const handleClearBody = () => {
+    if (!window.confirm('Clear the body of this notebook entry?')) return;
+    queueDraftChange({ body: '' }, { immediate: true });
+    notify?.('Entry body cleared.');
+  };
+
+  const handleCopy = () => {
+    if (!draft.body.trim()) return;
+    try {
+      navigator.clipboard.writeText(draft.body);
+    } catch {
+      const textarea = document.createElement('textarea');
+      textarea.value = draft.body;
+      textarea.style.cssText = 'position:fixed;top:-9999px;opacity:0';
+      document.body.appendChild(textarea);
+      textarea.focus();
+      textarea.select();
+      document.execCommand('copy');
+      document.body.removeChild(textarea);
+    }
+    notify?.('Notebook entry copied.');
+  };
+
+  const exportEntry = () => {
+    if (!draft.body.trim()) return;
+    const filename = `${sanitizeFilename(draft.title)}.txt`;
+    const blob = new Blob([draft.body], { type: 'text/plain;charset=utf-8' });
+    try {
+      if (typeof navigator !== 'undefined' && typeof navigator.msSaveOrOpenBlob === 'function') {
+        navigator.msSaveOrOpenBlob(blob, filename);
+      } else {
+        const url = URL.createObjectURL(blob);
+        const anchor = document.createElement('a');
+        anchor.href = url;
+        anchor.download = filename;
+        document.body.appendChild(anchor);
+        anchor.click();
+        document.body.removeChild(anchor);
+        setTimeout(() => URL.revokeObjectURL(url), 0);
+      }
+      notify?.('Notebook entry downloaded.');
+    } catch (error) {
+      logWarn('notebook export', error);
+      notify?.('Download unavailable.');
+    }
+  };
+
+  const insertAtCursor = (prefix, suffix = '') => {
+    const textarea = textareaRef.current;
+    if (!textarea) return;
+    const start = textarea.selectionStart;
+    const end = textarea.selectionEnd;
+    const selected = draft.body.slice(start, end);
+    const inserted = prefix + selected + suffix;
+    const body = draft.body.slice(0, start) + inserted + draft.body.slice(end);
+    queueDraftChange({ body }, { immediate: true });
+    const cursorPos = selected ? start + inserted.length : start + prefix.length;
+    setTimeout(() => {
+      textarea.selectionStart = cursorPos;
+      textarea.selectionEnd = cursorPos;
+      textarea.focus();
+      syncSelectionState();
+    }, 0);
+  };
+
+  const insertDate = () => {
+    const separator = `\n── ${new Date().toLocaleDateString(undefined, {
+      weekday: 'short',
+      year: 'numeric',
+      month: 'short',
+      day: 'numeric',
+    })} ──\n`;
+    insertAtCursor(separator);
+    notify?.('Date separator inserted.');
+  };
+
+  const handleStatusChange = (status) => {
+    queueDraftChange({ status }, { immediate: true });
+  };
+
+  const handleSendToEditor = ({ selectionOnly = false } = {}) => {
+    if (!onSendToEditor) return;
+    const selected = selectionOnly ? syncSelectionState().trim() : '';
+    const content = selectionOnly ? selected : draft.body.trim();
+    if (!content) {
+      notify?.(selectionOnly ? 'Select text to send.' : 'Nothing to send.');
+      return;
+    }
+    const title = selectionOnly ? `${draft.title} Selection` : draft.title;
+    onSendToEditor(title, content, {
+      project: draft.project,
+      status: draft.status,
+      source: 'notebook',
+    });
+  };
+
+  const openPromptLabWindow = (url) => {
+    if (window?.open) {
+      window.open(url, '_blank', 'noopener,noreferrer');
+      return;
+    }
+    window.location.assign(url);
+  };
+
+  const handleSendToPromptLab = async ({ selectionOnly = false } = {}) => {
+    const selected = selectionOnly ? syncSelectionState().trim() : '';
+    const content = selectionOnly ? selected : draft.body.trim();
+    if (!content) {
+      notify?.(selectionOnly ? 'Select text to send.' : 'Nothing to send.');
+      return;
+    }
+
+    const title = selectionOnly ? `${draft.title} Selection` : draft.title;
+    const handoff = await preparePromptLabHandoff({
+      draft: content,
+      title,
+      source: 'notebook',
+      tab: 'editor',
+    });
+
+    if (!handoff.ok) {
+      notify?.('Prompt Lab handoff failed.');
+      return;
+    }
+
+    updateEntryMeta((entry) => ({
+      ...entry,
+      status: entry.status === 'archived' ? 'archived' : 'in_test',
+      updatedAt: Date.now(),
+      lastSentAt: Date.now(),
+      promptLabLink: handoff.promptLabLink,
+    }));
+    setClipboardBanner(handoff.clipboard ? 'Draft copied to clipboard for Prompt Lab import.' : '');
+    openPromptLabWindow(handoff.url);
+    notify?.(
+      handoff.clipboard
+        ? 'Prompt Lab opened. Paste from clipboard in the editor banner.'
+        : 'Prompt Lab opened with notebook draft.'
+    );
+  };
+
+  const handleOpenLastPromptLabLink = () => {
+    if (!activeEntry?.promptLabLink) return;
+    openPromptLabWindow(activeEntry.promptLabLink);
+  };
 
   useEffect(() => {
-    const onKeyDown = (e) => {
-      const shortcut = matchPadShortcut(e);
+    const onKeyDown = (event) => {
+      const shortcut = matchPadShortcut(event);
       if (!shortcut) return;
-
-      e.preventDefault();
-
+      event.preventDefault();
       switch (shortcut.id) {
         case 'export':
-          exportPad();
+          exportEntry();
           return;
         case 'insertDate':
           insertDate();
@@ -532,150 +510,330 @@ export default function PadTab({ m, notify, pageScroll = false, onPromoteToLibra
           handleCopy();
           return;
         case 'clear':
-          handleClear();
+          handleClearBody();
           return;
         default:
           return;
       }
     };
-
     window.addEventListener('keydown', onKeyDown);
     return () => window.removeEventListener('keydown', onKeyDown);
-  }, [exportPad, handleClear, handleCopy, insertDate]);
+  }, [selectionText, draft.body]); // eslint-disable-line react-hooks/exhaustive-deps
 
   return (
     <div className={`${shellMinHeightClass} flex ${pageScroll ? '' : 'flex-1 overflow-hidden'}`}>
-      {/* ── Sidebar: pad list ── */}
-      <div className={`w-[220px] shrink-0 flex flex-col border-r ${m.border} ${pageScroll ? '' : 'overflow-hidden'}`}>
-        <div className={`flex items-center justify-between px-3 py-2 border-b ${m.border} shrink-0`}>
-          <span className={`text-xs font-semibold ${m.text}`}>Scratchpads</span>
-          <button
-            type="button"
-            onClick={handleCreatePad}
-            className={`flex items-center gap-1 text-xs ${m.btn} ${m.textAlt} px-2 py-1 rounded-lg transition-colors`}
-            title="New pad"
-          >
-            <Ic n="Plus" size={11} />
-          </button>
-        </div>
-        <div className={`flex-1 ${pageScroll ? '' : 'overflow-y-auto'} py-1`}>
-          {padsState.pads.map((pad) => {
-            const isActive = pad.id === padsState.activePadId;
-            const preview = pad.content ? pad.content.slice(0, 60).replace(/\n/g, ' ') : '';
-            const timeStr = pad.timestamp ? formatRelativeTime(new Date(pad.timestamp).toISOString()) : '';
-            return (
-              <button
-                key={pad.id}
-                type="button"
-                onClick={() => handleSelectPad(pad.id)}
-                className={`w-full text-left px-3 py-2.5 transition-colors ${
-                  isActive
-                    ? 'bg-violet-600/15 border-r-2 border-violet-500'
-                    : m.btn
-                }`}
-              >
-                <div className={`text-xs font-medium truncate ${isActive ? 'text-violet-200' : m.text}`}>{pad.name}</div>
-                {preview && <div className={`text-[10px] truncate mt-0.5 ${m.textMuted}`}>{preview}</div>}
-                {timeStr && <div className={`text-[10px] mt-0.5 ${m.textMuted}`}>{timeStr}</div>}
-              </button>
-            );
-          })}
-        </div>
-      </div>
+      <aside className={`w-[300px] shrink-0 border-r ${m.border} ${pageScroll ? '' : 'overflow-hidden'} flex flex-col`}>
+        <div className={`border-b ${m.border} px-3 py-3 shrink-0`}>
+          <div className="flex items-center justify-between gap-2">
+            <div>
+              <p className={`text-xs font-semibold uppercase tracking-wider ${m.textSub}`}>Notebook</p>
+              <p className={`text-[11px] ${m.textMuted}`}>Draft, test, archive, and hand off notes.</p>
+            </div>
+            <button
+              type="button"
+              onClick={handleCreateEntry}
+              className={`ui-control flex items-center gap-1 rounded-lg px-2 py-1 text-xs font-semibold ${m.btn} ${m.textAlt} transition-colors`}
+            >
+              <Ic n="Plus" size={11} />
+              New
+            </button>
+          </div>
 
-      {/* ── Editor pane ── */}
-      <div className={`flex-1 flex flex-col min-w-0 ${pageScroll ? '' : 'overflow-hidden'}`}>
-        <div className={`flex flex-wrap items-center justify-between gap-2 px-4 py-2 border-b ${m.border} shrink-0`}>
-          <div className="flex items-center gap-3">
-            <span className={`text-sm font-semibold ${m.text}`}>{activePad?.name || 'Scratchpad'}</span>
-            <span className={`text-xs font-mono ${m.textMuted}`}>{wc} word{wc !== 1 ? 's' : ''} · {text.length} chars</span>
+          <div className="mt-3 flex flex-col gap-2">
+            <label className="relative block">
+              <Ic n="Search" size={12} className={`pointer-events-none absolute left-2.5 top-1/2 -translate-y-1/2 ${m.textMuted}`} />
+              <input
+                value={filters.query}
+                onChange={(event) => setFilters((prev) => ({ ...prev, query: event.target.value }))}
+                placeholder="Search notes…"
+                className={`${m.input} ${m.text} w-full rounded-lg border px-8 py-2 text-xs focus:outline-none focus:border-violet-500`}
+              />
+            </label>
+            <div className="flex gap-2">
+              <select
+                value={filters.status}
+                onChange={(event) => setFilters((prev) => ({ ...prev, status: event.target.value }))}
+                className={`${m.input} ${m.text} min-w-0 flex-1 rounded-lg border px-2 py-2 text-xs focus:outline-none focus:border-violet-500`}
+              >
+                <option value="all">All statuses</option>
+                {NOTEBOOK_STATUS.map((status) => (
+                  <option key={status.id} value={status.id}>{status.label}</option>
+                ))}
+              </select>
+              <select
+                value={filters.project}
+                onChange={(event) => setFilters((prev) => ({ ...prev, project: event.target.value }))}
+                className={`${m.input} ${m.text} min-w-0 flex-1 rounded-lg border px-2 py-2 text-xs focus:outline-none focus:border-violet-500`}
+              >
+                <option value="all">All projects</option>
+                {projectOptions.map((project) => (
+                  <option key={project} value={project}>{project}</option>
+                ))}
+              </select>
+            </div>
           </div>
-          <div className="flex flex-wrap items-center gap-1">
-            <button type="button" onClick={handleRenamePad} className={`flex items-center gap-1 text-xs ${m.btn} ${m.textAlt} px-2 py-1 rounded-lg transition-colors`} title="Rename pad">Rename</button>
-            {onPromoteToLibrary && (
+        </div>
+
+        <div className={`flex-1 ${pageScroll ? '' : 'overflow-y-auto'} px-2 py-2`}>
+          {filteredEntries.length === 0 ? (
+            <div className={`rounded-xl border ${m.border} ${m.surface} px-3 py-4 text-xs ${m.textMuted}`}>
+              No notebook entries match the current filters.
+            </div>
+          ) : (
+            <div className="flex flex-col gap-2">
+              {filteredEntries.map((entry) => {
+                const isActive = entry.id === notebookState.selectedEntryId;
+                return (
+                  <button
+                    key={entry.id}
+                    type="button"
+                    onClick={() => handleSelectEntry(entry.id)}
+                    className={`w-full rounded-xl border px-3 py-3 text-left transition-colors ${
+                      isActive
+                        ? 'border-violet-500/60 bg-violet-600/10'
+                        : `${m.border} ${m.surface}`
+                    }`}
+                  >
+                    <div className="flex items-start justify-between gap-2">
+                      <span className={`min-w-0 truncate text-sm font-semibold ${isActive ? 'text-violet-200' : m.text}`}>
+                        {entry.title}
+                      </span>
+                      <span className={`shrink-0 rounded-full border px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wider ${statusTone(entry.status)}`}>
+                        {NOTEBOOK_STATUS.find((status) => status.id === entry.status)?.label || 'Draft'}
+                      </span>
+                    </div>
+                    <div className={`mt-1 text-[11px] ${m.textMuted}`}>
+                      {entry.project} · {formatNotebookTimestamp(entry.updatedAt, clockTick)}
+                    </div>
+                    {entry.body.trim() && (
+                      <div className={`mt-2 line-clamp-3 text-xs ${m.textMuted}`}>
+                        {entry.body.slice(0, 140)}
+                      </div>
+                    )}
+                  </button>
+                );
+              })}
+            </div>
+          )}
+        </div>
+      </aside>
+
+      <section className={`flex-1 min-w-0 ${pageScroll ? '' : 'overflow-hidden'} flex flex-col`}>
+        <div className={`border-b ${m.border} px-4 py-3 shrink-0`}>
+          <div className="flex flex-wrap items-start justify-between gap-3">
+            <div className="min-w-0 flex-1">
+              <div className="flex flex-wrap items-center gap-2">
+                <input
+                  value={draft.title}
+                  onChange={(event) => queueDraftChange({ title: event.target.value })}
+                  placeholder="Untitled notebook entry"
+                  className={`${m.input} ${m.text} min-w-[14rem] flex-[2_1_18rem] rounded-lg border px-3 py-2 text-sm font-semibold focus:outline-none focus:border-violet-500`}
+                />
+                <input
+                  value={draft.project}
+                  onChange={(event) => queueDraftChange({ project: event.target.value })}
+                  placeholder={DEFAULT_PROJECT}
+                  className={`${m.input} ${m.text} min-w-[11rem] flex-[1_1_12rem] rounded-lg border px-3 py-2 text-xs focus:outline-none focus:border-violet-500`}
+                />
+              </div>
+              <div className="mt-2 flex flex-wrap items-center gap-2">
+                {NOTEBOOK_STATUS.map((status) => (
+                  <button
+                    key={status.id}
+                    type="button"
+                    onClick={() => handleStatusChange(status.id)}
+                    className={`ui-control rounded-full border px-2.5 py-1 text-[10px] font-semibold uppercase tracking-wider transition-colors ${
+                      draft.status === status.id
+                        ? 'border-violet-500 bg-violet-600 text-white'
+                        : `${m.btn} ${m.textAlt}`
+                    }`}
+                  >
+                    {status.label}
+                  </button>
+                ))}
+                <span className={`text-xs ${m.textMuted}`}>
+                  {stats.words}w · {stats.chars}c · ~{stats.tokens} tok
+                </span>
+              </div>
+            </div>
+
+            <div className="flex flex-wrap items-center justify-end gap-1.5">
+              {onSendToEditor && (
+                <button
+                  type="button"
+                  onClick={() => handleSendToEditor()}
+                  disabled={!draft.body.trim()}
+                  className={`ui-control flex items-center gap-1 rounded-lg px-2.5 py-1.5 text-xs font-semibold transition-colors ${
+                    draft.body.trim() ? 'bg-emerald-600 text-white hover:bg-emerald-500' : `${m.btn} ${m.textMuted} opacity-40 cursor-not-allowed`
+                  }`}
+                >
+                  <Ic n="ArrowRight" size={11} />
+                  Open in Editor
+                </button>
+              )}
               <button
                 type="button"
-                onClick={() => { if (text.trim()) onPromoteToLibrary(activePad?.name || 'Untitled', text); }}
-                disabled={!text.trim()}
-                className={`flex items-center gap-1 text-xs px-2 py-1 rounded-lg transition-colors ${
-                  text.trim() ? 'text-violet-400 hover:bg-violet-600/20' : `${m.textMuted} opacity-40 cursor-not-allowed`
+                onClick={() => handleSendToPromptLab()}
+                disabled={!draft.body.trim()}
+                className={`ui-control flex items-center gap-1 rounded-lg px-2.5 py-1.5 text-xs font-semibold transition-colors ${
+                  draft.body.trim() ? 'bg-violet-600 text-white hover:bg-violet-500' : `${m.btn} ${m.textMuted} opacity-40 cursor-not-allowed`
                 }`}
-                title="Save pad content to Prompt Library"
               >
-                <Ic n="BookmarkPlus" size={11} />Library
+                <Ic n="Share2" size={11} />
+                Send to Prompt Lab
               </button>
-            )}
-            <button type="button" onClick={insertDate} className={`flex items-center gap-1 text-xs ${m.btn} ${m.textAlt} px-2 py-1 rounded-lg transition-colors min-w-[2rem]`} title="Insert date separator">📅</button>
-            <button
-              type="button"
-              onClick={exportPad}
-              disabled={!text.trim()}
-              title="Download as text file"
-              className={`flex items-center gap-1 text-xs px-2 py-1 rounded-lg transition-colors ${
-                text.trim() ? `${m.btn} ${m.textAlt}` : `${m.btn} ${m.textMuted} opacity-40 cursor-not-allowed`
-              }`}
-            >
-              <Ic n="Download" size={11} />
-            </button>
-            <button type="button" onClick={handleCopy} className={`flex items-center gap-1 text-xs px-2.5 py-1.5 rounded-lg font-semibold transition-colors ${copyBtnClass}`}><Ic n="Copy" size={11} />Copy</button>
-            <button type="button" onClick={handleClear} className="flex items-center gap-1 text-xs px-2 py-1 rounded-lg transition-colors text-red-400 hover:bg-red-950/30"><Ic n="Trash2" size={11} />Clear</button>
-            <button
-              type="button"
-              onClick={handleDeletePad}
-              disabled={padsState.pads.length <= 1}
-              className={`flex items-center gap-1 text-xs px-2 py-1 rounded-lg transition-colors ${
-                padsState.pads.length > 1
-                  ? 'text-red-400 hover:bg-red-950/30'
-                  : `${m.textMuted} opacity-40 cursor-not-allowed`
-              }`}
-              title={padsState.pads.length > 1 ? 'Delete pad' : 'At least one pad required'}
-            >
-              <Ic n="Trash2" size={11} />
-            </button>
+              <button
+                type="button"
+                onClick={() => handleSendToPromptLab({ selectionOnly: true })}
+                disabled={!selectionText.trim()}
+                className={`ui-control rounded-lg px-2.5 py-1.5 text-xs font-semibold transition-colors ${
+                  selectionText.trim() ? `${m.btn} ${m.textAlt}` : `${m.btn} ${m.textMuted} opacity-40 cursor-not-allowed`
+                }`}
+              >
+                Send Selected
+              </button>
+              {onPromoteToLibrary && (
+                <button
+                  type="button"
+                  onClick={() => onPromoteToLibrary(draft.title, draft.body)}
+                  disabled={!draft.body.trim()}
+                  className={`ui-control flex items-center gap-1 rounded-lg px-2.5 py-1.5 text-xs font-semibold transition-colors ${
+                    draft.body.trim() ? `${m.btn} ${m.textAlt}` : `${m.btn} ${m.textMuted} opacity-40 cursor-not-allowed`
+                  }`}
+                >
+                  <Ic n="Save" size={11} />
+                  Library
+                </button>
+              )}
+              <button
+                type="button"
+                onClick={handleCopy}
+                disabled={!draft.body.trim()}
+                className={`ui-control flex items-center gap-1 rounded-lg px-2.5 py-1.5 text-xs font-semibold transition-colors ${copyBtnClass} ${
+                  draft.body.trim() ? '' : 'opacity-40 cursor-not-allowed'
+                }`}
+              >
+                <Ic n="Copy" size={11} />
+                Copy
+              </button>
+              <button
+                type="button"
+                onClick={exportEntry}
+                disabled={!draft.body.trim()}
+                className={`ui-control rounded-lg px-2 py-1.5 text-xs font-semibold transition-colors ${
+                  draft.body.trim() ? `${m.btn} ${m.textAlt}` : `${m.btn} ${m.textMuted} opacity-40 cursor-not-allowed`
+                }`}
+              >
+                <Ic n="Download" size={11} />
+              </button>
+              <details className="relative">
+                <summary className={`ui-control list-none cursor-pointer rounded-lg px-2.5 py-1.5 text-xs font-semibold ${m.btn} ${m.textAlt}`}>
+                  More
+                </summary>
+                <div className={`absolute right-0 z-10 mt-2 w-44 rounded-xl border ${m.border} ${m.surface} p-1 shadow-xl`}>
+                  {activeEntry?.promptLabLink && (
+                    <button
+                      type="button"
+                      onClick={handleOpenLastPromptLabLink}
+                      className={`flex w-full items-center gap-2 rounded-lg px-3 py-2 text-left text-xs ${m.textAlt} hover:bg-violet-600/10`}
+                    >
+                      <Ic n="Share2" size={11} />
+                      Reopen Prompt Lab
+                    </button>
+                  )}
+                  <button
+                    type="button"
+                    onClick={handleClearBody}
+                    className={`flex w-full items-center gap-2 rounded-lg px-3 py-2 text-left text-xs ${m.textAlt} hover:bg-violet-600/10`}
+                  >
+                    <Ic n="RotateCcw" size={11} />
+                    Clear Body
+                  </button>
+                  <button
+                    type="button"
+                    onClick={handleDeleteEntry}
+                    disabled={notebookState.entries.length <= 1}
+                    className={`flex w-full items-center gap-2 rounded-lg px-3 py-2 text-left text-xs ${
+                      notebookState.entries.length > 1 ? 'text-red-400 hover:bg-red-950/30' : `${m.textMuted} opacity-40 cursor-not-allowed`
+                    }`}
+                  >
+                    <Ic n="Trash2" size={11} />
+                    Delete Entry
+                  </button>
+                </div>
+              </details>
+            </div>
           </div>
+
+          {(clipboardBanner || activeEntry?.lastSentAt) && (
+            <div className={`mt-3 rounded-xl border ${m.border} ${m.surface} px-3 py-2`}>
+              {clipboardBanner && (
+                <p className={`text-xs font-medium text-violet-300`}>{clipboardBanner}</p>
+              )}
+              {activeEntry?.lastSentAt && (
+                <p className={`text-[11px] ${m.textMuted} ${clipboardBanner ? 'mt-1' : ''}`}>
+                  Last Prompt Lab handoff {formatNotebookTimestamp(activeEntry.lastSentAt, clockTick)}
+                </p>
+              )}
+            </div>
+          )}
         </div>
-        {/* Formatting toolbar */}
-        <div className={`flex items-center gap-1 px-4 py-1.5 border-b ${m.border} shrink-0`}>
-          <span className={`text-[10px] uppercase tracking-wider font-semibold ${m.textMuted} mr-2`}>Format</span>
-          <button type="button" onClick={insertHeading} title="Heading (##)" className={`text-xs px-2 py-1 rounded ${m.btn} ${m.textAlt} transition-colors font-bold`}>H</button>
-          <button type="button" onClick={insertBullet} title="Bullet list" className={`text-xs px-2 py-1 rounded ${m.btn} ${m.textAlt} transition-colors`}><Ic n="List" size={12} /></button>
-          <button type="button" onClick={insertNumbered} title="Numbered list" className={`text-xs px-2 py-1 rounded ${m.btn} ${m.textAlt} transition-colors font-mono`}>1.</button>
-          <button type="button" onClick={insertCodeBlock} title="Code block" className={`text-xs px-2 py-1 rounded ${m.btn} ${m.textAlt} transition-colors font-mono`}>{'{}'}</button>
-          <button type="button" onClick={insertQuote} title="Blockquote" className={`text-xs px-2 py-1 rounded ${m.btn} ${m.textAlt} transition-colors`}><Ic n="Quote" size={12} /></button>
+
+        <div className={`border-b ${m.border} px-4 py-2 shrink-0 flex items-center gap-1`}>
+          <span className={`mr-2 text-[10px] font-semibold uppercase tracking-wider ${m.textMuted}`}>Format</span>
+          <button type="button" onClick={() => insertAtCursor('\n## ', '\n')} className={`rounded px-2 py-1 text-xs font-bold ${m.btn} ${m.textAlt}`} title="Heading">H</button>
+          <button type="button" onClick={() => insertAtCursor('\n- ')} className={`rounded px-2 py-1 text-xs ${m.btn} ${m.textAlt}`} title="Bullet list"><Ic n="Layers" size={12} /></button>
+          <button type="button" onClick={() => insertAtCursor('\n1. ')} className={`rounded px-2 py-1 text-xs font-mono ${m.btn} ${m.textAlt}`} title="Numbered list">1.</button>
+          <button type="button" onClick={() => insertAtCursor('\n```\n', '\n```\n')} className={`rounded px-2 py-1 text-xs font-mono ${m.btn} ${m.textAlt}`} title="Code block">{'{}'}</button>
+          <button type="button" onClick={() => insertAtCursor('\n> ')} className={`rounded px-2 py-1 text-xs ${m.btn} ${m.textAlt}`} title="Quote">&gt;</button>
+          <button type="button" onClick={insertDate} className={`rounded px-2 py-1 text-xs ${m.btn} ${m.textAlt}`} title="Date separator">📅</button>
         </div>
+
         <div className={`flex-1 p-4 flex flex-col gap-2 ${editorPaneMinHeightClass} ${pageScroll ? '' : 'overflow-hidden'}`}>
           <textarea
-            id="plPadArea"
+            id="plNotebookBody"
             ref={textareaRef}
+            value={draft.body}
+            onChange={(event) => queueDraftChange({ body: event.target.value })}
+            onSelect={syncSelectionState}
+            onKeyUp={syncSelectionState}
+            onClick={syncSelectionState}
+            spellCheck
             className={`flex-1 w-full ${textareaMinHeightClass} resize-none rounded-xl border ${m.input} p-4 text-sm leading-relaxed focus:outline-none focus:border-violet-500 transition-colors ${m.text}`}
-            aria-label="Scratchpad"
-            placeholder={'Notes, ideas, prompt snippets…\n\nUse 📅 Date to timestamp entries.'}
-            value={text} onChange={onChange} spellCheck />
-          <div className="flex items-center justify-start min-h-5">
-            {saveError ? (
-              <div className="flex items-center gap-1.5 text-xs font-mono text-red-400 transition-colors">
-                <Ic n="X" size={11} />
-                <span>{saveError}</span>
-              </div>
-            ) : saveState === 'pending' ? (
-              <div className={`flex items-center gap-1.5 text-xs font-mono text-gray-500 transition-colors ${m.textMuted}`}>
-                <span className="w-3 h-3 border-2 border-current border-t-transparent rounded-full animate-spin" />
-                <span>Saving...</span>
-              </div>
-            ) : saveState === 'saved' ? (
-              <div className="flex items-center gap-1.5 text-xs font-mono text-green-500 transition-opacity duration-200">
-                <Ic n="Check" size={11} />
-                <span>Saved</span>
-              </div>
-            ) : lastSavedAt ? (
-              <div className={`flex items-center gap-1.5 text-xs font-mono text-gray-500 transition-colors ${m.textMuted}`}>
-                <Ic n="Clock" size={11} />
-                <span>Last saved {relativeSavedAt}</span>
-              </div>
-            ) : null}
+            aria-label="Notebook entry body"
+            placeholder={'Draft prompt ideas, context, notes, and test snippets…\n\nUse Send to Prompt Lab to open the editor with this note.'}
+          />
+
+          <div className="flex min-h-5 items-center justify-between gap-3">
+            <div>
+              {saveError ? (
+                <div className="flex items-center gap-1.5 text-xs font-mono text-red-400">
+                  <Ic n="X" size={11} />
+                  <span>{saveError}</span>
+                </div>
+              ) : saveState === 'pending' ? (
+                <div className={`flex items-center gap-1.5 text-xs font-mono ${m.textMuted}`}>
+                  <span className="h-3 w-3 rounded-full border-2 border-current border-t-transparent animate-spin" />
+                  <span>Saving…</span>
+                </div>
+              ) : saveState === 'saved' ? (
+                <div className="flex items-center gap-1.5 text-xs font-mono text-green-500">
+                  <Ic n="Check" size={11} />
+                  <span>Saved</span>
+                </div>
+              ) : lastSavedAt ? (
+                <div className={`flex items-center gap-1.5 text-xs font-mono ${m.textMuted}`}>
+                  <Ic n="Clock" size={11} />
+                  <span>Last saved {formatNotebookTimestamp(lastSavedAt, clockTick)}</span>
+                </div>
+              ) : null}
+            </div>
+            <div className={`text-xs ${m.textMuted}`}>
+              {selectionText.trim() ? `${selectionText.trim().split(/\s+/).length} selected` : 'No text selected'}
+            </div>
           </div>
         </div>
-      </div>
+      </section>
     </div>
   );
 }

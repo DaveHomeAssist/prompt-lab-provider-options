@@ -31,16 +31,22 @@ import MainWorkspace from './MainWorkspace';
 import EditorActions from './EditorActions';
 import { ThemeProvider } from './theme/ThemeProvider.jsx';
 import MarkdownPreview from './MarkdownPreview';
+import {
+  parsePromptLabDraftParams,
+  stripPromptLabDraftParams,
+} from './lib/promptLabBridge.js';
 
 // ── Main App ──────────────────────────────────────────────────────────────────
 export default function App() {
   const ui = useUiState();
+  const draftHandoffHandledRef = useRef(false);
   const [showDesktopSettings, setShowDesktopSettings] = useState(false);
   const [showGoldenComparison, setShowGoldenComparison] = useState(true);
   const [showQuickInject, setShowQuickInject] = useState(true);
   const [mdPreview, setMdPreview] = useState(false);
   const [enhMdPreview, setEnhMdPreview] = useState(false);
   const [resultTab, setResultTab] = useState('improved');
+  const [incomingDraftBanner, setIncomingDraftBanner] = useState(null);
   const isWeb = !isExtension && import.meta.env?.VITE_WEB_MODE === 'true';
   const {
     viewportWidth,
@@ -98,7 +104,7 @@ export default function App() {
     },
   };
   const {
-    raw, setRaw, enhanced, setEnhanced, variants, notes, loading, error,
+    raw, setRaw, enhanced, setEnhanced, variants, setVariants, notes, setNotes, loading, error,
     streamPreview, streaming, optimisticSaveVisible, batchProgress,
     enhMode, setEnhMode, showNotes, setShowNotes,
     lintIssues, lintOpen, setLintOpen, handleLintFix,
@@ -206,6 +212,87 @@ export default function App() {
     setResultTab('improved');
     setEnhMdPreview(false);
   }, [enhanced, setEnhMdPreview]);
+
+  useEffect(() => {
+    if (draftHandoffHandledRef.current) return;
+    if (typeof window === 'undefined') return;
+    const incoming = parsePromptLabDraftParams(window.location.href);
+    if (!incoming) return;
+    draftHandoffHandledRef.current = true;
+
+    clearEditor();
+    setPrimaryView('create');
+    setWorkspaceView('editor');
+    setTab('editor');
+    setResultTab('improved');
+    setMdPreview(false);
+    setEnhMdPreview(false);
+    setVariants([]);
+    setNotes('');
+
+    if (incoming.title) {
+      setSaveTitle(incoming.title);
+    }
+
+    if (incoming.draft) {
+      setRaw(incoming.draft);
+      setIncomingDraftBanner({
+        mode: 'loaded',
+        source: incoming.source || 'handoff',
+        title: incoming.title || '',
+      });
+      notify(`Draft loaded from ${incoming.source || 'handoff'}.`);
+    } else if (incoming.clipboard) {
+      setIncomingDraftBanner({
+        mode: 'clipboard',
+        source: incoming.source || 'handoff',
+        title: incoming.title || '',
+        error: '',
+      });
+      notify('Prompt Lab is ready to import the clipboard draft.');
+    }
+
+    try {
+      const cleanedUrl = stripPromptLabDraftParams(window.location.href);
+      if (cleanedUrl) {
+        window.history.replaceState({}, '', cleanedUrl);
+      }
+    } catch {
+      // noop
+    }
+  }, [
+    clearEditor,
+    notify,
+    setEnhMdPreview,
+    setMdPreview,
+    setNotes,
+    setPrimaryView,
+    setRaw,
+    setResultTab,
+    setSaveTitle,
+    setTab,
+    setVariants,
+    setWorkspaceView,
+  ]);
+
+  const handlePasteIncomingDraft = async () => {
+    if (!navigator?.clipboard?.readText) {
+      setIncomingDraftBanner((prev) => prev ? { ...prev, error: 'Clipboard read is unavailable in this browser.' } : prev);
+      return;
+    }
+    try {
+      const text = await navigator.clipboard.readText();
+      if (!text.trim()) {
+        setIncomingDraftBanner((prev) => prev ? { ...prev, error: 'Clipboard is empty.' } : prev);
+        return;
+      }
+      setRaw(text);
+      setIncomingDraftBanner((prev) => prev ? { ...prev, mode: 'loaded', error: '' } : prev);
+      notify('Clipboard draft loaded into the editor.');
+    } catch (error) {
+      setIncomingDraftBanner((prev) => prev ? { ...prev, error: error?.message || 'Clipboard read failed.' } : prev);
+    }
+  };
 
   const openCreateView = (nextView) => {
     setPrimaryView('create');
@@ -373,7 +460,7 @@ export default function App() {
             </>
           )}
           {primaryView === 'notebook' && (
-            <span className={`text-[11px] ${m.textMuted}`}>Multi-pad notes with library handoff</span>
+            <span className={`text-[11px] ${m.textMuted}`}>Structured notes with editor, library, and Prompt Lab handoff</span>
           )}
           {activeSection === 'create' && createLayoutOptions.length > 0 && (
             <>
@@ -461,6 +548,53 @@ export default function App() {
               )}
               {/* Input */}
               <div>
+                {incomingDraftBanner && (
+                  <div className={`mb-3 rounded-xl border px-3 py-3 ${
+                    colorMode === 'dark'
+                      ? 'border-violet-500/30 bg-violet-950/25'
+                      : 'border-violet-200 bg-violet-50'
+                  }`}>
+                    <div className="flex flex-wrap items-start justify-between gap-3">
+                      <div className="min-w-0">
+                        <p className={`text-[11px] font-semibold uppercase tracking-wider ${m.textSub}`}>
+                          Notebook Handoff
+                        </p>
+                        <p className={`mt-1 text-sm font-semibold ${m.text}`}>
+                          {incomingDraftBanner.mode === 'clipboard'
+                            ? 'Paste the copied notebook draft to finish importing it.'
+                            : 'Notebook draft loaded into the editor.'}
+                        </p>
+                        <p className={`mt-1 text-xs ${m.textMuted}`}>
+                          {incomingDraftBanner.title || 'Untitled draft'}
+                          {incomingDraftBanner.source ? ` · Source: ${incomingDraftBanner.source}` : ''}
+                        </p>
+                        {incomingDraftBanner.error && (
+                          <p className={`mt-2 text-xs ${colorMode === 'dark' ? 'text-red-300' : 'text-red-700'}`}>
+                            {incomingDraftBanner.error}
+                          </p>
+                        )}
+                      </div>
+                      <div className="flex flex-wrap gap-2 shrink-0">
+                        {incomingDraftBanner.mode === 'clipboard' && (
+                          <button
+                            type="button"
+                            onClick={handlePasteIncomingDraft}
+                            className="ui-control rounded-lg bg-violet-600 px-3 py-1.5 text-xs font-semibold text-white transition-colors hover:bg-violet-500"
+                          >
+                            Paste Draft
+                          </button>
+                        )}
+                        <button
+                          type="button"
+                          onClick={() => setIncomingDraftBanner(null)}
+                          className={`ui-control rounded-lg px-3 py-1.5 text-xs font-semibold transition-colors ${m.btn} ${m.textAlt}`}
+                        >
+                          Dismiss
+                        </button>
+                      </div>
+                    </div>
+                  </div>
+                )}
                 <div className={`flex justify-between items-center mb-1.5 ${compact ? 'gap-2 flex-wrap' : ''}`}>
                   <div className="flex items-center gap-2">
                     <span className={`text-xs ${m.textSub} uppercase tracking-widest font-semibold`}>Input</span>
@@ -951,14 +1085,31 @@ export default function App() {
       {tab === 'abtest' && <div className="pl-tab-panel"><ABTestTab m={m} copy={copy} compact={compact} pageScroll={isWeb} {...abTest} /></div>}
 
       {/* ══ PAD TAB ══ */}
-      {tab === 'pad' && <div className="pl-tab-panel"><PadTab m={m} notify={notify} pageScroll={isWeb} onPromoteToLibrary={(title, content) => {
-        setRaw(content);
-        setEnhanced(content);
-        setSaveTitle(title);
-        setShowSave(true);
-        setTab('editor');
-        notify('Loaded into editor — save to library when ready.');
-      }} /></div>}
+      {tab === 'pad' && <div className="pl-tab-panel"><PadTab
+        m={m}
+        notify={notify}
+        pageScroll={isWeb}
+        onSendToEditor={(title, content) => {
+          clearEditor();
+          setPrimaryView('create');
+          setWorkspaceView('editor');
+          setRaw(content);
+          setSaveTitle(title);
+          setTab('editor');
+          setIncomingDraftBanner(null);
+          notify('Notebook draft opened in the editor.');
+        }}
+        onPromoteToLibrary={(title, content) => {
+          clearEditor();
+          setRaw(content);
+          setEnhanced(content);
+          setSaveTitle(title);
+          setShowSave(true);
+          setTab('editor');
+          setIncomingDraftBanner(null);
+          notify('Loaded into editor — save to library when ready.');
+        }}
+      /></div>}
 
       {/* ══ HISTORY TAB ══ */}
       {tab === 'history' && <div className="pl-tab-panel"><RunTimelinePanel m={m} prompt={currentEntry} copy={copy} compact={compact} pageScroll={isWeb} /></div>}
