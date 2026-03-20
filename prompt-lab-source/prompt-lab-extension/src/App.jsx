@@ -142,8 +142,6 @@ export default function App() {
   const copyBtn = colorMode === 'dark'
     ? 'border border-violet-400/30 bg-violet-500/15 text-violet-200 hover:border-violet-300 hover:bg-violet-500/25'
     : 'border border-violet-300 bg-violet-50 text-violet-700 hover:border-violet-400 hover:bg-violet-100';
-  const showEditorPane = tab !== 'editor' || effectiveEditorLayout !== 'library';
-  const showLibraryPane = tab !== 'editor' || effectiveEditorLayout !== 'editor';
   const primaryModKey = typeof navigator !== 'undefined' && /Mac|iPhone|iPad/.test(navigator.platform || navigator.userAgent)
     ? 'Cmd'
     : 'Ctrl';
@@ -167,6 +165,10 @@ export default function App() {
   const activeSection = primaryView === 'runs'
     ? 'experiments'
     : (workspaceView === 'library' ? 'library' : 'create');
+  const isCreateWorkspace = tab === 'editor' && activeSection === 'create';
+  const isLibraryWorkspace = tab === 'editor' && activeSection === 'library';
+  const showEditorPane = tab !== 'editor' || isCreateWorkspace;
+  const showLibraryPane = tab !== 'editor' || isLibraryWorkspace || (isCreateWorkspace && effectiveEditorLayout === 'split');
   const createLayoutOptions = compact
     ? []
     : [
@@ -187,22 +189,6 @@ export default function App() {
       .filter((input) => input && typeof input === 'object' && typeof input.key === 'string')
       .map((input) => [input.key, input])
   );
-
-  useEffect(() => {
-    if (tab !== 'editor') return;
-    if (workspaceView === 'composer') return;
-    if (editorLayout !== workspaceView) {
-      setEditorLayout(workspaceView);
-    }
-  }, [editorLayout, setEditorLayout, tab, workspaceView]);
-
-  useEffect(() => {
-    if (tab !== 'editor') return;
-    if (workspaceView === 'composer') return;
-    if (effectiveEditorLayout !== workspaceView) {
-      setWorkspaceView(effectiveEditorLayout);
-    }
-  }, [effectiveEditorLayout, setWorkspaceView, tab, workspaceView]);
 
   useEffect(() => {
     if (!enhanced.trim()) {

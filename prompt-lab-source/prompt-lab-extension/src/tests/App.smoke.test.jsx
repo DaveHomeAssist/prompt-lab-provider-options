@@ -1,5 +1,5 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest';
-import { render, screen } from '@testing-library/react';
+import { fireEvent, render, screen, waitFor } from '@testing-library/react';
 import App from '../App.jsx';
 
 describe('App smoke', () => {
@@ -35,5 +35,16 @@ describe('App smoke', () => {
   it('renders the primary shell without crashing', async () => {
     render(<App />);
     expect(await screen.findAllByText('Prompt Lab')).not.toHaveLength(0);
+  });
+
+  it('keeps both panes mounted when Dual Pane is selected', async () => {
+    render(<App />);
+
+    fireEvent.click(screen.getAllByRole('button', { name: 'Dual Pane' })[0]);
+
+    await waitFor(() => {
+      expect(screen.getByLabelText('Prompt editor workspace')).toBeInTheDocument();
+      expect(screen.getByLabelText('Prompt library sidebar')).toBeInTheDocument();
+    });
   });
 });
