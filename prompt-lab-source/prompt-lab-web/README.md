@@ -53,5 +53,5 @@ Vercel builds `prompt-lab-web/`, serves `prompt-lab-web/dist`, and deploys the r
 - `../vercel.json` — root Vercel build config and `/app` rewrites
 - `index.html` — landing page entry served at `/`
 - `app/index.html` — app entry served at `/app/`
-- `public/` — static assets published at the site root
+- `public/` — static assets and auxiliary public docs published at the site root
 - `vite.config.js` — sets `VITE_WEB_MODE=true` and builds both HTML entry points

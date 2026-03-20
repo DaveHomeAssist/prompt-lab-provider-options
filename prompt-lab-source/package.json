@@ -11,11 +11,16 @@
     "dev": "npm run check:node && npm run dev --prefix prompt-lab-extension",
     "build": "npm run check:node && npm run build --prefix prompt-lab-extension",
     "test": "npm run check:node && npm test --prefix prompt-lab-extension",
+    "docs:lint": "npm run check:node && markdownlint-cli2",
+    "docs:check": "npm run docs:lint",
     "test:notion-agent": "npm run check:node && node --test scripts/notion-docs-agent.test.mjs",
     "build:landing": "npm run check:node && node scripts/publish-landing.mjs",
     "notion:docs-agent": "npm run check:node && node scripts/notion-docs-agent.mjs",
     "publish:landing": "npm run build:landing",
     "preflight": "npm run check:node && node scripts/preflight.mjs",
     "preflight:quick": "npm run check:node && node scripts/preflight.mjs --quick"
+  },
+  "devDependencies": {
+    "markdownlint-cli2": "^0.18.1"
   }
 }
