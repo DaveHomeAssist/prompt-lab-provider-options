@@ -1,6 +1,7 @@
 import { useEffect, useRef, useState } from 'react';
 import Ic from './icons';
 import { logWarn } from './lib/logger.js';
+import { matchPadShortcut } from './lib/padShortcuts.js';
 import { storageKeys } from './lib/storage.js';
 
 /* ── Multi-pad storage constants ── */
@@ -513,67 +514,34 @@ export default function PadTab({ m, notify, pageScroll = false, onPromoteToLibra
     };
   }, []);
 
-  const cyclePad = (direction) => {
-    if (padsState.pads.length <= 1) return;
-    const idx = padsState.pads.findIndex((p) => p.id === padsState.activePadId);
-    const next = (idx + direction + padsState.pads.length) % padsState.pads.length;
-    handleSelectPad(padsState.pads[next].id);
-  };
-
   useEffect(() => {
     const onKeyDown = (e) => {
-      const mod = e.metaKey || e.ctrlKey;
-      if (!mod) return;
-      const key = String(e.key || '').toLowerCase();
+      const shortcut = matchPadShortcut(e);
+      if (!shortcut) return;
 
-      // Multi-pad navigation: Cmd+] next, Cmd+[ prev
-      if (key === ']' && !e.shiftKey && !e.altKey) {
-        e.preventDefault();
-        cyclePad(1);
-        return;
-      }
-      if (key === '[' && !e.shiftKey && !e.altKey) {
-        e.preventDefault();
-        cyclePad(-1);
-        return;
-      }
-      // Cmd+T: new pad (prevent browser new tab)
-      if (key === 't' && !e.shiftKey && !e.altKey) {
-        e.preventDefault();
-        handleCreatePad();
-        return;
-      }
-      // Cmd+W: close active pad (prevent browser tab close)
-      if (key === 'w' && !e.shiftKey && !e.altKey) {
-        e.preventDefault();
-        handleDeletePad();
-        return;
-      }
-      // Existing shortcuts
-      if (key === 'e' && !e.shiftKey && !e.altKey) {
-        e.preventDefault();
-        exportPad();
-        return;
-      }
-      if (key === 'd' && e.shiftKey && !e.altKey) {
-        e.preventDefault();
-        insertDate();
-        return;
-      }
-      if (key === 'c' && e.shiftKey && !e.altKey) {
-        e.preventDefault();
-        handleCopy();
-        return;
-      }
-      if (key === 'x' && e.shiftKey && !e.altKey) {
-        e.preventDefault();
-        handleClear();
+      e.preventDefault();
+
+      switch (shortcut.id) {
+        case 'export':
+          exportPad();
+          return;
+        case 'insertDate':
+          insertDate();
+          return;
+        case 'copyAll':
+          handleCopy();
+          return;
+        case 'clear':
+          handleClear();
+          return;
+        default:
+          return;
       }
     };
 
     window.addEventListener('keydown', onKeyDown);
     return () => window.removeEventListener('keydown', onKeyDown);
-  }, [text, padsState]);
+  }, [exportPad, handleClear, handleCopy, insertDate]);
 
   return (
     <div className={`${shellMinHeightClass} flex ${pageScroll ? '' : 'flex-1 overflow-hidden'}`}>
@@ -585,7 +553,7 @@ export default function PadTab({ m, notify, pageScroll = false, onPromoteToLibra
             type="button"
             onClick={handleCreatePad}
             className={`flex items-center gap-1 text-xs ${m.btn} ${m.textAlt} px-2 py-1 rounded-lg transition-colors`}
-            title="New pad (⌘T)"
+            title="New pad"
           >
             <Ic n="Plus" size={11} />
           </button>

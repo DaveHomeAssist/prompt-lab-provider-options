@@ -1,0 +1,75 @@
+name: Docs CI
+
+on:
+  push:
+    branches:
+      - main
+    paths:
+      - "*.md"
+      - "docs/**/*.html"
+      - "docs/**/*.md"
+      - "prompt-lab-source/**/*.md"
+      - "prompt-lab-source/prompt-lab-web/**/*.html"
+      - "prompt-lab-source/package.json"
+      - "prompt-lab-source/package-lock.json"
+      - "prompt-lab-source/.markdownlint-cli2.jsonc"
+      - ".lychee.toml"
+      - ".github/workflows/docs-ci.yml"
+  pull_request:
+    paths:
+      - "*.md"
+      - "docs/**/*.html"
+      - "docs/**/*.md"
+      - "prompt-lab-source/**/*.md"
+      - "prompt-lab-source/prompt-lab-web/**/*.html"
+      - "prompt-lab-source/package.json"
+      - "prompt-lab-source/package-lock.json"
+      - "prompt-lab-source/.markdownlint-cli2.jsonc"
+      - ".lychee.toml"
+      - ".github/workflows/docs-ci.yml"
+
+permissions:
+  contents: read
+
+jobs:
+  markdown-lint:
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: prompt-lab-source
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version-file: prompt-lab-source/.nvmrc
+          cache: npm
+          cache-dependency-path: prompt-lab-source/package-lock.json
+
+      - name: Install root docs dependencies
+        run: npm ci
+
+      - name: Run markdown lint
+        run: npm run docs:lint
+
+  docs-links:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Check internal docs links
+        uses: lycheeverse/lychee-action@v2
+        with:
+          args: >-
+            --offline
+            --config .lychee.toml
+            ./README.md
+            ./AGENTS.md
+            ./docs/**/*.html
+            ./docs/**/*.md
+            ./prompt-lab-source/**/*.md
+            ./prompt-lab-source/prompt-lab-web/index.html
+            ./prompt-lab-source/prompt-lab-web/public/**/*.html

@@ -1,0 +1,19 @@
+{
+  "globs": [
+    "../*.md",
+    "./*.md",
+    "./docs/**/*.md",
+    "./prompt-lab-extension/*.md",
+    "./prompt-lab-desktop/*.md",
+    "./prompt-lab-web/*.md",
+    "!./_archive/**"
+  ],
+  "config": {
+    "default": true,
+    "MD013": false,
+    "MD024": {
+      "siblings_only": true
+    },
+    "MD033": false
+  }
+}

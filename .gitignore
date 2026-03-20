@@ -4,14 +4,15 @@ node_modules/
 *.zip
 
 # Build artifacts
+prompt-lab-source/prompt-lab-extension/dist/
 prompt-lab-source/prompt-lab-extension/test-results/
 prompt-lab-source/prompt-lab-extension/playwright-report/
-prompt-lab-source/prompt-lab-desktop/src-tauri/target/
+prompt-lab-source/prompt-lab-web/dist/
 prompt-lab-source/prompt-lab-desktop/dist/
+prompt-lab-source/prompt-lab-desktop/src-tauri/target/
 
 # Archive
 prompt-lab-source/_archive/
 archives/
 
 brand-assets/
-.DS_Store

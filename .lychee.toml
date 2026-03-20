@@ -1,0 +1,10 @@
+offline = true
+include_verbatim = true
+max_concurrency = 8
+
+exclude_path = [
+  "./prompt-lab-source/prompt-lab-extension/node_modules/**",
+  "./prompt-lab-source/prompt-lab-web/node_modules/**",
+  "./prompt-lab-source/prompt-lab-web/dist/**",
+  "./prompt-lab-source/_archive/**"
+]
