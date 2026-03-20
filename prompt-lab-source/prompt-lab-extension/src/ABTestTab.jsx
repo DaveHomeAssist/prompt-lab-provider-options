@@ -32,7 +32,7 @@ export default function ABTestTab({
   return (
     <div className={pageScroll ? 'flex flex-col' : 'flex flex-1 flex-col overflow-hidden'}>
       <div className={`px-4 py-2 border-b ${m.border} flex items-center justify-between shrink-0`}>
-        <p className={`text-xs font-semibold ${m.textSub} uppercase tracking-wider`}>A/B Prompt Testing</p>
+        <p className={`text-xs font-semibold ${m.textSub} uppercase tracking-wider`}>Compare Variants</p>
         <div className={`flex items-center gap-3 ${compact ? 'flex-wrap justify-end' : ''}`}>
           {abWinner && <span className="text-xs font-bold text-green-400 flex items-center gap-1"><Ic n="Check" size={11} />Winner: {abWinner}</span>}
           <button type="button" onClick={() => { runAB('a'); runAB('b'); }} disabled={abA.loading || abB.loading}
@@ -53,10 +53,7 @@ export default function ABTestTab({
       </div>
       <div className={`px-4 py-2 border-b ${m.border}`}>
         <p className={`text-xs ${m.textAlt}`}>
-          Each side is sent exactly as one isolated user message with no extra context.
-        </p>
-        <p className={`text-xs ${m.textMuted} mt-1 font-mono`}>
-          Payload: <code>{`messages: [{ role: 'user', content: promptVariant }]`}</code>
+          Paste two prompt variants and run them side-by-side against the same provider. Each variant is sent as a single isolated user message.
         </p>
       </div>
       {compact && (
@@ -137,7 +134,7 @@ export default function ABTestTab({
           </div>
         )}
         {showRuns && evalRuns.length === 0 && (
-          <div className={`ui-empty-state px-4 pb-3 text-xs ${m.textMuted}`}>No A/B runs saved yet.</div>
+          <div className={`ui-empty-state px-4 pb-3 text-xs ${m.textMuted}`}>Run both variants to start recording results.</div>
         )}
       </div>
       {/* Experiment History */}
@@ -182,7 +179,7 @@ export default function ABTestTab({
           </div>
         )}
         {showHistory && history.length === 0 && (
-          <div className={`ui-empty-state px-4 pb-3 text-xs ${m.textMuted}`}>No experiments saved yet.</div>
+          <div className={`ui-empty-state px-4 pb-3 text-xs ${m.textMuted}`}>Completed comparisons will appear here.</div>
         )}
       </div>
       {showDiff && bothReady && (

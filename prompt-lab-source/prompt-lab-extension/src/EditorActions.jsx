@@ -11,9 +11,13 @@ export default function EditorActions({
   onRunCases,
   onSave,
   onClear,
+  onResetResult,
+  onExport,
+  onOpenRedactionSettings,
   loading,
   hasInput,
   hasClearableContent = hasInput,
+  hasResult = false,
   runningCases,
   batchProgress,
   testCaseCount,
@@ -60,7 +64,7 @@ export default function EditorActions({
         <select
           value={enhMode}
           onChange={(e) => onEnhanceModeChange(e.target.value)}
-          className={`ui-control ${m.input} border rounded-lg px-2 py-1.5 text-sm ${m.text} focus:outline-none min-w-[8.25rem] flex-[1_1_8.25rem] ${compact ? 'w-full' : 'max-w-40'}`}
+          className={`ui-control h-11 ${m.input} border rounded-lg px-2 text-sm ${m.text} focus:outline-none min-w-[8.25rem] flex-[1_1_8.25rem] ${compact ? 'w-full' : 'max-w-40'}`}
         >
           {MODES.map((mode) => (
             <option key={mode.id} value={mode.id}>
@@ -73,7 +77,7 @@ export default function EditorActions({
           onClick={onEnhance}
           disabled={loading || !hasInput}
           aria-busy={loading}
-          className="ui-control min-w-[9.5rem] flex-[999_1_11rem] flex items-center justify-center gap-2 bg-violet-600 hover:bg-violet-500 disabled:opacity-40 text-white rounded-lg px-3 py-2 text-sm font-semibold transition-colors"
+          className="ui-control h-11 min-w-[9.5rem] flex-[999_1_11rem] flex items-center justify-center gap-2 bg-violet-600 hover:bg-violet-500 disabled:opacity-40 text-white rounded-lg px-4 text-sm font-semibold transition-colors"
         >
           {loading
             ? (
@@ -93,7 +97,7 @@ export default function EditorActions({
           <button
             type="button"
             onClick={onCancelEnhance}
-            className="ui-control min-w-[7.5rem] flex-[1_1_7.5rem] flex items-center justify-center gap-1 px-3 bg-slate-700 hover:bg-slate-600 text-white rounded-lg py-2 text-sm font-semibold transition-colors"
+            className="ui-control h-11 min-w-[7.5rem] flex-[1_1_7.5rem] flex items-center justify-center gap-1 px-3 bg-slate-700 hover:bg-slate-600 text-white rounded-lg text-sm font-semibold transition-colors"
           >
             <Ic n="Square" size={10} />
             Cancel
@@ -104,7 +108,7 @@ export default function EditorActions({
           onClick={onRunCases}
           disabled={loading || runningCases || testCaseCount === 0}
           aria-busy={runningCases}
-          className="ui-control min-w-[8rem] flex-[1_1_9rem] flex items-center justify-center gap-1 px-3 bg-blue-600 hover:bg-blue-500 disabled:opacity-40 text-white rounded-lg py-2 text-sm font-semibold transition-colors"
+          className="ui-control h-11 min-w-[8rem] flex-[1_1_9rem] flex items-center justify-center gap-1 px-3 bg-blue-600 hover:bg-blue-500 disabled:opacity-40 text-white rounded-lg text-sm font-semibold transition-colors"
         >
           {runningCases
             ? <span className="w-3.5 h-3.5 border-2 border-white border-t-transparent rounded-full animate-spin" />
@@ -117,7 +121,7 @@ export default function EditorActions({
           type="button"
           onClick={onSave}
           disabled={!hasSavablePrompt}
-          className="ui-control min-w-[6.5rem] flex-[1_1_6.5rem] px-2.5 bg-green-600 hover:bg-green-500 disabled:opacity-40 text-white rounded-lg text-sm font-semibold transition-colors py-2"
+          className="ui-control h-11 min-w-[6.5rem] flex-[1_1_6.5rem] px-4 bg-green-600 hover:bg-green-500 disabled:opacity-40 text-white rounded-lg text-sm font-semibold transition-colors"
         >
           Save
         </button>
@@ -126,7 +130,7 @@ export default function EditorActions({
           <button
             type="button"
             onClick={() => setShowOverflow((p) => !p)}
-            className={`ui-control p-2 rounded-lg transition-colors ${m.btn} ${m.textAlt} hover:text-violet-400`}
+            className={`ui-control h-11 w-11 flex items-center justify-center rounded-lg transition-colors border border-white/10 bg-white/[0.03] ${m.textAlt} hover:text-violet-400`}
             aria-label="More actions"
             title="More actions"
           >
@@ -134,11 +138,41 @@ export default function EditorActions({
           </button>
           {showOverflow && (
             <div className={`absolute right-0 top-full mt-1 z-50 min-w-[10rem] rounded-lg border ${m.border} ${m.modal} shadow-xl py-1`}>
+              {hasResult && onResetResult && (
+                <button
+                  type="button"
+                  onClick={() => { onResetResult(); setShowOverflow(false); }}
+                  className={`w-full text-left px-3 py-2 text-sm transition-colors flex items-center gap-2 rounded-lg ${m.textAlt} hover:bg-white/5`}
+                >
+                  <Ic n="RotateCcw" size={11} />
+                  Reset Result
+                </button>
+              )}
+              {onExport && (
+                <button
+                  type="button"
+                  onClick={() => { onExport(); setShowOverflow(false); }}
+                  className={`w-full text-left px-3 py-2 text-sm transition-colors flex items-center gap-2 rounded-lg ${m.textAlt} hover:bg-white/5`}
+                >
+                  <Ic n="Download" size={11} />
+                  Export Prompt
+                </button>
+              )}
+              {onOpenRedactionSettings && (
+                <button
+                  type="button"
+                  onClick={() => { onOpenRedactionSettings(); setShowOverflow(false); }}
+                  className={`w-full text-left px-3 py-2 text-sm transition-colors flex items-center gap-2 rounded-lg ${m.textAlt} hover:bg-white/5`}
+                >
+                  <Ic n="Shield" size={11} />
+                  Redaction Settings
+                </button>
+              )}
               <button
                 type="button"
                 onClick={handleClear}
                 disabled={loading}
-                className={`w-full text-left px-3 py-2 text-sm transition-colors flex items-center gap-2 ${
+                className={`w-full text-left px-3 py-2 text-sm transition-colors flex items-center gap-2 rounded-lg ${
                   confirmClear
                     ? 'text-red-400 bg-red-950/30 font-semibold'
                     : `${m.textAlt} hover:bg-red-950/20 hover:text-red-400`

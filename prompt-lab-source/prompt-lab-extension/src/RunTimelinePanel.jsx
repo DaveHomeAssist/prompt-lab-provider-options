@@ -451,7 +451,7 @@ function TimelineContent({ m, prompt, copy, compact, pageScroll, onRerun }) {
       {/* Empty */}
       {!loading && evalRuns.length === 0 && (
         <div className={`text-center py-8 text-xs ${m.textMuted}`}>
-          No runs yet. Use the Prompt Editor to enhance a prompt and runs will appear here.
+          No runs recorded yet. Enhance or test this prompt to start building a history.
         </div>
       )}
 
@@ -483,7 +483,7 @@ export default function RunTimelinePanel({ m, prompt, copy, compact, pageScroll,
   if (!prompt) {
     return (
       <div className={`flex-1 flex items-center justify-center p-8 ${pageScroll ? 'min-h-[60vh]' : ''}`}>
-        <p className={`text-sm ${m.textMuted}`}>Select a prompt to see its run history.</p>
+        <p className={`text-sm ${m.textMuted}`}>Load a saved prompt to see its run history and compare outputs.</p>
       </div>
     );
   }

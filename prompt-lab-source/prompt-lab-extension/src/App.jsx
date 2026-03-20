@@ -1,7 +1,7 @@
 import { useEffect, useRef, useState } from 'react';
 import Ic from './icons';
 import {
-  scorePrompt,
+  scorePrompt, wordDiff,
   ngramSimilarity, suggestTitleFromText,
 } from './promptUtils';
 import { T, APP_VERSION } from './constants';
@@ -51,6 +51,10 @@ export default function App() {
     setColorMode,
     density,
     setDensity,
+    editorFontSize,
+    setEditorFontSize,
+    resultFontSize,
+    setResultFontSize,
     primaryView,
     setPrimaryView,
     workspaceView,
@@ -100,7 +104,7 @@ export default function App() {
     },
   };
   const {
-    raw, setRaw, enhanced, setEnhanced, variants, notes, loading, error,
+    raw, setRaw, enhanced, setEnhanced, variants, setVariants, notes, setNotes, loading, error,
     streamPreview, streaming, optimisticSaveVisible, batchProgress,
     enhMode, setEnhMode, showNotes, setShowNotes,
     lintIssues, lintOpen, setLintOpen, handleLintFix,
@@ -175,9 +179,9 @@ export default function App() {
         ['editor', 'Focus'],
         ['split', 'Dual Pane'],
       ];
+  const [diffOpen, setDiffOpen] = useState(false);
   const resultTabs = [
     { id: 'improved', label: 'Improved' },
-    { id: 'diff', label: 'Diff' },
     ...(variants.length > 0 ? [{ id: 'variants', label: `Variants (${variants.length})` }] : []),
     ...(showNotes && notes ? [{ id: 'notes', label: 'Notes' }] : []),
   ];
@@ -435,7 +439,15 @@ export default function App() {
   // ─────────────────────────────────────────────────────────────────────────
   return (
     <ThemeProvider mode={colorMode}>
-      <div data-theme={colorMode} className={`min-h-screen ${m.bg} ${m.text} flex flex-col pl-density-${density}`} style={{ fontFamily: 'system-ui,sans-serif' }}>
+      <div
+        data-theme={colorMode}
+        className={`min-h-screen ${m.bg} ${m.text} flex flex-col pl-density-${density}`}
+        style={{
+          fontFamily: 'system-ui,sans-serif',
+          '--pl-editor-font-size': `${editorFontSize}px`,
+          '--pl-result-font-size': `${resultFontSize}px`,
+        }}
+      >
       <h1 className="sr-only">Prompt Lab</h1>
 
       {/* Header */}
@@ -533,90 +545,7 @@ export default function App() {
                   )}
                 </div>
               )}
-              {/* Input */}
-              <div>
-                <div className={`flex justify-between items-center mb-1.5 ${compact ? 'gap-2 flex-wrap' : ''}`}>
-                  <div className="flex items-center gap-2">
-                    <span className={`text-xs ${m.textSub} uppercase tracking-widest font-semibold`}>Input</span>
-                    <div className="flex rounded-md overflow-visible border" style={{ borderColor: 'rgba(255,255,255,0.1)' }}>
-                      <button type="button" onClick={() => setMdPreview(false)} aria-pressed={!mdPreview}
-                        className={`ui-control text-xs px-2 py-0.5 transition-colors ${!mdPreview ? 'bg-violet-600 text-white' : `${m.btn} ${m.textAlt}`}`}>Write</button>
-                      <button type="button" onClick={() => setMdPreview(true)} aria-pressed={mdPreview}
-                        className={`ui-control text-xs px-2 py-0.5 transition-colors ${mdPreview ? 'bg-violet-600 text-white' : `${m.btn} ${m.textAlt}`}`}>Preview</button>
-                    </div>
-                  </div>
-                  <span className={`text-xs ${m.textMuted}`} title={`${wc} words · ${raw.length} chars`}>~{score ? score.tokens : Math.round(raw.length / 4)} tok{wc ? ` · ${wc}w` : ''}</span>
-                </div>
-                {mdPreview ? (
-                  <div className={`${inp} overflow-y-auto`} style={{ minHeight: '12rem', maxHeight: '24rem' }}>
-                    {raw.trim() ? <MarkdownPreview text={raw} /> : <span className={`text-sm ${m.textSub}`}>Nothing to preview</span>}
-                  </div>
-                ) : (
-                  <textarea rows={8} className={inp} placeholder="Paste or write your prompt here…" value={raw} onChange={e => setRaw(e.target.value)} />
-                )}
-              </div>
-              {/* Scoring */}
-              {score && (() => {
-                const checks = [['Role', score.role], ['Task', score.task], ['Format', score.format], ['Constraints', score.constraints], ['Context', score.context]];
-                const cnt = checks.filter(c => c[1]).length;
-                return (
-                  <div className={`${m.surface} border ${m.border} rounded-lg p-3`}>
-                    <div className="flex justify-between items-center mb-2">
-                      <span className={`text-xs font-semibold ${m.textSub} uppercase tracking-wider`}>Prompt Quality</span>
-                      <span className={`text-xs font-bold ${cnt >= 4 ? 'text-green-500' : cnt >= 2 ? 'text-yellow-500' : 'text-red-500'}`}>{cnt}/5</span>
-                    </div>
-                    <div className="flex gap-3 flex-wrap">
-                      {checks.map(([lbl, ok]) => (
-                        <span key={lbl} className={`flex items-center gap-1 text-xs ${ok ? m.scoreGood : m.scoreBad}`}>
-                          {ok ? <Ic n="Check" size={9} /> : <Ic n="X" size={9} />}{lbl}
-                        </span>
-                      ))}
-                    </div>
-                  </div>
-                );
-              })()}
-              {/* Lint Issues */}
-              {lintIssues.length > 0 && (
-                <div className={`${m.surface} border ${m.border} rounded-lg`}>
-                  <button onClick={() => setLintOpen(p => !p)}
-                    className={`w-full flex justify-between items-center px-3 py-2 text-xs font-semibold ${m.textSub} uppercase tracking-wider`}>
-                    <span>Lint ({lintIssues.length} {lintIssues.length === 1 ? 'issue' : 'issues'})</span>
-                    <Ic n={lintOpen ? 'ChevronUp' : 'ChevronDown'} size={10} />
-                  </button>
-                  {lintOpen && (
-                    <div className="px-3 pb-3 flex flex-col gap-1.5">
-                      {lintIssues.map(issue => (
-                        <div key={issue.id} className={`${m.codeBlock} border ${m.border} rounded-lg p-2.5`}>
-                          <div className="flex items-start justify-between gap-2">
-                            <div className="min-w-0 flex-1">
-                              <div className="flex items-center gap-2 flex-wrap">
-                                <span className={`inline-flex items-center rounded-full px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wide ${
-                                  issue.severity === 'warning'
-                                    ? 'bg-amber-500/15 text-amber-300'
-                                    : issue.severity === 'error'
-                                      ? 'bg-red-500/15 text-red-300'
-                                      : 'bg-slate-500/15 text-slate-300'
-                                }`}>
-                                  {issue.severity}
-                                </span>
-                                <span className={`text-[11px] ${m.textMuted}`}>Line {issue.line}</span>
-                              </div>
-                              <p className={`mt-1 text-sm ${m.textBody}`}>{issue.message}</p>
-                              {issue.suggestedFix && (
-                                <p className={`mt-1 text-xs ${m.textMuted}`}>Suggested fix: {issue.suggestedFix}</p>
-                              )}
-                            </div>
-                            <button onClick={() => handleLintFix(issue.id)}
-                              className="shrink-0 text-sm font-semibold text-violet-400 hover:text-violet-300 transition-colors">Fix</button>
-                          </div>
-                        </div>
-                      ))}
-                    </div>
-                  )}
-                </div>
-              )}
-              {/* Mode + Enhance */}
-              <span className={`text-xs ${m.textSub} uppercase tracking-widest font-semibold`}>Enhance Lab</span>
+              {/* ── Action Rail ── */}
               <EditorActions
                 m={m}
                 compact={compact}
@@ -626,9 +555,16 @@ export default function App() {
                 onRunCases={runAllCases}
                 onSave={() => openSavePanel()}
                 onClear={clearEditor}
+                onResetResult={() => { setEnhanced(''); setVariants([]); setNotes(''); setDiffOpen(false); }}
+                onExport={() => {
+                  const payload = [raw && `# Input\n${raw}`, enhanced && `# Enhanced\n${enhanced}`].filter(Boolean).join('\n\n');
+                  if (payload) copy(payload, 'Prompt exported to clipboard.');
+                }}
+                onOpenRedactionSettings={() => setShowSettings(true)}
                 onCancelEnhance={cancelEnhance}
                 loading={loading}
                 hasInput={Boolean(raw.trim())}
+                hasResult={Boolean(enhanced.trim())}
                 hasClearableContent={hasEditorContent}
                 runningCases={runningCases}
                 batchProgress={batchProgress}
@@ -636,66 +572,7 @@ export default function App() {
                 hasSavablePrompt={hasSavablePrompt}
                 enhanceShortcutLabel={`${primaryModKey}+Enter`}
               />
-              {(loading || batchProgress.active || optimisticSaveVisible) && (
-                <div className={`${m.surface} border ${m.border} rounded-lg px-3 py-2 flex items-center justify-between gap-3`}>
-                  <div className="min-w-0">
-                    {loading ? (
-                      <>
-                        <p className={`text-xs font-semibold ${m.textSub} uppercase tracking-wider`}>Generation Active</p>
-                        <p className={`text-xs ${m.textMuted} truncate`}>
-                          {streaming ? 'Streaming response from provider…' : 'Preparing response…'}
-                        </p>
-                      </>
-                    ) : batchProgress.active ? (
-                      <>
-                        <p className={`text-xs font-semibold ${m.textSub} uppercase tracking-wider`}>Batch Progress</p>
-                        <p className={`text-xs ${m.textMuted} truncate`}>
-                          {Math.min(batchProgress.completed, batchProgress.total)}/{batchProgress.total} complete
-                          {batchProgress.currentLabel ? ` · ${batchProgress.currentLabel}` : ''}
-                        </p>
-                      </>
-                    ) : (
-                      <>
-                        <p className={`text-xs font-semibold ${m.textSub} uppercase tracking-wider`}>Save Ready</p>
-                        <p className={`text-xs ${m.textMuted}`}>You can save this draft before the final result finishes.</p>
-                      </>
-                    )}
-                  </div>
-                  <div className="flex items-center gap-2 shrink-0">
-                    {hasSavablePrompt && !showSave && (
-                      <button
-                        type="button"
-                        onClick={() => openSavePanel()}
-                        className="ui-control rounded-lg bg-green-600 px-3 py-1.5 text-xs font-semibold text-white transition-colors hover:bg-green-500"
-                      >
-                        Save Draft
-                      </button>
-                    )}
-                    {loading && (
-                      <button
-                        type="button"
-                        onClick={cancelEnhance}
-                        className={`ui-control rounded-lg px-3 py-1.5 text-xs font-semibold transition-colors ${m.btn} ${m.textAlt}`}
-                      >
-                        Cancel
-                      </button>
-                    )}
-                  </div>
-                </div>
-              )}
-              {editingId && currentTestCases.length > 0 && (
-                <div className={`flex items-center justify-between ${m.surface} border ${m.border} rounded-lg px-3 py-2`}>
-                  <span className={`text-xs ${m.textSub} flex items-center gap-1.5`}>
-                    <Ic n="FlaskConical" size={10} />
-                    {currentTestCases.length} test {currentTestCases.length === 1 ? 'case' : 'cases'}
-                  </span>
-                  <button onClick={runAllCases} disabled={loading || runningCases}
-                    className="flex items-center gap-1 text-xs text-blue-400 hover:text-blue-300 disabled:opacity-40 font-semibold transition-colors">
-                    {runningCases ? <span className="w-3 h-3 border-2 border-blue-400 border-t-transparent rounded-full animate-spin" /> : <Ic n="FlaskConical" size={10} />}
-                    {batchProgress.active ? `${Math.min(batchProgress.completed, batchProgress.total)}/${batchProgress.total}` : 'Run All'}
-                  </button>
-                </div>
-              )}
+              {/* ── Error Banner ── */}
               {error && (
                 <div className={`rounded-xl border p-3 ${colorMode === 'dark' ? 'border-red-500/35 bg-red-950/24' : 'border-red-300 bg-red-50'}`}>
                   <div className="flex items-start justify-between gap-3">
@@ -751,6 +628,183 @@ export default function App() {
                   </div>
                 </div>
               )}
+              {/* ── Loading Status ── */}
+              {(loading || batchProgress.active || optimisticSaveVisible) && (
+                <div className={`${m.surface} border ${m.border} rounded-lg px-3 py-2 flex items-center justify-between gap-3`}>
+                  <div className="min-w-0">
+                    {loading ? (
+                      <>
+                        <p className={`text-xs font-semibold ${m.textSub} uppercase tracking-wider`}>Generation Active</p>
+                        <p className={`text-xs ${m.textMuted} truncate`}>
+                          {streaming ? 'Streaming response from provider…' : 'Preparing response…'}
+                        </p>
+                      </>
+                    ) : batchProgress.active ? (
+                      <>
+                        <p className={`text-xs font-semibold ${m.textSub} uppercase tracking-wider`}>Batch Progress</p>
+                        <p className={`text-xs ${m.textMuted} truncate`}>
+                          {Math.min(batchProgress.completed, batchProgress.total)}/{batchProgress.total} complete
+                          {batchProgress.currentLabel ? ` · ${batchProgress.currentLabel}` : ''}
+                        </p>
+                      </>
+                    ) : (
+                      <>
+                        <p className={`text-xs font-semibold ${m.textSub} uppercase tracking-wider`}>Save Ready</p>
+                        <p className={`text-xs ${m.textMuted}`}>You can save this draft before the final result finishes.</p>
+                      </>
+                    )}
+                  </div>
+                  <div className="flex items-center gap-2 shrink-0">
+                    {hasSavablePrompt && !showSave && (
+                      <button
+                        type="button"
+                        onClick={() => openSavePanel()}
+                        className="ui-control rounded-lg bg-green-600 px-3 py-1.5 text-xs font-semibold text-white transition-colors hover:bg-green-500"
+                      >
+                        Save Draft
+                      </button>
+                    )}
+                    {loading && (
+                      <button
+                        type="button"
+                        onClick={cancelEnhance}
+                        className={`ui-control rounded-lg px-3 py-1.5 text-xs font-semibold transition-colors ${m.btn} ${m.textAlt}`}
+                      >
+                        Cancel
+                      </button>
+                    )}
+                  </div>
+                </div>
+              )}
+              {/* ── Input Card ── */}
+              <div className={`rounded-xl border ${m.border} bg-white/[0.03] p-4`}>
+                <div className={`flex justify-between items-center mb-2 ${compact ? 'gap-2 flex-wrap' : ''}`}>
+                  <div className="flex items-center gap-2">
+                    <span className={`text-[11px] font-semibold uppercase tracking-[0.16em] text-violet-300`}>Input</span>
+                    <div className="flex rounded-md overflow-visible border" style={{ borderColor: 'rgba(255,255,255,0.1)' }}>
+                      <button type="button" onClick={() => setMdPreview(false)} aria-pressed={!mdPreview}
+                        className={`ui-control text-xs px-2 py-0.5 transition-colors ${!mdPreview ? 'bg-violet-600 text-white' : `${m.btn} ${m.textAlt}`}`}>Write</button>
+                      <button type="button" onClick={() => setMdPreview(true)} aria-pressed={mdPreview}
+                        className={`ui-control text-xs px-2 py-0.5 transition-colors ${mdPreview ? 'bg-violet-600 text-white' : `${m.btn} ${m.textAlt}`}`}>Preview</button>
+                    </div>
+                    <button
+                      type="button"
+                      onClick={() => setShowNotes((prev) => !prev)}
+                      aria-pressed={showNotes}
+                      className={`ui-control flex items-center gap-1 rounded-md border px-2 py-0.5 text-xs font-semibold transition-colors ${showNotes ? 'border-violet-500/50 bg-violet-500/10 text-violet-300' : `${m.btn} ${m.textAlt}`}`}
+                    >
+                      <Ic n="FileText" size={10} />
+                      {notes.trim() ? 'Notes' : 'Add Notes'}
+                    </button>
+                  </div>
+                  <div className="flex items-center gap-2">
+                    <div className="flex items-center gap-0.5">
+                      <button type="button" onClick={() => setEditorFontSize(Math.max(10, editorFontSize - 1))} title="Decrease editor font size"
+                        className={`text-xs px-1.5 py-0.5 rounded transition-colors ${m.btn} ${m.textAlt}`} style={{ minHeight: 'auto' }}>A−</button>
+                      <span className={`text-[10px] ${m.textMuted} w-6 text-center tabular-nums`} title="Editor font size">{editorFontSize}</span>
+                      <button type="button" onClick={() => setEditorFontSize(Math.min(22, editorFontSize + 1))} title="Increase editor font size"
+                        className={`text-xs px-1.5 py-0.5 rounded transition-colors ${m.btn} ${m.textAlt}`} style={{ minHeight: 'auto' }}>A+</button>
+                    </div>
+                    <span className={`text-xs ${m.textMuted}`} title={`${wc} words · ${raw.length} chars`}>~{score ? score.tokens : Math.round(raw.length / 4)} tok{wc ? ` · ${wc}w` : ''}</span>
+                  </div>
+                </div>
+                {mdPreview ? (
+                  <div className={`${inp} pl-editor-text overflow-y-auto`} style={{ minHeight: '12rem', maxHeight: '24rem' }}>
+                    {raw.trim() ? <MarkdownPreview text={raw} className="pl-editor-text" /> : <span className={`text-sm ${m.textSub}`}>Nothing to preview</span>}
+                  </div>
+                ) : (
+                  <textarea rows={8} className={`${inp} pl-editor-text`} placeholder="Paste or write your prompt here…" value={raw} onChange={e => setRaw(e.target.value)} />
+                )}
+                {showNotes && (
+                  <div className={`${m.surface} border ${m.border} rounded-lg p-3 mt-2`}>
+                    <div className="flex items-center justify-between gap-2 mb-2">
+                      <div className="min-w-0">
+                        <p className={`text-xs font-semibold ${m.textSub} uppercase tracking-wider`}>Prompt Notes</p>
+                        <p className={`text-xs ${m.textMuted}`}>Keep rationale, assumptions, or follow-up reminders beside the draft.</p>
+                      </div>
+                      {notes.trim() && (
+                        <button
+                          type="button"
+                          onClick={() => setNotes('')}
+                          className={`ui-control text-xs font-semibold transition-colors ${m.textMuted} hover:text-white`}
+                        >
+                          Clear
+                        </button>
+                      )}
+                    </div>
+                    <textarea
+                      rows={4}
+                      className={`${inp} pl-editor-text`}
+                      placeholder="Add notes, assumptions, or follow-up reminders…"
+                      value={notes}
+                      onChange={(event) => setNotes(event.target.value)}
+                    />
+                  </div>
+                )}
+              </div>
+              {/* ── Diagnostic Strip (merged score + lint) ── */}
+              {raw.trim() && score && (() => {
+                const checks = [['Role', score.role], ['Task', score.task], ['Format', score.format], ['Constraints', score.constraints], ['Context', score.context]];
+                const cnt = checks.filter(c => c[1]).length;
+                const isHealthy = cnt >= 4 && lintIssues.length === 0;
+                const firstFixable = lintIssues.find(i => i.suggestedFix);
+                return (
+                  <div className={`flex items-center justify-between gap-3 rounded-lg border px-3 py-2 ${
+                    isHealthy
+                      ? `${colorMode === 'dark' ? 'border-emerald-400/20 bg-emerald-400/10' : 'border-emerald-300 bg-emerald-50'}`
+                      : `${colorMode === 'dark' ? 'border-amber-400/20 bg-amber-400/10' : 'border-amber-300 bg-amber-50'}`
+                  }`}>
+                    <div className="flex items-center gap-2 min-w-0">
+                      <span className={`shrink-0 rounded-full bg-slate-900/70 px-2 py-1 text-[11px] font-medium ${
+                        cnt >= 4 ? 'text-emerald-200' : cnt >= 2 ? 'text-amber-200' : 'text-red-200'
+                      }`}>{cnt}/5</span>
+                      <div className="flex items-center gap-1.5 min-w-0">
+                        {checks.map(([lbl, ok]) => (
+                          <span key={lbl} className={`flex items-center gap-0.5 text-[11px] ${ok ? m.scoreGood : m.scoreBad}`}>
+                            {ok ? <Ic n="Check" size={8} /> : <Ic n="X" size={8} />}{lbl}
+                          </span>
+                        ))}
+                      </div>
+                      {lintIssues.length > 0 && (
+                        <span className={`text-xs ${colorMode === 'dark' ? 'text-amber-100/90' : 'text-amber-700'} truncate`}>
+                          · {lintIssues.length} lint {lintIssues.length === 1 ? 'issue' : 'issues'}
+                        </span>
+                      )}
+                    </div>
+                    {firstFixable && (
+                      <button
+                        type="button"
+                        onClick={() => handleLintFix(firstFixable.id)}
+                        className={`shrink-0 h-8 rounded-md px-3 text-xs font-medium transition-colors ${
+                          colorMode === 'dark' ? 'bg-violet-600 text-white hover:bg-violet-500' : 'bg-violet-500 text-white hover:bg-violet-600'
+                        }`}
+                      >
+                        Fix: {firstFixable.message.slice(0, 30)}{firstFixable.message.length > 30 ? '…' : ''}
+                      </button>
+                    )}
+                  </div>
+                );
+              })()}
+              {/* ── Test Cases ── */}
+              {editingId && currentTestCases.length > 0 && (
+                <div className={`flex items-center justify-between ${m.surface} border ${m.border} rounded-lg px-3 py-2`}>
+                  <span className={`text-xs ${m.textSub} flex items-center gap-1.5`}>
+                    <Ic n="FlaskConical" size={10} />
+                    {currentTestCases.length} test {currentTestCases.length === 1 ? 'case' : 'cases'}
+                  </span>
+                  <button onClick={runAllCases} disabled={loading || runningCases}
+                    className="flex items-center gap-1 text-xs text-blue-400 hover:text-blue-300 disabled:opacity-40 font-semibold transition-colors">
+                    {runningCases ? <span className="w-3 h-3 border-2 border-blue-400 border-t-transparent rounded-full animate-spin" /> : <Ic n="FlaskConical" size={10} />}
+                    {batchProgress.active ? `${Math.min(batchProgress.completed, batchProgress.total)}/${batchProgress.total}` : 'Run All'}
+                  </button>
+                </div>
+              )}
+              {/* ── Result Card (elevated) ── */}
+              <div className={`rounded-2xl border p-4 ${
+                colorMode === 'dark'
+                  ? 'border-violet-400/20 bg-violet-500/[0.06] shadow-[0_0_0_1px_rgba(167,139,250,0.06),0_12px_40px_rgba(0,0,0,0.28)]'
+                  : 'border-violet-200 bg-violet-50/40 shadow-sm'
+              }`}>
               <ResultPane
                 m={m}
                 compact={compact}
@@ -771,6 +825,8 @@ export default function App() {
                 resultTabs={resultTabs}
                 resultField={resultField}
                 copyBtn={copyBtn}
+                resultFontSize={resultFontSize}
+                setResultFontSize={setResultFontSize}
                 raw={raw}
                 goldenVerdict={goldenVerdict}
                 goldenSimilarity={goldenSimilarity}
@@ -792,7 +848,30 @@ export default function App() {
                 pinGoldenResponse={lib.pinGoldenResponse}
                 clearGoldenResponse={lib.clearGoldenResponse}
                 setGoldenThreshold={lib.setGoldenThreshold}
+                diffOpen={diffOpen}
+                setDiffOpen={setDiffOpen}
               />
+              {/* ── Diff Drawer (inline, collapsible) ── */}
+              {diffOpen && enhanced && (
+                <div className={`mt-3 rounded-xl border ${m.border} ${colorMode === 'dark' ? 'bg-slate-950/60' : 'bg-slate-50'} p-3`}>
+                  <div className="flex items-center justify-between mb-2">
+                    <span className={`text-[11px] font-semibold uppercase tracking-[0.14em] ${m.textMuted}`}>Diff</span>
+                    <button type="button" onClick={() => setDiffOpen(false)} className={`text-xs ${m.textMuted} hover:text-white transition-colors`}>
+                      <Ic n="X" size={12} />
+                    </button>
+                  </div>
+                  <div className={`max-h-[240px] overflow-auto text-sm leading-7 ${m.codeBlock} border ${m.border} rounded-lg p-3 whitespace-pre-wrap break-words [overflow-wrap:anywhere]`}>
+                    {wordDiff(raw, enhanced).map((d, i) => (
+                      <span key={i} className={`${
+                        d.t === 'add' ? 'rounded bg-emerald-500/15 px-1 text-emerald-200'
+                        : d.t === 'del' ? 'rounded bg-rose-500/15 px-1 line-through text-rose-200'
+                        : `${colorMode === 'dark' ? 'text-slate-300' : 'text-slate-600'}`
+                      } mr-0.5`}>{d.v}</span>
+                    ))}
+                  </div>
+                </div>
+              )}
+              </div>
             </div>
             </div>
           )}
