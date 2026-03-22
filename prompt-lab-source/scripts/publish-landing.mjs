@@ -1,5 +1,5 @@
 import { execFileSync } from 'node:child_process';
-import { cp, mkdir, readdir, rm, stat, writeFile } from 'node:fs/promises';
+import { cp, mkdir, rm, stat, writeFile } from 'node:fs/promises';
 import { dirname, join, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
 
@@ -8,30 +8,44 @@ const sourceDir = resolve(scriptDir, '..');
 const repoDir = resolve(sourceDir, '..');
 const publicDir = join(sourceDir, 'public');
 const webDir = join(sourceDir, 'prompt-lab-web');
-const webPublicDir = join(sourceDir, 'prompt-lab-web', 'public');
-const webDistDir = join(sourceDir, 'prompt-lab-web', 'dist');
+const webPublicDir = join(webDir, 'public');
+const webDistDir = join(webDir, 'dist');
 const docsDir = join(repoDir, 'docs');
 
-const copyTargets = [
-  ['prompt-lab-landing.html', 'index.html'],
-  ['hero-logo.png', 'hero-logo.png'],
-  ['og-image.png', 'og-image.png'],
-  ['robots.txt', 'robots.txt'],
-  ['sitemap.xml', 'sitemap.xml'],
+const fileTargets = [
+  [join(webDir, 'index.html'), 'index.html'],
+  [join(webPublicDir, 'guide.html'), 'guide.html'],
+  [join(webPublicDir, 'guide-preset-import.html'), 'guide-preset-import.html'],
+  [join(webPublicDir, 'setup.html'), 'setup.html'],
+  [join(webPublicDir, 'privacy.html'), 'privacy.html'],
+  [join(webPublicDir, 'prompt-embed.html'), 'prompt-embed.html'],
+  [join(webPublicDir, 'hero-logo.png'), 'hero-logo.png'],
+  [join(webPublicDir, 'og-image.png'), 'og-image.png'],
+  [join(webPublicDir, 'robots.txt'), 'robots.txt'],
+  [join(webPublicDir, 'sitemap.xml'), 'sitemap.xml'],
 ];
 
-// Additional pages from prompt-lab-web/public/
-const webPageTargets = [
-  ['guide.html', 'guide.html'],
-  ['setup.html', 'setup.html'],
-  ['privacy.html', 'privacy.html'],
-  ['prompt-embed.html', 'prompt-embed.html'],
-  ['scriptagent.html', 'scriptagent.html'],
+const dirTargets = [
+  [join(webPublicDir, 'fonts'), 'fonts'],
+  [join(webPublicDir, 'tools'), 'tools'],
 ];
 
-const webBuildTargets = [
-  ['app', 'app'],
-  ['assets', 'assets'],
+const buildTargets = [
+  [join(webDistDir, 'app'), 'app'],
+  [join(webDistDir, 'assets'), 'assets'],
+];
+
+const mirrorTargets = [
+  [join(webDir, 'index.html'), join(publicDir, 'prompt-lab-landing.html')],
+  [join(webPublicDir, 'robots.txt'), join(publicDir, 'robots.txt')],
+  [join(webPublicDir, 'sitemap.xml'), join(publicDir, 'sitemap.xml')],
+];
+
+const obsoleteTargets = [
+  'script-agent.html',
+  'scriptagent.html',
+  'script-agent 2.html',
+  'scriptagent 2.html',
 ];
 
 function buildWebApp() {
@@ -42,42 +56,23 @@ function buildWebApp() {
   });
 }
 
-async function prepareDocsDir() {
+async function ensureManagedDirs() {
   await mkdir(docsDir, { recursive: true });
-  const managedTargets = [
-    ...copyTargets.map(([, toName]) => toName),
-    ...webPageTargets.map(([, toName]) => toName),
-    ...webBuildTargets.map(([, toName]) => toName),
-    'fonts',
-    '.nojekyll',
-    'CNAME',
-  ];
-
-  for (const target of managedTargets) {
-    await rm(join(docsDir, target), { recursive: true, force: true });
-  }
+  await mkdir(publicDir, { recursive: true });
 }
 
-async function copyTarget(fromName, toName) {
-  await cp(join(publicDir, fromName), join(docsDir, toName));
+async function copyTarget(fromPath, toName) {
+  await cp(fromPath, join(docsDir, toName), { force: true });
 }
 
-async function copyFontsDir() {
-  const sourceFontsDir = join(publicDir, 'fonts');
-  const targetFontsDir = join(docsDir, 'fonts');
-  const sourceStats = await stat(sourceFontsDir);
-
+async function syncDir(fromPath, toName) {
+  const targetPath = join(docsDir, toName);
+  const sourceStats = await stat(fromPath);
   if (!sourceStats.isDirectory()) {
-    throw new Error(`Expected fonts directory at ${sourceFontsDir}`);
+    throw new Error(`Expected directory at ${fromPath}`);
   }
-
-  await cp(sourceFontsDir, targetFontsDir, { recursive: true });
-}
-
-async function copyWebBuildArtifacts() {
-  for (const [fromName, toName] of webBuildTargets) {
-    await cp(join(webDistDir, fromName), join(docsDir, toName), { recursive: true });
-  }
+  await rm(targetPath, { recursive: true, force: true });
+  await cp(fromPath, targetPath, { recursive: true, force: true });
 }
 
 async function writeNoJekyll() {
@@ -89,43 +84,51 @@ async function writeCname() {
 }
 
 async function validatePublicInputs() {
-  for (const [fromName] of copyTargets) {
-    await stat(join(publicDir, fromName));
+  for (const [fromPath] of fileTargets) {
+    await stat(fromPath);
   }
-
-  const entries = await readdir(publicDir);
-  if (!entries.includes('prompt-lab-landing.html')) {
-    throw new Error('Landing source file is missing from public/');
+  for (const [fromPath] of [...dirTargets, ...buildTargets]) {
+    const sourceStats = await stat(fromPath);
+    if (!sourceStats.isDirectory()) {
+      throw new Error(`Expected directory at ${fromPath}`);
+    }
   }
+}
 
-  for (const [fromName] of webPageTargets) {
-    await stat(join(webPublicDir, fromName));
+async function cleanupObsoleteTargets() {
+  for (const target of obsoleteTargets) {
+    await rm(join(docsDir, target), { recursive: true, force: true });
+  }
+}
+
+async function mirrorLegacyPublicFiles() {
+  for (const [fromPath, toPath] of mirrorTargets) {
+    await cp(fromPath, toPath, { force: true });
   }
 }
 
 async function main() {
   buildWebApp();
   await validatePublicInputs();
-  await prepareDocsDir();
+  await ensureManagedDirs();
+  await cleanupObsoleteTargets();
 
-  for (const [fromName, toName] of copyTargets) {
-    await copyTarget(fromName, toName);
+  for (const [fromPath, toName] of fileTargets) {
+    await copyTarget(fromPath, toName);
   }
 
-  await copyFontsDir();
-  await copyWebBuildArtifacts();
-
-  // Copy web pages (guide, setup)
-  for (const [fromName, toName] of webPageTargets) {
-    const src = join(webPublicDir, fromName);
+  for (const [fromPath, toName] of [...dirTargets, ...buildTargets]) {
     try {
-      await stat(src);
-      await cp(src, join(docsDir, toName));
-    } catch {
-      console.warn(`  Optional page ${fromName} not found, skipping`);
+      await syncDir(fromPath, toName);
+    } catch (error) {
+      console.warn(`  Optional directory ${toName} not found, skipping`);
+      if (!(error instanceof Error && error.message.includes('no such file'))) {
+        throw error;
+      }
     }
   }
 
+  await mirrorLegacyPublicFiles();
   await writeNoJekyll();
   await writeCname();
 
