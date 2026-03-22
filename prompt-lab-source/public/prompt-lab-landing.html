@@ -3,18 +3,19 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<meta name="description" content="Prompt Lab is a multi-provider prompt engineering workbench. Enhance, A/B test, compose, and compare prompts across Anthropic, OpenAI, Gemini, OpenRouter, and Ollama.">
+<meta name="description" content="Prompt Lab is a prompt engineering workbench for web, Chrome, and desktop. Engineer, test, and iterate across Anthropic, OpenAI, Gemini, OpenRouter, and Ollama.">
 <meta name="robots" content="index,follow">
-<meta property="og:title" content="Prompt Lab — Craft Better Prompts">
-<meta property="og:description" content="A multi-provider prompt engineering workbench for Chromium browsers. Enhance, A/B test, and compose prompts from a single panel.">
+<meta name="theme-color" content="#090512">
+<meta property="og:title" content="Prompt Lab — Engineer. Test. Iterate.">
+<meta property="og:description" content="A prompt engineering workbench for web, Chrome, and desktop. Write, compare, and refine prompts across five providers from one workspace.">
 <meta property="og:type" content="website">
 <meta property="og:url" content="https://promptlab.tools/">
 <meta property="og:image" content="https://promptlab.tools/og-image.png">
 <meta name="twitter:card" content="summary_large_image">
-<meta name="twitter:title" content="Prompt Lab — Craft Better Prompts">
-<meta name="twitter:description" content="A multi-provider prompt engineering workbench for Chromium browsers. Enhance, A/B test, and compose prompts from a single panel.">
+<meta name="twitter:title" content="Prompt Lab — Engineer. Test. Iterate.">
+<meta name="twitter:description" content="Write, compare, and refine prompts across Anthropic, OpenAI, Gemini, OpenRouter, and Ollama from one workspace.">
 <meta name="twitter:image" content="https://promptlab.tools/og-image.png">
-<title>Prompt Lab | AI Prompt Engineering Workbench</title>
+<title>Prompt Lab | Engineer. Test. Iterate.</title>
 <link rel="icon" type="image/png" href="./hero-logo.png">
 <link rel="canonical" href="https://promptlab.tools/">
 <link rel="preload" href="./fonts/outfit.woff2" as="font" type="font/woff2" crossorigin>
@@ -36,941 +37,761 @@
   font-display: swap;
 }
 
-/* ============================
-   DESIGN SYSTEM — LAB AESTHETIC
-   ============================
-   Primary: Violet-600 (#7C3AED) → Violet-400 (#A78BFA)
-   Surface: Slate-950 (#020617) → Slate-800 (#1E293B)
-   Glass:   rgba(255,255,255, 0.03–0.06) + backdrop-blur
-   Text:    Slate-100 (#F1F5F9), Slate-300 (#CBD5E1), Slate-400 (#94A3B8)
-   Accent:  Indigo-400 (#818CF8), Teal-400 (#2DD4BF)
-   ============================ */
 :root {
-  --lab-violet: #7C3AED;
-  --lab-violet-light: #A78BFA;
-  --lab-violet-dim: #6D28D9;
-  --lab-indigo: #818CF8;
-  --lab-teal: #2DD4BF;
-  --lab-teal-dim: rgba(45, 212, 191, 0.15);
-
-  --surface-950: #020617;
-  --surface-900: #0F172A;
-  --surface-800: #1E293B;
-  --surface-700: #334155;
-  --surface-600: #475569;
-  --surface-500: #64748B;
-  --surface-400: #94A3B8;
-  --surface-300: #CBD5E1;
-  --surface-200: #E2E8F0;
-  --surface-100: #F1F5F9;
-
-  --glass-bg: rgba(255, 255, 255, 0.04);
-  --glass-border: rgba(255, 255, 255, 0.08);
-  --glass-blur: 16px;
-  --glass-bg-hover: rgba(255, 255, 255, 0.07);
-
-  --glow-violet: rgba(124, 58, 237, 0.35);
-  --glow-violet-soft: rgba(124, 58, 237, 0.12);
-  --glow-teal: rgba(45, 212, 191, 0.15);
-
+  --bg: #090512;
+  --bg-soft: #120b1f;
+  --panel: rgba(18, 11, 31, 0.82);
+  --panel-strong: rgba(22, 14, 40, 0.94);
+  --panel-line: rgba(255, 255, 255, 0.08);
+  --panel-line-strong: rgba(255, 255, 255, 0.16);
+  --text: #fbf8ff;
+  --text-soft: #cbc2e8;
+  --text-muted: #8f80bb;
+  --violet: #8b5cf6;
+  --violet-bright: #a855f7;
+  --violet-soft: rgba(139, 92, 246, 0.18);
+  --shadow: 0 28px 80px rgba(5, 3, 12, 0.45);
+  --radius: 28px;
+  --radius-sm: 16px;
+  --max: 1180px;
   --font-display: 'Outfit', system-ui, sans-serif;
-  --font-body: 'Outfit', system-ui, sans-serif;
   --font-mono: 'JetBrains Mono', monospace;
-
-  --radius-sm: 8px;
-  --radius-md: 12px;
-  --radius-lg: 16px;
-  --radius-xl: 24px;
 }
 
-*, *::before, *::after { margin: 0; padding: 0; box-sizing: border-box; }
+*,
+*::before,
+*::after {
+  box-sizing: border-box;
+}
 
-html { overflow-x: hidden; }
-
-@media (prefers-reduced-motion: no-preference) {
-  html { scroll-behavior: smooth; }
+html {
+  scroll-behavior: smooth;
 }
 
 body {
-  background: var(--surface-950);
-  color: var(--surface-300);
-  font-family: var(--font-body);
-  font-weight: 400;
+  margin: 0;
+  min-height: 100vh;
+  background:
+    radial-gradient(circle at 20% 18%, rgba(168, 85, 247, 0.18), transparent 28%),
+    radial-gradient(circle at 82% 12%, rgba(139, 92, 246, 0.12), transparent 24%),
+    linear-gradient(180deg, #0b0715 0%, #090512 54%, #07040f 100%);
+  color: var(--text);
+  font-family: var(--font-display);
   line-height: 1.65;
   overflow-x: hidden;
 }
 
-a:focus-visible,
-button:focus-visible,
-input:focus-visible,
-select:focus-visible,
-textarea:focus-visible {
-  outline: 2px solid var(--lab-teal);
-  outline-offset: 3px;
-}
-
-/* ============================
-   MOLECULAR GRID OVERLAY
-   ============================ */
 body::before {
   content: '';
   position: fixed;
-  inset: 0;
-  background-image:
-    radial-gradient(circle at 1px 1px, rgba(124, 58, 237, 0.04) 1px, transparent 0);
-  background-size: 48px 48px;
-  pointer-events: none;
-  z-index: 1;
+  inset: 0 auto 0 0;
+  width: 8px;
+  background: linear-gradient(180deg, #7c3aed 0%, #5b21b6 100%);
+  box-shadow: 0 0 24px rgba(124, 58, 237, 0.55);
+  z-index: 5;
 }
 
-/* ============================
-   SITE NAV
-   ============================ */
+a {
+  color: inherit;
+}
+
+a:focus-visible,
+button:focus-visible {
+  outline: 2px solid #c4b5fd;
+  outline-offset: 4px;
+}
+
 .site-nav {
-  position: fixed;
+  position: sticky;
   top: 0;
-  left: 0;
-  right: 0;
-  z-index: 100;
+  z-index: 20;
+  backdrop-filter: blur(18px);
+  background: rgba(7, 4, 15, 0.72);
+  border-bottom: 1px solid var(--panel-line);
+}
+
+.site-nav-inner {
+  width: min(var(--max), calc(100vw - 2.5rem));
+  margin: 0 auto;
   display: flex;
   align-items: center;
   justify-content: space-between;
-  padding: 0.65rem 1.5rem;
-  background: rgba(2, 6, 23, 0.75);
-  backdrop-filter: blur(12px);
-  -webkit-backdrop-filter: blur(12px);
-  border-bottom: 1px solid var(--glass-border);
-  transition: background 0.3s;
+  gap: 1.25rem;
+  padding: 1rem 0;
 }
+
 .site-nav-brand {
-  display: flex;
+  display: inline-flex;
   align-items: center;
-  gap: 0.5rem;
-  font-family: 'Outfit', system-ui, sans-serif;
-  font-weight: 600;
-  font-size: 0.9rem;
-  color: var(--surface-100);
+  gap: 0.75rem;
   text-decoration: none;
+  min-height: 44px;
 }
+
 .site-nav-brand img {
-  width: 24px;
-  height: 24px;
+  width: 34px;
+  height: 34px;
+  border-radius: 10px;
+  box-shadow: 0 0 24px rgba(139, 92, 246, 0.28);
 }
+
+.site-nav-brand-text {
+  display: flex;
+  flex-direction: column;
+  gap: 0.15rem;
+}
+
+.site-nav-brand-text strong {
+  font-size: 0.95rem;
+  font-weight: 650;
+  letter-spacing: 0.02em;
+}
+
+.site-nav-brand-text span {
+  font-family: var(--font-mono);
+  font-size: 0.66rem;
+  color: var(--text-muted);
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+}
+
 .site-nav-links {
   display: flex;
   align-items: center;
-  gap: 0.35rem;
-}
-.site-nav-links a {
-  padding: 0.35rem 0.75rem;
-  font-family: 'JetBrains Mono', monospace;
-  font-size: 0.7rem;
-  letter-spacing: 0.04em;
-  color: var(--surface-300);
-  text-decoration: none;
-  border-radius: 6px;
-  transition: color 0.2s, background 0.2s;
-}
-.site-nav-links a:hover {
-  color: var(--surface-100);
-  background: rgba(255, 255, 255, 0.06);
-}
-.site-nav-links .nav-cta {
-  color: #fff;
-  background: var(--lab-violet);
-  padding: 0.35rem 0.85rem;
-  font-weight: 600;
-}
-.site-nav-links .nav-cta:hover {
-  background: var(--lab-violet-dim);
+  justify-content: flex-end;
+  flex-wrap: wrap;
+  gap: 0.45rem;
 }
 
-/* ============================
-   HERO SECTION
-   ============================ */
-.hero {
-  padding-top: 3.5rem;
-  position: relative;
-  min-height: 100vh;
-  display: flex;
-  flex-direction: column;
+.site-nav-links a {
+  display: inline-flex;
   align-items: center;
   justify-content: center;
-  text-align: center;
-  padding: 2rem;
-  overflow: hidden;
+  min-height: 44px;
+  padding: 0.75rem 0.95rem;
+  border-radius: 999px;
+  text-decoration: none;
+  font-family: var(--font-mono);
+  font-size: 0.7rem;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--text-soft);
+  border: 1px solid transparent;
+  transition: border-color 0.18s ease, color 0.18s ease, background 0.18s ease, transform 0.18s ease;
 }
 
-/* Radial glow — cool violet */
-.hero::before {
+.site-nav-links a:hover {
+  color: var(--text);
+  border-color: var(--panel-line);
+  background: rgba(255, 255, 255, 0.04);
+  transform: translateY(-1px);
+}
+
+.site-nav-links .nav-cta {
+  background: linear-gradient(135deg, var(--violet), var(--violet-bright));
+  color: #fff;
+  box-shadow: 0 16px 32px rgba(91, 33, 182, 0.28);
+}
+
+.site-nav-links .nav-cta:hover {
+  border-color: transparent;
+  background: linear-gradient(135deg, #9f67ff, #be63ff);
+}
+
+.hero {
+  padding: clamp(3.5rem, 6vw, 5rem) 0 clamp(2.5rem, 6vw, 4rem);
+}
+
+.hero-shell {
+  width: min(var(--max), calc(100vw - 2.5rem));
+  margin: 0 auto;
+}
+
+.eyebrow {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.75rem;
+  margin-bottom: 1.5rem;
+  font-family: var(--font-mono);
+  font-size: 0.72rem;
+  letter-spacing: 0.16em;
+  text-transform: uppercase;
+  color: #bcaef4;
+}
+
+.eyebrow::before {
   content: '';
-  position: absolute;
-  top: 45%;
-  left: 50%;
-  transform: translate(-50%, -55%);
-  width: 900px;
-  height: 900px;
-  background: radial-gradient(ellipse, var(--glow-violet) 0%, transparent 60%);
-  pointer-events: none;
-  animation: pulseGlow 5s ease-in-out infinite alternate;
+  width: 28px;
+  height: 1px;
+  background: rgba(168, 85, 247, 0.85);
 }
 
-@keyframes pulseGlow {
-  from { opacity: 0.4; transform: translate(-50%, -55%) scale(1); }
-  to { opacity: 0.7; transform: translate(-50%, -55%) scale(1.06); }
+.hero-lockup {
+  display: grid;
+  grid-template-columns: minmax(240px, 312px) 2px minmax(0, 1fr);
+  align-items: center;
+  gap: clamp(1.25rem, 3vw, 2.5rem);
 }
 
-/* Subtle hex grid */
-.hero::after {
+.brand-panel {
+  position: relative;
+  padding: clamp(1.25rem, 3vw, 1.8rem);
+  background:
+    linear-gradient(180deg, rgba(255, 255, 255, 0.03), rgba(255, 255, 255, 0.01)),
+    rgba(10, 7, 20, 0.92);
+  border-radius: 2px;
+  box-shadow: var(--shadow);
+  aspect-ratio: 1 / 1;
+  display: grid;
+  place-items: center;
+}
+
+.brand-panel::before {
   content: '';
   position: absolute;
   inset: 0;
-  background-image:
-    linear-gradient(rgba(124, 58, 237, 0.025) 1px, transparent 1px),
-    linear-gradient(90deg, rgba(124, 58, 237, 0.025) 1px, transparent 1px);
-  background-size: 64px 64px;
+  border-right: 9px solid rgba(255, 255, 255, 0.98);
+  border-bottom: 9px solid rgba(255, 255, 255, 0.98);
   pointer-events: none;
 }
 
-.hero-logo {
-  position: relative;
-  z-index: 2;
-  width: 280px;
-  max-width: 70vw;
-  border-radius: var(--radius-lg);
-  filter: drop-shadow(0 0 80px var(--glow-violet));
-  animation: logoEnter 1.2s cubic-bezier(0.16, 1, 0.3, 1) forwards;
-  opacity: 0;
+.brand-panel img {
+  width: min(100%, 240px);
+  height: auto;
+  filter: drop-shadow(0 0 48px rgba(139, 92, 246, 0.34));
 }
 
-@keyframes logoEnter {
-  from { opacity: 0; transform: translateY(30px) scale(0.95); }
-  to { opacity: 1; transform: translateY(0) scale(1); }
+.lock-divider {
+  width: 2px;
+  height: min(300px, 48vw);
+  background: linear-gradient(180deg, rgba(255, 255, 255, 0.98), rgba(255, 255, 255, 0.72));
+  box-shadow: 0 0 18px rgba(255, 255, 255, 0.08);
 }
 
-.wordmark {
-  position: relative;
-  z-index: 2;
-  font-family: var(--font-display);
-  font-size: clamp(0.85rem, 1.5vw, 1rem);
-  font-weight: 600;
-  letter-spacing: 0.25em;
+.word-panel {
+  display: grid;
+  gap: 1.15rem;
+}
+
+.hero-title {
+  margin: 0;
+  font-size: clamp(3.8rem, 10vw, 7.25rem);
+  line-height: 0.9;
+  letter-spacing: -0.07em;
   text-transform: uppercase;
-  color: var(--surface-400);
-  margin-top: 2rem;
-  animation: fadeUp 1s 0.2s cubic-bezier(0.16, 1, 0.3, 1) forwards;
-  opacity: 0;
 }
 
-.wordmark span {
-  color: var(--lab-violet-light);
+.hero-title .tight {
+  display: block;
+}
+
+.hero-title .lab {
+  color: #ede8ff;
 }
 
 .hero-tagline {
-  position: relative;
-  z-index: 2;
-  font-family: var(--font-display);
-  font-size: clamp(1.6rem, 4vw, 2.8rem);
-  font-weight: 700;
-  color: var(--surface-100);
-  margin-top: 0.6rem;
-  letter-spacing: -0.03em;
-  animation: fadeUp 1s 0.35s cubic-bezier(0.16, 1, 0.3, 1) forwards;
-  opacity: 0;
+  display: inline-flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 0.9rem;
+  margin: 0;
+  font-family: var(--font-mono);
+  font-size: clamp(0.78rem, 1.5vw, 0.94rem);
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  color: var(--text-soft);
 }
 
-.hero-tagline .accent {
-  background: linear-gradient(135deg, var(--lab-violet-light), var(--lab-indigo));
-  -webkit-background-clip: text;
-  -moz-background-clip: text;
-  -webkit-text-fill-color: transparent;
-  background-clip: text;
-  color: transparent;
+.hero-tagline::before {
+  content: '';
+  width: 20px;
+  height: 2px;
+  background: var(--violet);
+}
+
+.hero-grid {
+  margin-top: clamp(2rem, 5vw, 3.4rem);
+  display: grid;
+  grid-template-columns: minmax(0, 1.2fr) minmax(280px, 0.8fr);
+  gap: 1.4rem;
+  align-items: start;
+}
+
+.hero-copy {
+  display: grid;
+  gap: 1.25rem;
+}
+
+.hero-lede {
+  margin: 0;
+  font-size: clamp(1.2rem, 2.2vw, 1.68rem);
+  color: var(--text);
+  max-width: 16ch;
 }
 
 .hero-sub {
-  position: relative;
-  z-index: 2;
-  font-size: clamp(1rem, 2vw, 1.2rem);
-  color: var(--surface-400);
-  margin-top: 1.2rem;
-  max-width: 560px;
-  font-weight: 300;
-  line-height: 1.7;
-  animation: fadeUp 1s 0.5s cubic-bezier(0.16, 1, 0.3, 1) forwards;
-  opacity: 0;
+  margin: 0;
+  max-width: 62ch;
+  font-size: 1rem;
+  color: var(--text-soft);
 }
 
-@keyframes fadeUp {
-  from { opacity: 0; transform: translateY(20px); }
-  to { opacity: 1; transform: translateY(0); }
-}
-
-.hero-cta-group {
-  position: relative;
-  z-index: 2;
+.hero-actions {
   display: flex;
-  gap: 1rem;
-  margin-top: 2.5rem;
   flex-wrap: wrap;
+  gap: 0.85rem;
+}
+
+.button {
+  display: inline-flex;
+  align-items: center;
   justify-content: center;
-  animation: fadeUp 1s 0.7s cubic-bezier(0.16, 1, 0.3, 1) forwards;
-  opacity: 0;
-}
-
-.reveal-static {
-  animation: none;
-  opacity: 1;
-}
-
-.inline-code-chip {
-  color: var(--lab-violet-light);
-  background: rgba(124, 58, 237, 0.1);
-  padding: 0.15em 0.45em;
-  border-radius: 4px;
+  min-height: 48px;
+  padding: 0.9rem 1.25rem;
+  border-radius: 999px;
+  text-decoration: none;
   font-family: var(--font-mono);
-  font-size: 0.85em;
+  font-size: 0.76rem;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  transition: transform 0.18s ease, border-color 0.18s ease, background 0.18s ease;
 }
 
-/* ============================
-   BUTTONS
-   ============================ */
-.btn-primary {
-  font-family: var(--font-display);
-  font-weight: 600;
-  font-size: 0.95rem;
-  letter-spacing: 0.02em;
-  padding: 0.85rem 2rem;
-  border: none;
-  border-radius: var(--radius-sm);
-  cursor: pointer;
-  background: linear-gradient(135deg, var(--lab-violet), var(--lab-violet-dim));
+.button:hover {
+  transform: translateY(-1px);
+}
+
+.button-primary {
+  background: linear-gradient(135deg, var(--violet), var(--violet-bright));
   color: #fff;
-  text-decoration: none;
-  box-shadow: 0 0 40px var(--glow-violet), inset 0 1px 0 rgba(255,255,255,0.12);
-  transition: all 0.3s ease;
-  position: relative;
-  overflow: hidden;
+  box-shadow: 0 18px 36px rgba(91, 33, 182, 0.3);
 }
 
-.btn-primary::after {
-  content: '';
-  position: absolute;
-  inset: 0;
-  background: linear-gradient(135deg, transparent 40%, rgba(255,255,255,0.1) 50%, transparent 60%);
-  transform: translateX(-100%);
-  transition: transform 0.6s ease;
+.button-secondary {
+  color: var(--text);
+  background: rgba(255, 255, 255, 0.03);
+  border: 1px solid var(--panel-line-strong);
 }
 
-.btn-primary:hover {
-  transform: translateY(-2px);
-  box-shadow: 0 0 60px var(--glow-violet), 0 8px 32px rgba(124, 58, 237, 0.3);
-  background: linear-gradient(135deg, var(--lab-violet-light), var(--lab-violet));
-}
-.btn-primary:hover::after { transform: translateX(100%); }
-
-.btn-secondary {
-  font-family: var(--font-display);
-  font-weight: 600;
-  font-size: 0.95rem;
-  letter-spacing: 0.02em;
-  padding: 0.85rem 2rem;
-  border: 1.5px solid var(--glass-border);
+.hero-meta {
+  display: grid;
+  gap: 0.9rem;
+  padding: 1.2rem;
   border-radius: var(--radius-sm);
-  cursor: pointer;
-  background: rgba(15, 23, 42, 0.88);
-  color: var(--surface-300);
-  text-decoration: none;
-  transition: all 0.3s ease;
+  background: var(--panel);
+  border: 1px solid var(--panel-line);
+  box-shadow: var(--shadow);
 }
 
-.btn-secondary:hover {
-  border-color: var(--lab-violet-light);
-  color: var(--lab-violet-light);
-  background: rgba(124, 58, 237, 0.06);
-  transform: translateY(-2px);
-}
-
-/* ============================
-   SCROLL INDICATOR
-   ============================ */
-.scroll-indicator {
-  position: absolute;
-  bottom: 2rem;
-  z-index: 2;
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  gap: 0.5rem;
-  color: var(--surface-500);
+.hero-meta-label {
+  margin: 0;
   font-family: var(--font-mono);
-  font-size: 0.65rem;
-  letter-spacing: 0.2em;
+  font-size: 0.68rem;
+  letter-spacing: 0.14em;
   text-transform: uppercase;
-  animation: fadeUp 1s 1.2s cubic-bezier(0.16, 1, 0.3, 1) forwards;
-  opacity: 0;
+  color: #b8a7ec;
 }
 
-.scroll-line {
-  width: 1px;
-  height: 40px;
-  background: linear-gradient(to bottom, var(--lab-violet-light), transparent);
-  animation: scrollPulse 2.5s ease-in-out infinite;
+.hero-meta h2 {
+  margin: 0;
+  font-size: 1.3rem;
+  line-height: 1.1;
 }
 
-@keyframes scrollPulse {
-  0%, 100% { opacity: 0.3; transform: scaleY(0.6); }
-  50% { opacity: 1; transform: scaleY(1); }
+.hero-meta p {
+  margin: 0;
+  color: var(--text-soft);
+  font-size: 0.95rem;
 }
 
-/* ============================
-   PROVIDER RIBBON
-   ============================ */
-.providers {
-  position: relative;
-  padding: 3.5rem 2rem;
-  text-align: center;
-  border-top: 1px solid rgba(124, 58, 237, 0.08);
-  border-bottom: 1px solid rgba(124, 58, 237, 0.08);
-  background: var(--surface-900);
+.hero-stats {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 0.75rem;
 }
 
-.providers-label {
-  font-family: var(--font-mono);
-  font-size: 0.7rem;
-  letter-spacing: 0.2em;
-  text-transform: uppercase;
-  color: var(--surface-500);
-  margin-bottom: 2rem;
+.hero-stat {
+  padding: 0.85rem 0.9rem;
+  border-radius: 14px;
+  background: rgba(255, 255, 255, 0.03);
+  border: 1px solid rgba(255, 255, 255, 0.06);
 }
 
-.provider-logos {
+.hero-stat strong {
+  display: block;
+  font-size: 1.05rem;
+}
+
+.hero-stat span {
+  display: block;
+  margin-top: 0.2rem;
+  color: var(--text-muted);
+  font-size: 0.82rem;
+}
+
+.provider-band {
+  margin-top: 1.6rem;
   display: flex;
-  align-items: center;
-  justify-content: center;
-  gap: 1rem;
   flex-wrap: wrap;
+  gap: 0.7rem;
 }
 
 .provider-chip {
-  display: flex;
+  display: inline-flex;
   align-items: center;
-  gap: 0.6rem;
-  padding: 0.6rem 1.2rem;
-  border-radius: 100px;
-  border: 1px solid var(--glass-border);
-  background: rgba(15, 23, 42, 0.88);
-  font-family: var(--font-display);
-  font-weight: 500;
-  font-size: 0.85rem;
-  color: var(--surface-300);
-  transition: all 0.3s ease;
-  cursor: default;
-}
-
-.provider-chip:hover {
-  border-color: rgba(124, 58, 237, 0.3);
-  background: var(--glass-bg-hover);
-  box-shadow: 0 0 24px var(--glow-violet-soft);
-  transform: translateY(-1px);
+  gap: 0.55rem;
+  min-height: 44px;
+  padding: 0.7rem 0.95rem;
+  border-radius: 999px;
+  background: rgba(255, 255, 255, 0.03);
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  font-family: var(--font-mono);
+  font-size: 0.74rem;
+  letter-spacing: 0.05em;
+  color: var(--text-soft);
 }
 
 .provider-chip .dot {
   width: 7px;
   height: 7px;
   border-radius: 50%;
-  background: var(--lab-violet-light);
-  box-shadow: 0 0 8px var(--glow-violet);
+  background: linear-gradient(135deg, var(--violet), #d946ef);
+  box-shadow: 0 0 12px rgba(168, 85, 247, 0.55);
 }
 
-/* ============================
-   SECTION HEADERS
-   ============================ */
-.section-header {
-  text-align: center;
-  margin-bottom: 4rem;
-}
-
-.section-eyebrow {
+.domain-note {
+  margin-top: 1.25rem;
   font-family: var(--font-mono);
-  font-size: 0.7rem;
-  letter-spacing: 0.2em;
-  text-transform: uppercase;
-  color: var(--lab-violet-light);
-  margin-bottom: 0.8rem;
+  font-size: 0.72rem;
+  letter-spacing: 0.06em;
+  color: rgba(143, 128, 187, 0.9);
 }
 
-.section-title {
-  font-family: var(--font-display);
-  font-size: clamp(1.8rem, 3.5vw, 2.5rem);
-  font-weight: 700;
-  color: var(--surface-100);
-  letter-spacing: -0.03em;
-}
-
-/* ============================
-   FEATURES SECTION
-   ============================ */
-.features {
-  padding: 7rem 2rem;
-  max-width: 1200px;
-  margin: 0 auto;
-}
-
-.feature-grid {
-  display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
-  gap: 1.25rem;
-}
-
-.feature-card {
+main {
   position: relative;
-  padding: 2rem;
-  border-radius: var(--radius-lg);
-  border: 1px solid var(--glass-border);
-  background: rgba(15, 23, 42, 0.88);
-  transition: all 0.4s ease;
+  z-index: 1;
+}
+
+.section {
+  width: min(var(--max), calc(100vw - 2.5rem));
+  margin: 0 auto;
+  padding: 1.5rem 0 2.5rem;
+}
+
+.section-head {
+  display: grid;
+  gap: 0.55rem;
+  margin-bottom: 1.35rem;
+}
+
+.section-kicker {
+  margin: 0;
+  font-family: var(--font-mono);
+  font-size: 0.69rem;
+  letter-spacing: 0.16em;
+  text-transform: uppercase;
+  color: #b8a7ec;
+}
+
+.section-head h2 {
+  margin: 0;
+  font-size: clamp(1.8rem, 4vw, 3rem);
+  line-height: 0.98;
+  letter-spacing: -0.04em;
+}
+
+.section-head p {
+  margin: 0;
+  max-width: 62ch;
+  color: var(--text-soft);
+}
+
+.principle-grid,
+.capability-grid,
+.surface-grid,
+.doc-grid {
+  display: grid;
+  gap: 1rem;
+}
+
+.principle-grid {
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+}
+
+.capability-grid {
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+}
+
+.surface-grid {
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+}
+
+.doc-grid {
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+}
+
+.panel-card {
+  position: relative;
+  padding: 1.25rem;
+  border-radius: var(--radius-sm);
+  background: var(--panel);
+  border: 1px solid var(--panel-line);
+  box-shadow: var(--shadow);
   overflow: hidden;
 }
 
-.feature-card::before {
+.panel-card::after {
   content: '';
   position: absolute;
-  top: 0;
-  left: 0;
-  right: 0;
-  height: 1px;
-  background: linear-gradient(90deg, transparent, var(--lab-violet-light), transparent);
-  opacity: 0;
-  transition: opacity 0.4s ease;
+  inset: auto -10% -38% auto;
+  width: 180px;
+  height: 180px;
+  background: radial-gradient(circle, rgba(139, 92, 246, 0.16), transparent 70%);
+  pointer-events: none;
 }
 
-.feature-card:hover {
-  border-color: rgba(124, 58, 237, 0.2);
-  background: var(--glass-bg-hover);
-  transform: translateY(-4px);
-  box-shadow: 0 24px 64px rgba(0,0,0,0.3), 0 0 40px var(--glow-violet-soft);
-}
-
-.feature-card:hover::before { opacity: 1; }
-
-.feature-icon {
-  width: 44px;
-  height: 44px;
-  border-radius: var(--radius-md);
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  margin-bottom: 1.2rem;
-  background: rgba(124, 58, 237, 0.1);
-  border: 1px solid rgba(124, 58, 237, 0.15);
-  color: var(--lab-violet-light);
-}
-
-.feature-icon svg {
-  width: 22px;
-  height: 22px;
-  stroke: var(--lab-violet-light);
-  stroke-width: 1.5;
-  fill: none;
-}
-
-.feature-name {
-  font-family: var(--font-display);
-  font-size: 1.1rem;
-  font-weight: 600;
-  color: var(--surface-100);
-  margin-bottom: 0.5rem;
-}
-
-.feature-desc {
-  font-size: 0.9rem;
-  color: var(--surface-400);
-  line-height: 1.7;
-}
-
-/* ============================
-   CODE DEMO SECTION
-   ============================ */
-.demo {
-  padding: 7rem 2rem;
-  background: var(--surface-900);
-  border-top: 1px solid rgba(124, 58, 237, 0.08);
-  border-bottom: 1px solid rgba(124, 58, 237, 0.08);
-}
-
-.demo-container {
-  max-width: 960px;
-  margin: 0 auto;
-  display: grid;
-  grid-template-columns: 1fr 1.1fr;
-  gap: 3rem;
-  align-items: center;
-}
-
-@media (max-width: 768px) {
-  .demo-container { grid-template-columns: 1fr; }
-}
-
-.demo-text { padding-top: 0; }
-.demo-text .section-eyebrow { text-align: left; }
-.demo-text .section-title { text-align: left; font-size: clamp(1.4rem, 3vw, 1.9rem); }
-
-.demo-text p {
-  margin-top: 1rem;
-  color: var(--surface-400);
-  font-size: 0.95rem;
-  line-height: 1.75;
-}
-
-.code-window {
-  border-radius: var(--radius-md);
-  overflow: hidden;
-  border: 1px solid var(--glass-border);
-  background: var(--surface-950);
-  box-shadow: 0 24px 80px rgba(0,0,0,0.5), 0 0 40px var(--glow-violet-soft);
-}
-
-.code-titlebar {
-  display: flex;
-  align-items: center;
-  gap: 0.5rem;
-  padding: 0.75rem 1rem;
-  background: rgba(255,255,255,0.03);
-  border-bottom: 1px solid var(--glass-border);
-}
-
-.code-dot {
-  width: 10px;
-  height: 10px;
-  border-radius: 50%;
-  background: var(--surface-600);
-}
-.code-dot.red { background: #FF5F57; }
-.code-dot.yellow { background: #FEBC2E; }
-.code-dot.green { background: #28C840; }
-
-.code-titlebar span {
-  margin-left: auto;
+.panel-card .label {
+  display: inline-block;
+  margin-bottom: 0.9rem;
   font-family: var(--font-mono);
   font-size: 0.68rem;
-  color: var(--surface-500);
-  letter-spacing: 0.05em;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  color: #cfbffc;
 }
 
-.code-body {
-  padding: 1.2rem;
-  font-family: var(--font-mono);
-  font-size: 0.78rem;
-  line-height: 1.85;
-  overflow-x: auto;
+.panel-card h3 {
+  margin: 0 0 0.55rem;
+  font-size: 1.3rem;
+  line-height: 1.02;
 }
 
-.code-body .kw { color: var(--lab-violet-light); }
-.code-body .fn { color: var(--lab-teal); }
-.code-body .str { color: var(--lab-indigo); }
-.code-body .cm { color: var(--surface-600); font-style: italic; }
-.code-body .op { color: var(--surface-400); }
-.code-body .num { color: var(--lab-violet-light); }
-
-/* Code tabs */
-.code-tabs {
-  display: flex;
-  align-items: center;
-  gap: 0;
-  background: rgba(255,255,255,0.02);
-  border-bottom: 1px solid var(--glass-border);
-  padding: 0 0.5rem;
-  overflow-x: auto;
-}
-
-.code-tab {
-  font-family: var(--font-mono);
-  font-size: 0.7rem;
-  letter-spacing: 0.04em;
-  padding: 0.65rem 1rem;
-  border: none;
-  background: none;
-  color: var(--surface-500);
-  cursor: pointer;
-  border-bottom: 2px solid transparent;
-  transition: all 0.25s ease;
-  white-space: nowrap;
-}
-
-.code-tab:hover { color: var(--surface-300); }
-
-.code-tab.active {
-  color: var(--lab-violet-light);
-  border-bottom-color: var(--lab-violet);
-}
-
-.code-copy-btn {
-  margin-left: auto;
-  font-family: var(--font-mono);
-  font-size: 0.65rem;
-  padding: 0.3rem 0.65rem;
-  border: 1px solid var(--glass-border);
-  border-radius: 5px;
-  background: var(--glass-bg);
-  color: var(--surface-500);
-  cursor: pointer;
-  transition: all 0.25s ease;
-  white-space: nowrap;
-}
-
-.code-copy-btn:hover {
-  border-color: var(--lab-violet-light);
-  color: var(--lab-violet-light);
-}
-
-.code-copy-btn.copied {
-  border-color: #28C840;
-  color: #28C840;
-}
-
-.code-panel { display: none; }
-.code-panel.active {
-  display: block;
-  animation: codeFadeIn 0.3s ease;
-}
-
-@keyframes codeFadeIn {
-  from { opacity: 0; transform: translateY(4px); }
-  to { opacity: 1; transform: translateY(0); }
-}
-
-/* ============================
-   WORKFLOW SECTION
-   ============================ */
-.workflow {
-  padding: 7rem 2rem;
-  max-width: 900px;
-  margin: 0 auto;
-}
-
-.workflow-steps {
-  display: flex;
-  flex-direction: column;
-  gap: 0;
-  margin-top: 3rem;
+.panel-card p,
+.panel-card li {
   position: relative;
+  z-index: 1;
+  color: var(--text-soft);
 }
 
-.workflow-steps::before {
-  content: '';
-  position: absolute;
-  top: 0;
-  bottom: 0;
-  left: 23px;
-  width: 1px;
-  background: linear-gradient(to bottom, var(--lab-violet), var(--surface-800));
+.panel-card ul,
+.panel-card ol {
+  margin: 0.9rem 0 0;
+  padding-left: 1.15rem;
+}
+
+.panel-card li + li {
+  margin-top: 0.4rem;
+}
+
+.surface-card .surface-meta {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.45rem;
+  margin-top: 1rem;
+}
+
+.surface-card .surface-meta span {
+  display: inline-flex;
+  align-items: center;
+  min-height: 32px;
+  padding: 0.35rem 0.55rem;
+  border-radius: 999px;
+  font-family: var(--font-mono);
+  font-size: 0.66rem;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: #d7cbf8;
+  background: rgba(255, 255, 255, 0.04);
+  border: 1px solid rgba(255, 255, 255, 0.08);
+}
+
+.workflow-list {
+  display: grid;
+  gap: 0.95rem;
 }
 
 .workflow-step {
-  display: flex;
-  gap: 1.5rem;
-  padding: 1.8rem 0;
-  align-items: flex-start;
+  display: grid;
+  grid-template-columns: 46px minmax(0, 1fr);
+  gap: 0.9rem;
+  align-items: start;
 }
 
-.step-number {
-  flex-shrink: 0;
-  width: 48px;
-  height: 48px;
-  border-radius: 50%;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  font-family: var(--font-display);
-  font-weight: 700;
-  font-size: 1rem;
-  background: rgba(15, 23, 42, 0.88);
-  border: 1.5px solid rgba(124, 58, 237, 0.3);
-  color: var(--lab-violet-light);
-  position: relative;
-  z-index: 1;
-  box-shadow: 0 0 24px var(--glow-violet-soft);
-}
-
-.step-content h3 {
-  font-family: var(--font-display);
-  font-weight: 600;
-  font-size: 1.05rem;
-  color: var(--surface-100);
-  margin-bottom: 0.3rem;
-}
-
-.step-content p {
-  font-size: 0.9rem;
-  color: var(--surface-400);
-  line-height: 1.7;
-}
-
-/* ============================
-   CTA SECTION
-   ============================ */
-.final-cta {
-  padding: 7rem 2rem;
-  text-align: center;
-  position: relative;
-  overflow: hidden;
-  background: var(--surface-900);
-  border-top: 1px solid rgba(124, 58, 237, 0.08);
-}
-
-.final-cta::before {
-  content: '';
-  position: absolute;
-  bottom: 0;
-  left: 50%;
-  transform: translateX(-50%);
-  width: 700px;
-  height: 500px;
-  background: radial-gradient(ellipse, var(--glow-violet) 0%, transparent 65%);
-  opacity: 0.25;
-  pointer-events: none;
-}
-
-.final-cta .section-title {
-  position: relative;
-  z-index: 1;
-  margin-bottom: 1rem;
-}
-
-.final-cta p {
-  position: relative;
-  z-index: 1;
-  color: var(--surface-400);
-  max-width: 480px;
-  margin: 0 auto 2rem;
-  font-size: 1rem;
-}
-
-/* ============================
-   FOOTER
-   ============================ */
-footer {
-  padding: 2.5rem;
-  text-align: center;
-  border-top: 1px solid rgba(124, 58, 237, 0.08);
+.workflow-step .num {
+  display: grid;
+  place-items: center;
+  width: 46px;
+  height: 46px;
+  border-radius: 14px;
+  background: linear-gradient(135deg, rgba(139, 92, 246, 0.24), rgba(168, 85, 247, 0.24));
+  border: 1px solid rgba(168, 85, 247, 0.28);
   font-family: var(--font-mono);
-  font-size: 0.7rem;
-  color: var(--surface-600);
-  letter-spacing: 0.06em;
+  font-size: 0.92rem;
+  color: #f5f0ff;
 }
 
-footer .lab-mark {
-  color: var(--lab-violet-light);
+.workflow-step h3 {
+  margin: 0 0 0.25rem;
+  font-size: 1rem;
 }
 
-/* ============================
-   SCROLL ANIMATIONS
-   ============================ */
-.reveal {
-  opacity: 0;
-  transform: translateY(24px);
-  transition: opacity 0.7s cubic-bezier(0.16, 1, 0.3, 1), transform 0.7s cubic-bezier(0.16, 1, 0.3, 1);
+.workflow-step p {
+  margin: 0;
+  color: var(--text-soft);
 }
 
-.reveal.visible {
-  opacity: 1;
-  transform: translateY(0);
+.doc-card {
+  text-decoration: none;
+  transition: transform 0.18s ease, border-color 0.18s ease, background 0.18s ease;
 }
 
-.stagger > .reveal:nth-child(1) { transition-delay: 0s; }
-.stagger > .reveal:nth-child(2) { transition-delay: 0.08s; }
-.stagger > .reveal:nth-child(3) { transition-delay: 0.16s; }
-.stagger > .reveal:nth-child(4) { transition-delay: 0.2s; }
-.stagger > .reveal:nth-child(5) { transition-delay: 0.28s; }
-.stagger > .reveal:nth-child(6) { transition-delay: 0.36s; }
-.stagger > .reveal:nth-child(7) { transition-delay: 0.44s; }
-
-/* ============================
-   FLOATING MOLECULES (replaces sparks)
-   ============================ */
-.molecules {
-  position: absolute;
-  inset: 0;
-  z-index: 1;
-  pointer-events: none;
-  overflow: hidden;
+.doc-card:hover {
+  transform: translateY(-2px);
+  border-color: rgba(168, 85, 247, 0.42);
+  background: rgba(20, 13, 35, 0.95);
 }
 
-.molecule {
-  position: absolute;
-  width: 4px;
-  height: 4px;
-  background: var(--lab-violet-light);
-  border-radius: 50%;
-  box-shadow: 0 0 8px var(--glow-violet);
-  animation: moleculeFloat linear infinite;
+.doc-card strong {
+  display: block;
+  margin-bottom: 0.45rem;
+  font-size: 1rem;
 }
 
-@keyframes moleculeFloat {
-  0% { opacity: 0; transform: translateY(0) scale(0); }
-  15% { opacity: 0.6; transform: scale(1); }
-  100% { opacity: 0; transform: translateY(-500px) translateX(var(--drift)) scale(0.3); }
+.doc-card span {
+  color: var(--text-soft);
+  font-size: 0.92rem;
 }
 
-/* Molecular bonds — subtle connecting lines */
-.bond {
-  position: absolute;
-  height: 1px;
-  background: linear-gradient(90deg, transparent, rgba(167, 139, 250, 0.15), transparent);
-  animation: bondFade 6s ease-in-out infinite;
-  pointer-events: none;
+.cta-shell {
+  width: min(var(--max), calc(100vw - 2.5rem));
+  margin: 0 auto;
+  padding: 1rem 0 4.25rem;
 }
 
-@keyframes bondFade {
-  0%, 100% { opacity: 0; }
-  50% { opacity: 1; }
+.cta-card {
+  padding: clamp(1.35rem, 4vw, 2.2rem);
+  border-radius: var(--radius);
+  background:
+    linear-gradient(135deg, rgba(139, 92, 246, 0.16), rgba(21, 14, 38, 0.92)),
+    rgba(10, 7, 20, 0.92);
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  box-shadow: var(--shadow);
 }
 
-@supports (backdrop-filter: blur(1px)) {
-  .btn-secondary {
-    background: var(--glass-bg);
-    backdrop-filter: blur(var(--glass-blur));
+.cta-card h2 {
+  margin: 0;
+  font-size: clamp(2rem, 4.8vw, 4rem);
+  line-height: 0.95;
+  letter-spacing: -0.05em;
+}
+
+.cta-card p {
+  margin: 0.9rem 0 1.35rem;
+  max-width: 48ch;
+  color: var(--text-soft);
+}
+
+footer {
+  width: min(var(--max), calc(100vw - 2.5rem));
+  margin: 0 auto;
+  padding: 0 0 2.25rem;
+  font-family: var(--font-mono);
+  font-size: 0.72rem;
+  letter-spacing: 0.05em;
+  color: var(--text-muted);
+}
+
+footer a {
+  color: #c5b6f5;
+  text-decoration: none;
+}
+
+footer a:hover {
+  color: #efe8ff;
+}
+
+@media (max-width: 980px) {
+  .hero-lockup {
+    grid-template-columns: 1fr;
   }
 
-  .provider-chip {
-    background: var(--glass-bg);
-    backdrop-filter: blur(var(--glass-blur));
+  .lock-divider {
+    display: none;
   }
 
-  .feature-card {
-    background: var(--glass-bg);
-    backdrop-filter: blur(var(--glass-blur));
+  .hero-grid,
+  .principle-grid,
+  .capability-grid,
+  .surface-grid,
+  .doc-grid {
+    grid-template-columns: 1fr;
   }
 
-  .step-number {
-    background: var(--glass-bg);
-    backdrop-filter: blur(var(--glass-blur));
+  .hero-lede {
+    max-width: none;
   }
 }
 
-/* ============================
-   RESPONSIVE
-   ============================ */
-@media (max-width: 600px) {
-  .site-nav { padding: 0.5rem 1rem; }
-  .site-nav-links a:not(.nav-cta) { display: none; }
-  .site-nav-links .nav-cta { font-size: 0.65rem; padding: 0.3rem 0.7rem; }
-  .provider-logos { gap: 0.75rem; }
-  .provider-chip { font-size: 0.78rem; padding: 0.45rem 0.9rem; }
-  .feature-grid { grid-template-columns: 1fr; }
-  .hero-cta-group { flex-direction: column; align-items: center; }
+@media (max-width: 760px) {
+  .site-nav-inner {
+    align-items: flex-start;
+    flex-direction: column;
+  }
+
+  .site-nav-links {
+    justify-content: flex-start;
+  }
+
+  .hero {
+    padding-top: 2rem;
+  }
+
+  .hero-title {
+    font-size: clamp(3rem, 17vw, 4.8rem);
+  }
 }
-.workflow-step a { color: var(--lab-violet-light); }
+
+@media (max-width: 560px) {
+  body::before {
+    width: 6px;
+  }
+
+  .site-nav-inner,
+  .hero-shell,
+  .section,
+  .cta-shell,
+  footer {
+    width: min(var(--max), calc(100vw - 1.4rem));
+  }
+
+  .site-nav-links a,
+  .button {
+    width: 100%;
+  }
+
+  .hero-stats {
+    grid-template-columns: 1fr;
+  }
+
+  .workflow-step {
+    grid-template-columns: 38px minmax(0, 1fr);
+  }
+
+  .workflow-step .num {
+    width: 38px;
+    height: 38px;
+    border-radius: 12px;
+  }
+}
 </style>
 <script type="application/ld+json">
 {
   "@context": "https://schema.org",
   "@type": "SoftwareApplication",
   "name": "Prompt Lab",
-  "description": "Multi-provider prompt engineering workbench. Enhance, A/B test, compose, and compare prompts across Anthropic, OpenAI, Gemini, OpenRouter, and Ollama.",
+  "description": "Prompt engineering workbench for web, Chrome, and desktop. Engineer, test, and iterate across Anthropic, OpenAI, Gemini, OpenRouter, and Ollama.",
   "applicationCategory": "DeveloperApplication",
-  "operatingSystem": "Chrome, Windows, macOS, Linux",
+  "operatingSystem": "Web, Chrome, Windows, macOS, Linux",
   "offers": {
     "@type": "Offer",
     "price": "0",
@@ -984,346 +805,275 @@ footer .lab-mark {
 </script>
 </head>
 <body>
-
-<!-- ========== SITE NAV ========== -->
 <nav class="site-nav" aria-label="Site navigation">
-  <a href="./" class="site-nav-brand">
-    <img src="hero-logo.png" alt="" width="24" height="24">
-    Prompt Lab
-  </a>
-  <div class="site-nav-links">
-    <a href="https://davehomeassist.github.io/">Portfolio</a>
-    <a href="#features">Features</a>
-    <a href="./guide.html">Guide</a>
-    <a href="./setup.html">Setup</a>
-    <a href="./privacy.html">Privacy</a>
-    <a href="https://github.com/DaveHomeAssist/prompt-lab" target="_blank" rel="noopener">GitHub</a>
-    <a href="https://prompt-lab-tawny.vercel.app/app/" class="nav-cta">Open App</a>
+  <div class="site-nav-inner">
+    <a href="./" class="site-nav-brand">
+      <img src="hero-logo.png" alt="" width="34" height="34">
+      <span class="site-nav-brand-text">
+        <strong>Prompt Lab</strong>
+        <span>Engineer. Test. Iterate.</span>
+      </span>
+    </a>
+    <div class="site-nav-links">
+      <a href="#features">Features</a>
+      <a href="#surfaces">Surfaces</a>
+      <a href="./guide.html">Guide</a>
+      <a href="./setup.html">Setup</a>
+      <a href="./privacy.html">Privacy</a>
+      <a href="https://github.com/DaveHomeAssist/prompt-lab" target="_blank" rel="noopener">GitHub</a>
+      <a href="https://prompt-lab-tawny.vercel.app/app/" target="_blank" rel="noopener" class="nav-cta">Open Web App</a>
+    </div>
   </div>
 </nav>
 
-<!-- ========== HERO ========== -->
-<section class="hero">
-  <div class="molecules" aria-hidden="true"></div>
+<main>
+  <section class="hero" id="top">
+    <div class="hero-shell">
+      <p class="eyebrow">Prompt engineering workbench</p>
 
-  <img class="hero-logo" src="hero-logo.png" alt="Prompt Lab logo" loading="eager" fetchpriority="high" width="320" height="320">
-
-  <h1 class="hero-tagline"><span class="wordmark">Prompt Lab</span> &mdash; <span class="accent">Craft</span> better prompts.</h1>
-  <p class="hero-sub">
-    A multi-provider prompt engineering workbench. Enhance, A/B test, and compose prompts across Anthropic, OpenAI, Gemini, OpenRouter, and Ollama — in your browser or as a Chrome extension.
-  </p>
-
-  <div class="hero-cta-group">
-    <a href="https://prompt-lab-tawny.vercel.app/app/" target="_blank" rel="noopener" class="btn-primary">Open Web App</a>
-    <a href="#features" class="btn-secondary">Explore Features</a>
-  </div>
-
-  <div class="scroll-indicator">
-    <div class="scroll-line"></div>
-    scroll
-  </div>
-</section>
-
-<!-- ========== PROVIDERS ========== -->
-<section class="providers">
-  <h2 class="providers-label">Works with your stack</h2>
-  <div class="provider-logos stagger">
-    <div class="provider-chip reveal"><span class="dot"></span> Anthropic</div>
-    <div class="provider-chip reveal"><span class="dot"></span> OpenAI</div>
-    <div class="provider-chip reveal"><span class="dot"></span> Google Gemini</div>
-    <div class="provider-chip reveal"><span class="dot"></span> OpenRouter</div>
-    <div class="provider-chip reveal"><span class="dot"></span> Ollama</div>
-  </div>
-</section>
-
-<!-- ========== FEATURES ========== -->
-<section class="features" id="features">
-  <div class="section-header reveal">
-    <div class="section-eyebrow">// capabilities</div>
-    <h2 class="section-title">Everything you need to engineer prompts</h2>
-  </div>
-
-  <div class="feature-grid stagger">
-    <div class="feature-card reveal">
-      <div class="feature-icon">
-        <svg viewBox="0 0 24 24"><path d="M13 2L3 14h9l-1 8 10-12h-9l1-8z"/></svg>
-      </div>
-      <h3 class="feature-name">One-Click Enhance</h3>
-      <div class="feature-desc">Refine any prompt instantly using your active provider. Prompt Lab analyzes structure, specificity, and clarity — then rewrites it better.</div>
-    </div>
-
-    <div class="feature-card reveal">
-      <div class="feature-icon">
-        <svg viewBox="0 0 24 24"><path d="M16 3h5v5M4 20L20.2 3.8M21 16v5h-5M4 4l16.2 16.2"/></svg>
-      </div>
-      <h3 class="feature-name">A/B Testing</h3>
-      <div class="feature-desc">Run the same prompt against two models side-by-side. Compare output quality, tone, and completeness across providers in real time.</div>
-    </div>
-
-    <div class="feature-card reveal">
-      <div class="feature-icon">
-        <svg viewBox="0 0 24 24"><path d="M14.7 6.3a1 1 0 000 1.4l1.6 1.6a1 1 0 001.4 0l3.77-3.77a6 6 0 01-7.94 7.94l-6.91 6.91a2.12 2.12 0 01-3-3l6.91-6.91a6 6 0 017.94-7.94l-3.76 3.76z"/></svg>
-      </div>
-      <h3 class="feature-name">Prompt Composer</h3>
-      <div class="feature-desc">Build complex system prompts with modular blocks. Chain instructions, personas, and constraints into structured templates.</div>
-    </div>
-
-    <div class="feature-card reveal">
-      <div class="feature-icon">
-        <svg viewBox="0 0 24 24"><path d="M4 19.5A2.5 2.5 0 016.5 17H20"/><path d="M6.5 2H20v20H6.5A2.5 2.5 0 014 19.5v-15A2.5 2.5 0 016.5 2z"/></svg>
-      </div>
-      <h3 class="feature-name">Prompt Library</h3>
-      <div class="feature-desc">Save, tag, and organize your best prompts. Import and export your collection as JSON for portability across machines.</div>
-    </div>
-
-    <div class="feature-card reveal">
-      <div class="feature-icon">
-        <svg viewBox="0 0 24 24"><rect x="3" y="11" width="18" height="11" rx="2" ry="2"/><path d="M7 11V7a5 5 0 0110 0v4"/></svg>
-      </div>
-      <h3 class="feature-name">Credential Isolation</h3>
-      <div class="feature-desc">API keys never leave the Manifest V3 service worker. The panel UI has zero access to your credentials — by architecture, not policy.</div>
-    </div>
-
-    <div class="feature-card reveal">
-      <div class="feature-icon">
-        <svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 00.33 1.82l.06.06a2 2 0 010 2.83 2 2 0 01-2.83 0l-.06-.06a1.65 1.65 0 00-1.82-.33 1.65 1.65 0 00-1 1.51V21a2 2 0 01-4 0v-.09A1.65 1.65 0 009 19.4a1.65 1.65 0 00-1.82.33l-.06.06a2 2 0 01-2.83 0 2 2 0 010-2.83l.06-.06A1.65 1.65 0 004.68 15a1.65 1.65 0 00-1.51-1H3a2 2 0 010-4h.09A1.65 1.65 0 004.6 9a1.65 1.65 0 00-.33-1.82l-.06-.06a2 2 0 012.83-2.83l.06.06A1.65 1.65 0 009 4.68a1.65 1.65 0 001-1.51V3a2 2 0 014 0v.09a1.65 1.65 0 001 1.51 1.65 1.65 0 001.82-.33l.06-.06a2 2 0 012.83 2.83l-.06.06A1.65 1.65 0 0019.32 9a1.65 1.65 0 001.51 1H21a2 2 0 010 4h-.09a1.65 1.65 0 00-1.51 1z"/></svg>
-      </div>
-      <h3 class="feature-name">Provider Hot-Swap</h3>
-      <div class="feature-desc">Switch providers without losing context. Your library, settings, and experiment history persist across every provider change.</div>
-    </div>
-
-    <div class="feature-card reveal">
-      <div class="feature-icon">
-        <svg viewBox="0 0 24 24"><rect x="2" y="3" width="20" height="14" rx="2" ry="2"/><line x1="8" y1="21" x2="16" y2="21"/><line x1="12" y1="17" x2="12" y2="21"/></svg>
-      </div>
-      <h3 class="feature-name">Side Panel Mode</h3>
-      <div class="feature-desc">Stays open while you browse — zero tab-switching. Works in Chrome, Vivaldi, Edge, and Brave side panels so you can refine prompts alongside any page.</div>
-    </div>
-  </div>
-</section>
-
-<!-- ========== CODE DEMO ========== -->
-<section class="demo">
-  <div class="demo-container">
-    <div class="demo-text reveal">
-      <div class="section-eyebrow">// under the hood</div>
-      <h2 class="section-title">One panel, five providers, zero config drift</h2>
-      <p>Every API call routes through a single service worker that translates your prompt into each provider's native format. Responses are normalized so the UI never needs to know which model answered.</p>
-    </div>
-
-    <div class="code-window reveal">
-      <div class="code-tabs">
-        <button type="button" class="code-tab active" data-provider="anthropic">Anthropic</button>
-        <button type="button" class="code-tab" data-provider="openai">OpenAI</button>
-        <button type="button" class="code-tab" data-provider="ollama">Ollama</button>
-        <button type="button" class="code-copy-btn" title="Copy code">&#x2398; Copy</button>
-      </div>
-      <div class="code-titlebar">
-        <div class="code-dot red"></div>
-        <div class="code-dot yellow"></div>
-        <div class="code-dot green"></div>
-        <span>background.js</span>
+      <div class="hero-lockup">
+        <div class="brand-panel">
+          <img src="hero-logo.png" alt="Prompt Lab logo" width="560" height="560" loading="eager" fetchpriority="high">
+        </div>
+        <div class="lock-divider" aria-hidden="true"></div>
+        <div class="word-panel">
+          <h1 class="hero-title"><span class="tight">Prompt</span><span class="tight lab">Lab</span></h1>
+          <p class="hero-tagline">Engineer <span>&middot;</span> Test <span>&middot;</span> Iterate</p>
+        </div>
       </div>
 
-      <!-- Anthropic snippet -->
-      <div class="code-body code-panel active" data-provider="anthropic">
-<pre><span class="cm">// Anthropic — native format, routed via callModel()</span>
-<span class="kw">async function</span> <span class="fn">callModel</span><span class="op">(</span>payload<span class="op">) {</span>
-  <span class="kw">const</span> res <span class="op">=</span> <span class="kw">await</span> <span class="fn">fetch</span><span class="op">(</span><span class="str">'https://api.anthropic.com/v1/messages'</span><span class="op">, {</span>
-    method<span class="op">:</span> <span class="str">'POST'</span><span class="op">,</span>
-    headers<span class="op">: {</span> <span class="str">'x-api-key'</span><span class="op">:</span> key <span class="op">},</span>
-    body<span class="op">:</span> <span class="fn">JSON.stringify</span><span class="op">(</span>payload<span class="op">)</span>
-  <span class="op">});</span>
-  <span class="kw">return</span> <span class="fn">normalize</span><span class="op">(</span><span class="str">'anthropic'</span><span class="op">,</span> <span class="kw">await</span> res<span class="op">.</span><span class="fn">json</span><span class="op">());</span>
-<span class="op">}</span></pre>
-      </div>
+      <div class="hero-grid">
+        <div class="hero-copy">
+          <p class="hero-lede">Write, compare, and refine prompts across Anthropic, OpenAI, Gemini, OpenRouter, and Ollama from one workspace.</p>
+          <p class="hero-sub">Prompt Lab gives you a practical system for prompt work: engineer the draft, test alternatives side by side, then iterate with history, structure, and reusable assets instead of guesswork.</p>
+          <div class="hero-actions">
+            <a href="https://prompt-lab-tawny.vercel.app/app/" target="_blank" rel="noopener" class="button button-primary">Open Web App</a>
+            <a href="https://github.com/DaveHomeAssist/prompt-lab/releases/latest" target="_blank" rel="noopener" class="button button-secondary">Install Extension</a>
+          </div>
+          <div class="provider-band" aria-label="Supported providers">
+            <span class="provider-chip"><span class="dot"></span>Anthropic</span>
+            <span class="provider-chip"><span class="dot"></span>OpenAI</span>
+            <span class="provider-chip"><span class="dot"></span>Gemini</span>
+            <span class="provider-chip"><span class="dot"></span>OpenRouter</span>
+            <span class="provider-chip"><span class="dot"></span>Ollama</span>
+          </div>
+          <div class="domain-note">promptlab.tools</div>
+        </div>
 
-      <!-- OpenAI snippet -->
-      <div class="code-body code-panel" data-provider="openai">
-<pre><span class="cm">// OpenAI — chat completions format</span>
-<span class="kw">async function</span> <span class="fn">callOpenAI</span><span class="op">(</span>payload<span class="op">) {</span>
-  <span class="kw">const</span> msgs <span class="op">=</span> <span class="fn">toChatMessages</span><span class="op">(</span>payload<span class="op">);</span>
-  <span class="kw">const</span> res <span class="op">=</span> <span class="kw">await</span> <span class="fn">fetch</span><span class="op">(</span><span class="str">'https://api.openai.com/v1/chat/completions'</span><span class="op">, {</span>
-    method<span class="op">:</span> <span class="str">'POST'</span><span class="op">,</span>
-    headers<span class="op">: {</span> Authorization<span class="op">:</span> <span class="str">`Bearer ${key}`</span> <span class="op">},</span>
-    body<span class="op">:</span> <span class="fn">JSON.stringify</span><span class="op">({</span> model<span class="op">,</span> messages<span class="op">:</span> msgs <span class="op">})</span>
-  <span class="op">});</span>
-  <span class="kw">return</span> <span class="fn">normalize</span><span class="op">(</span><span class="str">'openai'</span><span class="op">,</span> <span class="kw">await</span> res<span class="op">.</span><span class="fn">json</span><span class="op">());</span>
-<span class="op">}</span></pre>
-      </div>
-
-      <!-- Ollama snippet -->
-      <div class="code-body code-panel" data-provider="ollama">
-<pre><span class="cm">// Ollama — local, no auth required</span>
-<span class="kw">async function</span> <span class="fn">callOllama</span><span class="op">(</span>payload<span class="op">) {</span>
-  <span class="kw">const</span> msgs <span class="op">=</span> <span class="fn">toChatMessages</span><span class="op">(</span>payload<span class="op">);</span>
-  <span class="kw">const</span> res <span class="op">=</span> <span class="kw">await</span> <span class="fn">fetch</span><span class="op">(</span><span class="str">`${baseUrl}/api/chat`</span><span class="op">, {</span>
-    method<span class="op">:</span> <span class="str">'POST'</span><span class="op">,</span>
-    body<span class="op">:</span> <span class="fn">JSON.stringify</span><span class="op">({</span>
-      model<span class="op">,</span> messages<span class="op">:</span> msgs<span class="op">,</span> stream<span class="op">:</span> <span class="num">false</span>
-    <span class="op">})</span>
-  <span class="op">});</span>
-  <span class="kw">return</span> <span class="fn">normalize</span><span class="op">(</span><span class="str">'ollama'</span><span class="op">,</span> <span class="kw">await</span> res<span class="op">.</span><span class="fn">json</span><span class="op">());</span>
-<span class="op">}</span></pre>
+        <aside class="hero-meta">
+          <p class="hero-meta-label">// operating model</p>
+          <h2>One product. Three shells.</h2>
+          <p>Use the hosted app immediately, dock the extension beside any page, or run the desktop shell when you want the same workflow installed locally.</p>
+          <div class="hero-stats">
+            <div class="hero-stat">
+              <strong>5</strong>
+              <span>Provider adapters</span>
+            </div>
+            <div class="hero-stat">
+              <strong>3</strong>
+              <span>Runtime surfaces</span>
+            </div>
+            <div class="hero-stat">
+              <strong>0</strong>
+              <span>Required accounts</span>
+            </div>
+            <div class="hero-stat">
+              <strong>1</strong>
+              <span>Shared frontend</span>
+            </div>
+          </div>
+        </aside>
       </div>
     </div>
-  </div>
-</section>
+  </section>
 
-<!-- ========== WORKFLOW ========== -->
-<section class="workflow" id="get-started">
-  <div class="section-header reveal">
-    <div class="section-eyebrow">// get started</div>
-    <h2 class="section-title">Up and running in minutes</h2>
-  </div>
-
-  <div class="workflow-steps">
-    <div class="workflow-step reveal">
-      <div class="step-number">1</div>
-      <div class="step-content">
-        <h3>Choose your path</h3>
-        <p>Try the <a href="https://prompt-lab-tawny.vercel.app/app/" target="_blank" rel="noopener"">web app</a> instantly — no install required. Or grab the <a href="https://github.com/DaveHomeAssist/prompt-lab/releases/latest" target="_blank" rel="noopener">latest release</a>, unzip it, and load it as an unpacked extension at <code class="inline-code-chip">chrome://extensions</code>.</p>
-      </div>
+  <section class="section" id="features">
+    <div class="section-head">
+      <p class="section-kicker">// core loop</p>
+      <h2>Built around the way serious prompt work actually happens.</h2>
+      <p>Prompt Lab is organized around a simple cycle: engineer a strong draft, test the result across models or variants, then iterate with saved structure instead of rewriting from scratch every time.</p>
     </div>
 
-    <div class="workflow-step reveal">
-      <div class="step-number">2</div>
-      <div class="step-content">
-        <h3>Choose your provider</h3>
-        <p>Open Settings, pick a provider, enter your API key, and select a model from the dropdown — or type a slug for OpenRouter and Ollama.</p>
-      </div>
+    <div class="principle-grid">
+      <article class="panel-card">
+        <span class="label">Engineer</span>
+        <h3>Build prompts with structure.</h3>
+        <p>Draft in the editor, assemble reusable blocks in the composer, fill variables at run time, and keep your high-value prompts in a searchable library.</p>
+      </article>
+      <article class="panel-card">
+        <span class="label">Test</span>
+        <h3>Compare output instead of trusting vibes.</h3>
+        <p>Run A/B experiments, inspect differences across providers, and use history to see what changed instead of relying on memory.</p>
+      </article>
+      <article class="panel-card">
+        <span class="label">Iterate</span>
+        <h3>Keep the wins and refine the rest.</h3>
+        <p>Version saved prompts, restore old drafts, and keep a local-first workflow that lets you iterate quickly without turning the tool into overhead.</p>
+      </article>
+    </div>
+  </section>
+
+  <section class="section">
+    <div class="section-head">
+      <p class="section-kicker">// capabilities</p>
+      <h2>The working set for prompt teams and solo operators.</h2>
+      <p>Prompt Lab is not trying to be a general AI dashboard. It focuses on the real workflow around prompts: writing, enhancing, comparing, saving, and reusing them across providers.</p>
     </div>
 
-    <div class="workflow-step reveal">
-      <div class="step-number">3</div>
-      <div class="step-content">
-        <h3>Test the connection</h3>
-        <p>Hit "Test Connection" to verify your API key with a live ping. Green means you're connected.</p>
-      </div>
+    <div class="capability-grid">
+      <article class="panel-card">
+        <span class="label">Enhance</span>
+        <h3>Refine the draft fast.</h3>
+        <p>Use provider-backed enhancement to tighten role clarity, constraints, format, and intent without rebuilding the prompt by hand.</p>
+      </article>
+      <article class="panel-card">
+        <span class="label">Compare</span>
+        <h3>A/B test prompt variants.</h3>
+        <p>Run two approaches side by side and inspect where they diverge in tone, completeness, and usefulness.</p>
+      </article>
+      <article class="panel-card">
+        <span class="label">Library</span>
+        <h3>Keep reusable prompts organized.</h3>
+        <p>Save prompts with metadata, restore older versions, and move proven blocks into future drafts instead of repeating work.</p>
+      </article>
+      <article class="panel-card">
+        <span class="label">Compose</span>
+        <h3>Assemble prompts from modules.</h3>
+        <p>Chain instructions, personas, and constraints into structured outputs that are easier to reuse and easier to test.</p>
+      </article>
+      <article class="panel-card">
+        <span class="label">Variables</span>
+        <h3>Reuse one prompt across many contexts.</h3>
+        <p>Fill values at run time with variable placeholders so the same template can adapt to different tasks, projects, or inputs.</p>
+      </article>
+      <article class="panel-card">
+        <span class="label">Local-first</span>
+        <h3>Keep settings in your control.</h3>
+        <p>Prompt state lives locally, with direct provider calls in extension and desktop mode and a narrow proxy path only for the hosted web shell.</p>
+      </article>
+    </div>
+  </section>
+
+  <section class="section" id="surfaces">
+    <div class="section-head">
+      <p class="section-kicker">// surfaces</p>
+      <h2>Choose the shell that fits the job.</h2>
+      <p>The same Prompt Lab workflow is available three ways. Start in the browser. Dock it beside your real work. Install it locally when that fits the environment better.</p>
     </div>
 
-    <div class="workflow-step reveal">
-      <div class="step-number">4</div>
-      <div class="step-content">
-        <h3>Start experimenting</h3>
-        <p>Open the panel, type a prompt, and hit Enhance. A/B test it. Save it to your library. Switch providers and compare. Iterate until it's perfect.</p>
+    <div class="surface-grid">
+      <article class="panel-card surface-card">
+        <span class="label">Web app</span>
+        <h3>Immediate access.</h3>
+        <p>Open the hosted app and start working without install friction. Best when you want the fastest path into the product.</p>
+        <div class="surface-meta">
+          <span>No install</span>
+          <span>Fastest start</span>
+        </div>
+      </article>
+      <article class="panel-card surface-card">
+        <span class="label">Chrome extension</span>
+        <h3>Dock Prompt Lab beside the page.</h3>
+        <p>Use the MV3 side panel when prompt work needs to stay attached to the browser context you are already using.</p>
+        <div class="surface-meta">
+          <span>Side panel</span>
+          <span>Direct provider calls</span>
+        </div>
+      </article>
+      <article class="panel-card surface-card">
+        <span class="label">Desktop</span>
+        <h3>Same workflow, installed locally.</h3>
+        <p>Run the Tauri shell when you want Prompt Lab outside the browser while keeping the same shared frontend model.</p>
+        <div class="surface-meta">
+          <span>Tauri 2</span>
+          <span>Local shell</span>
+        </div>
+      </article>
+    </div>
+  </section>
+
+  <section class="section">
+    <div class="section-head">
+      <p class="section-kicker">// get started</p>
+      <h2>Up and running in minutes.</h2>
+      <p>Prompt Lab is designed so the tool gets out of the way quickly. Pick a surface, connect a provider, and start testing prompt quality immediately.</p>
+    </div>
+
+    <div class="panel-card">
+      <div class="workflow-list">
+        <div class="workflow-step">
+          <div class="num">01</div>
+          <div>
+            <h3>Choose the path.</h3>
+            <p>Start with the hosted web app for zero friction, or install the extension if you want Prompt Lab docked beside your browsing workflow.</p>
+          </div>
+        </div>
+        <div class="workflow-step">
+          <div class="num">02</div>
+          <div>
+            <h3>Connect a provider.</h3>
+            <p>Enter your API key, choose a model, and keep the configuration local to your environment.</p>
+          </div>
+        </div>
+        <div class="workflow-step">
+          <div class="num">03</div>
+          <div>
+            <h3>Engineer and test.</h3>
+            <p>Write the prompt, run enhancement, compare alternatives, and inspect the result instead of hoping the first draft is good enough.</p>
+          </div>
+        </div>
+        <div class="workflow-step">
+          <div class="num">04</div>
+          <div>
+            <h3>Save what works.</h3>
+            <p>Store useful prompts in the library, reuse them in the composer, and iterate with version history instead of starting over.</p>
+          </div>
+        </div>
       </div>
     </div>
-  </div>
-</section>
+  </section>
 
-<!-- ========== FINAL CTA ========== -->
-<section class="final-cta">
-  <h2 class="section-title reveal">Ready to experiment?</h2>
-  <p class="reveal">Stop guessing at prompts. Start engineering them.</p>
-  <div class="hero-cta-group reveal reveal-static">
-    <a href="https://prompt-lab-tawny.vercel.app/app/" target="_blank" rel="noopener" class="btn-primary">Open Web App</a>
-    <a href="https://github.com/DaveHomeAssist/prompt-lab#readme" target="_blank" rel="noreferrer noopener" class="btn-secondary">Install Extension</a>
-  </div>
-</section>
+  <section class="section">
+    <div class="section-head">
+      <p class="section-kicker">// docs</p>
+      <h2>Use the tool, then go deeper where you need it.</h2>
+      <p>Public docs are split by task, not by marketing funnel. Jump straight to setup, usage, privacy, or import details depending on what is actually blocking you.</p>
+    </div>
 
-<!-- ========== FOOTER ========== -->
+    <div class="doc-grid">
+      <a href="./guide.html" class="panel-card doc-card">
+        <strong>How-To Guide</strong>
+        <span>Editor, library, A/B testing, composer, variables, and shortcuts.</span>
+      </a>
+      <a href="./setup.html" class="panel-card doc-card">
+        <strong>Setup</strong>
+        <span>Provider configuration for Anthropic, OpenAI, Gemini, OpenRouter, and Ollama.</span>
+      </a>
+      <a href="./guide-preset-import.html" class="panel-card doc-card">
+        <strong>Preset Import</strong>
+        <span>Import prompt packs cleanly and understand the accepted file format.</span>
+      </a>
+      <a href="./privacy.html" class="panel-card doc-card">
+        <strong>Privacy</strong>
+        <span>Local-first data handling, storage model, and proxy behavior for hosted web mode.</span>
+      </a>
+    </div>
+  </section>
+
+  <section class="cta-shell">
+    <div class="cta-card">
+      <h2>Stop guessing at prompts.</h2>
+      <p>Prompt Lab is for people who want a real loop around prompt quality: engineer the draft, test the result, and iterate with structure instead of loose notes and memory.</p>
+      <div class="hero-actions">
+        <a href="https://prompt-lab-tawny.vercel.app/app/" target="_blank" rel="noopener" class="button button-primary">Open Web App</a>
+        <a href="./guide.html" class="button button-secondary">Read the Guide</a>
+      </div>
+    </div>
+  </section>
+</main>
+
 <footer>
-  <span class="lab-mark">&aleph;</span> Prompt Lab v1.7.0 — Built for prompt engineers who ship.
-  <br><a href="./guide.html" style="color:var(--lab-violet-light); text-decoration:none; font-size:0.72rem;">How-To Guide</a> &middot; <a href="./setup.html" style="color:var(--lab-violet-light); text-decoration:none; font-size:0.72rem;">Setup</a> &middot; <a href="./privacy.html" style="color:var(--lab-violet-light); text-decoration:none; font-size:0.72rem;">Privacy</a> &middot; <a href="https://github.com/DaveHomeAssist/prompt-lab" style="color:var(--lab-violet-light); text-decoration:none; font-size:0.72rem;">Source</a>
+  Prompt Lab v1.7.0 &middot; <a href="./guide.html">Guide</a> &middot; <a href="./setup.html">Setup</a> &middot; <a href="./privacy.html">Privacy</a> &middot; <a href="https://github.com/DaveHomeAssist/prompt-lab" target="_blank" rel="noopener">Source</a>
 </footer>
-
-<!-- ========== INTERACTIVE JS ========== -->
-<script>
-  // ---- Scroll reveal ----
-  const observer = new IntersectionObserver((entries) => {
-    entries.forEach(entry => {
-      if (entry.isIntersecting) {
-        entry.target.classList.add('visible');
-      }
-    });
-  }, { threshold: 0.15, rootMargin: '0px 0px -40px 0px' });
-
-  document.querySelectorAll('.reveal').forEach(el => observer.observe(el));
-
-  if (!window.matchMedia('(prefers-reduced-motion: reduce)').matches) {
-    // ---- Floating molecules (replaces sparks) ----
-    const molContainer = document.querySelector('.molecules');
-    for (let i = 0; i < 16; i++) {
-      const mol = document.createElement('div');
-      mol.className = 'molecule';
-      mol.style.left = Math.random() * 100 + '%';
-      mol.style.bottom = (20 + Math.random() * 30) + '%';
-      mol.style.animationDuration = (4 + Math.random() * 5) + 's';
-      mol.style.animationDelay = Math.random() * 8 + 's';
-      mol.style.setProperty('--drift', (Math.random() * 80 - 40) + 'px');
-      const size = 2 + Math.random() * 3;
-      mol.style.width = size + 'px';
-      mol.style.height = size + 'px';
-      molContainer.appendChild(mol);
-    }
-
-    // ---- Molecular bonds ----
-    for (let i = 0; i < 5; i++) {
-      const bond = document.createElement('div');
-      bond.className = 'bond';
-      bond.style.top = (15 + Math.random() * 60) + '%';
-      bond.style.left = (10 + Math.random() * 40) + '%';
-      bond.style.width = (80 + Math.random() * 120) + 'px';
-      bond.style.transform = `rotate(${Math.random() * 360}deg)`;
-      bond.style.animationDelay = Math.random() * 6 + 's';
-      molContainer.appendChild(bond);
-    }
-  }
-
-  // ---- Code tab switching ----
-  const codeTabs = document.querySelectorAll('.code-tab');
-  const codePanels = document.querySelectorAll('.code-panel');
-
-  codeTabs.forEach(tab => {
-    tab.addEventListener('click', () => {
-      const provider = tab.dataset.provider;
-      codeTabs.forEach(t => t.classList.remove('active'));
-      tab.classList.add('active');
-      codePanels.forEach(panel => {
-        panel.classList.toggle('active', panel.dataset.provider === provider);
-      });
-    });
-  });
-
-  // ---- Copy button ----
-  const copyBtn = document.querySelector('.code-copy-btn');
-  if (copyBtn) {
-    function legacyCopyText(text) {
-      const ta = document.createElement('textarea');
-      ta.value = text;
-      ta.style.position = 'fixed';
-      ta.style.opacity = '0';
-      document.body.appendChild(ta);
-      ta.select();
-      let ok = false;
-      try { ok = document.execCommand('copy'); } catch {}
-      document.body.removeChild(ta);
-      return ok;
-    }
-
-    copyBtn.addEventListener('click', async () => {
-      const activePanel = document.querySelector('.code-panel.active pre');
-      if (!activePanel) return;
-
-      const text = activePanel.textContent;
-      let ok = false;
-      try {
-        await navigator.clipboard.writeText(text);
-        ok = true;
-      } catch {
-        ok = legacyCopyText(text);
-      }
-
-      copyBtn.textContent = ok ? '\u2713 Copied' : '\u2717 Copy failed';
-      copyBtn.classList.toggle('copied', ok);
-      setTimeout(() => {
-        copyBtn.textContent = '\u2318 Copy';
-        copyBtn.classList.remove('copied');
-      }, 1500);
-    });
-  }
-</script>
-
 </body>
 </html>

@@ -45,14 +45,16 @@ Use these for runtime shape, platform model, UI/state mapping, and shared termin
 - `../prompt-lab-web/README.md`
 - `../prompt-lab-web/index.html`
 - `../prompt-lab-web/public/guide.html`
+- `../prompt-lab-web/public/guide-preset-import.html`
 - `../prompt-lab-web/public/setup.html`
 - `../prompt-lab-web/public/prompt-embed.html`
 - `../prompt-lab-web/public/privacy.html`
+- `../prompt-lab-web/public/tools/`
 
 Authoring rule:
 
 - prefer `prompt-lab-web/` and `prompt-lab-web/public/` as the authoring source
-- treat `../docs/` as the published copy, except current documented exceptions
+- treat `../docs/` as the published copy
 
 ### Desktop work
 
@@ -109,6 +111,7 @@ These are working-context files, not canonical product documentation.
 
 - `../prompt-lab-web/index.html`
 - `../prompt-lab-web/public/guide.html`
+- `../prompt-lab-web/public/guide-preset-import.html`
 - `../prompt-lab-web/public/setup.html`
 - `../prompt-lab-web/public/privacy.html`
 
@@ -131,6 +134,7 @@ Current public-doc mapping:
 |---|---|
 | `../prompt-lab-web/index.html` | `../../docs/index.html` |
 | `../prompt-lab-web/public/guide.html` | `../../docs/guide.html` |
+| `../prompt-lab-web/public/guide-preset-import.html` | `../../docs/guide-preset-import.html` |
 | `../prompt-lab-web/public/setup.html` | `../../docs/setup.html` |
 | `../prompt-lab-web/public/prompt-embed.html` | `../../docs/prompt-embed.html` |
 | `../prompt-lab-web/public/privacy.html` | `../../docs/privacy.html` |

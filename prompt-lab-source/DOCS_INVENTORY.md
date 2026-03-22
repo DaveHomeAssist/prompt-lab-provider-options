@@ -1,6 +1,6 @@
 # Prompt Lab Documentation Inventory
 
-Updated: 2026-03-20
+Updated: 2026-03-22
 
 ## Canonical Source Rules
 
@@ -69,15 +69,19 @@ Updated: 2026-03-20
 | Path | Scope | Status | Notes |
 |---|---|---|---|
 | `prompt-lab-web/index.html` | Landing page authoring source | Active | Canonical authoring source for the public landing page. |
-| `../docs/index.html` | Published landing/docs copy | Active | Live published copy; currently has local edits in progress. |
+| `../docs/index.html` | Published landing/docs copy | Active | Published copy generated from `prompt-lab-web/index.html` by `scripts/publish-landing.mjs`. |
 | `prompt-lab-web/public/guide.html` | Guide authoring source | Active | Preferred source for the user guide. |
 | `../docs/guide.html` | Published guide copy | Active | Published copy of the guide. |
+| `prompt-lab-web/public/guide-preset-import.html` | Preset-import guide authoring source | Active | Preferred source for preset-pack import instructions. |
+| `../docs/guide-preset-import.html` | Published preset-import guide copy | Active | Published copy of the preset-pack import guide. |
 | `prompt-lab-web/public/setup.html` | Setup doc authoring source | Active | Preferred source for setup instructions. |
 | `../docs/setup.html` | Published setup copy | Active | Published copy of setup instructions. |
 | `prompt-lab-web/public/prompt-embed.html` | Embed doc authoring source | Active | Preferred source for prompt embedding docs. |
 | `../docs/prompt-embed.html` | Published embed doc copy | Active | Published copy of prompt embed docs. |
 | `prompt-lab-web/public/privacy.html` | Privacy doc authoring source | Active | Preferred source for the public privacy page. |
 | `../docs/privacy.html` | Published privacy doc copy | Active | Published copy of the privacy page. |
+| `prompt-lab-web/public/tools/` | Public tools authoring source | Active | Source for lightweight browser tools published alongside the docs site. |
+| `../docs/tools/` | Published public tools copy | Active | Published copy of the public tools directory. |
 | `../docs/UI_ISSUES_TABLE.html` | UI issue tracker snapshot | Active | Static HTML issue table; confirm whether this should remain public-facing. |
 | `../docs/QA-SMOKE-TEST-v1.md` | QA checklist | Active | QA reference/checklist stored in the published-docs tree. |
 
@@ -107,10 +111,12 @@ Updated: 2026-03-20
 | Path | Scope | Status | Notes |
 |---|---|---|---|
 | `../prompt-lab-extension/README.md` | Older unpacked extension bundle | Legacy | Outside the canonical `prompt-lab-source/` tree. Leave untouched unless that duplicate tree is intentionally revived. |
+| `public/prompt-lab-landing.html` | Legacy landing mirror | Legacy | Retained as a compatibility mirror; `prompt-lab-web/index.html` is the landing-page source of truth. |
 
 ## Maintenance notes
 
 - Prefer updating authoring sources under `prompt-lab-source/` first, then sync the published copy under `../docs/` when relevant.
+- Use `scripts/publish-landing.mjs` to sync public landing/docs files into `../docs/` without deleting unrelated repo-owned content such as `docs/app/` or internal trackers.
 - When shared frontend behavior changes, update extension, web, and desktop docs together.
 - When public URLs, repo slug, or deploy shape change, update:
   - `../README.md`
