@@ -5,6 +5,13 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>Prompt Lab | Privacy Policy</title>
 <link rel="icon" type="image/png" href="./hero-logo.png">
+<meta name="description" content="Prompt Lab privacy policy. Local-first architecture — no cloud, no tracking, no data collection.">
+<meta property="og:title" content="Prompt Lab | Privacy Policy">
+<meta property="og:description" content="Prompt Lab privacy policy. Local-first architecture — no cloud, no tracking, no data collection.">
+<meta property="og:type" content="website">
+<meta property="og:url" content="https://promptlab.tools/privacy.html">
+<meta property="og:image" content="https://promptlab.tools/og-image.png">
+<meta name="twitter:card" content="summary_large_image">
 <link rel="canonical" href="https://promptlab.tools/privacy.html">
 <link rel="preload" href="./fonts/outfit.woff2" as="font" type="font/woff2" crossorigin>
 <link rel="preload" href="./fonts/jetbrains-mono.woff2" as="font" type="font/woff2" crossorigin>
@@ -191,7 +198,7 @@ footer a {
 </ul>
 
 <h2>API Keys</h2>
-<p>Provider API keys you configure (Anthropic, OpenAI, Google, OpenRouter, Ollama) are stored in your browser's local storage or Chrome extension storage. In the extension and desktop shells, requests go directly to the provider you selected. In the hosted web app, requests are forwarded through Prompt Lab's domain-allowlisted Vercel Edge proxy at <code>https://prompt-lab-tawny.vercel.app/api/proxy</code> to satisfy browser CORS requirements. Prompt Lab does not persist your keys server-side.</p>
+<p>Provider API keys you configure (Anthropic, OpenAI, Google, OpenRouter, Ollama) are stored in your browser's local storage or Chrome extension storage. In the extension and desktop shells, requests go directly to the provider you selected. In the hosted web app, requests are forwarded through Prompt Lab's domain-allowlisted Vercel Edge proxy at <code>/api/proxy</code> to satisfy browser CORS requirements. Prompt Lab does not persist your keys server-side.</p>
 
 <h2>AI Provider Requests</h2>
 <p>When you run a prompt, Prompt Lab sends your input to the provider API you selected. In extension and desktop environments, that traffic is direct. In the hosted web app, traffic passes through a narrow proxy that validates the target domain and forwards the request. Each provider has its own privacy policy and data handling practices. Prompt Lab does not store your prompts or responses in a developer-controlled backend.</p>

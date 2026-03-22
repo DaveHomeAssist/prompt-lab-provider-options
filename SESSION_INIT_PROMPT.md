@@ -31,7 +31,7 @@ Verified Stack:
 
 Current Known Dirty State:
 - `docs/index.html`
-- `prompt-lab-source/public/prompt-lab-landing.html`
+- `prompt-lab-source/prompt-lab-web/index.html`
 
 Treat those files as already modified before you begin. Do not revert unrelated edits.
 

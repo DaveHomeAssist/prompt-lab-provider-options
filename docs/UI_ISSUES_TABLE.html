@@ -3,27 +3,9 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<link rel="icon" type="image/svg+xml" href="../assets/icons/favicon/favicon.svg">
-<link rel="icon" type="image/png" sizes="32x32" href="../assets/icons/favicon/favicon-32.png">
-<link rel="icon" type="image/png" sizes="16x16" href="../assets/icons/favicon/favicon-16.png">
-<link rel="apple-touch-icon" sizes="180x180" href="../assets/icons/favicon/apple-touch-icon.png">
-<!--
-  ╔══════════════════════════════════════════════════════════════════╗
-  ║  UI ISSUES TABLE — Prompt Lab                                   ║
-  ║                                                                ║
-  ║  Built from: 30-shared-resources/shared-standards/              ║
-  ║              UI_ISSUES_TABLE_TEMPLATE.html                      ║
-  ║                                                                ║
-  ║  AGENT UPDATE INSTRUCTIONS:                                    ║
-  ║  1. Issues live in the <script id="issue-data"> JSON block     ║
-  ║  2. To add an issue: append to the JSON array                  ║
-  ║  3. To resolve: change "status" to "done", add "resolved" date ║
-  ║  4. To defer: change "status" to "deferred"                    ║
-  ║  5. Update data-last-verified on <main> after any review       ║
-  ║  6. Do NOT edit the HTML card markup — it renders from JSON    ║
-  ╚══════════════════════════════════════════════════════════════════╝
--->
-<title>Prompt Lab — UI Issues Tracker</title>
+<link rel="icon" type="image/png" href="./hero-logo.png">
+<meta name="robots" content="noindex">
+<title>Prompt Lab - UI Issues Tracker</title>
 <style>
   @font-face {
     font-family: 'Outfit';
@@ -277,9 +259,9 @@
     padding: .1rem .42rem;
     border-radius: 999px;
   }
-  .card-sev-P1 { color: #fff; background: var(--red); }
-  .card-sev-P2 { color: var(--amber); background: var(--amber-soft); border: 1px solid var(--amber-line); }
-  .card-sev-P3 { color: var(--text-muted); background: var(--gray-soft); border: 1px solid var(--gray-line); }
+  .card-sev-crit { color: #fff; background: var(--red); }
+  .card-sev-med { color: var(--amber); background: var(--amber-soft); border: 1px solid var(--amber-line); }
+  .card-sev-low { color: var(--text-muted); background: var(--gray-soft); border: 1px solid var(--gray-line); }
   .card-title { font-size: .9rem; font-weight: 500; line-height: 1.45; }
   .card-detail {
     display: none;
@@ -351,7 +333,6 @@
   }
   .form-grid { display: grid; grid-template-columns: 1fr 1fr; gap: .75rem; }
   .form-grid .full { grid-column: 1 / -1; }
-  .form-field { display: flex; flex-direction: column; gap: .25rem; }
   .form-field label {
     display: block;
     font-family: var(--mono);
@@ -438,14 +419,19 @@
 </head>
 <body>
 <a class="skip-link" href="#main">Skip to content</a>
-<nav class="os-nav" id="navBar" aria-label="Prompt Lab"></nav>
+<nav class="os-nav" aria-label="Prompt Lab">
+  <a href="./index.html">Home</a>
+  <a href="./setup.html">Setup</a>
+  <a href="./guide.html">Guide</a>
+  <a href="./privacy.html">Privacy</a>
+</nav>
 
-<main id="main" data-last-verified="2026-03-22">
+<main id="main">
 <div class="wrap">
   <header>
-    <div class="eyebrow" id="eyebrow"></div>
+    <div class="eyebrow">Prompt Lab &middot; UI Audit Tracker &middot; Updated 2026-03-18</div>
     <h1>Active UI Issues</h1>
-    <p class="subtitle" id="subtitle"></p>
+    <p class="subtitle">Current-state tracker for Prompt Lab's extension and shared workbench UI. Statuses below were refreshed against the current working tree; the prior snapshot is preserved in the archive.</p>
     <div class="stats" id="stats">
       <div class="stat"><span class="stat-dot dot-done"></span> <span id="stat-done">0</span> verified fixed</div>
       <div class="stat"><span class="stat-dot dot-partial"></span> <span id="stat-partial">0</span> follow-up</div>
@@ -454,15 +440,314 @@
       <div class="stat" style="color:var(--text-muted)"><span id="stat-total">0</span> tracked</div>
     </div>
   </header>
-  <div class="filter-bar" role="group" aria-label="Filter issues" id="filterBar"></div>
-  <div id="groups"></div>
+
+  <div class="filter-bar" role="group" aria-label="Filter issues">
+    <span class="label">Show:</span>
+    <button class="fbtn active" data-filter="all">All</button>
+    <button class="fbtn" data-filter="open">Open</button>
+    <button class="fbtn" data-filter="partial">Follow-up</button>
+    <button class="fbtn" data-filter="deferred">Deferred</button>
+    <button class="fbtn" data-filter="global">Global</button>
+    <button class="fbtn" data-filter="create">Create</button>
+    <button class="fbtn" data-filter="library">Library</button>
+    <button class="fbtn" data-filter="experiments">Experiments</button>
+    <button class="fbtn" data-filter="connection">Connection</button>
+    <button class="fbtn" data-filter="composer">Composer</button>
+  </div>
+
+  <section class="issue-group open" data-status="done">
+    <button class="group-toggle" type="button" aria-expanded="true">
+      <span>Verified Fixed (<span class="g-count">10</span>)</span>
+      <span style="display:flex;align-items:center;gap:.5rem"><span class="badge badge-done g-count-badge">10</span><span class="chev">&rsaquo;</span></span>
+    </button>
+    <div class="group-body">
+      <div class="card-grid">
+        <div class="issue-card" tabindex="0" data-surface="global">
+          <div class="card-top"><span class="card-area">Navigation</span><span class="status status-done">Fixed</span></div>
+          <div class="card-title">Primary workspace navigation no longer gives every legacy surface equal weight</div>
+          <div class="card-expand-hint">click to expand</div>
+          <dl class="card-detail">
+            <dt>Verified state</dt><dd>The shell now centers three primary workspaces and moves secondary utilities into a separate, lower-weight control strip.</dd>
+            <dt>Location</dt><dd><code>App.jsx:320-341</code></dd>
+            <dt>What changed</dt><dd>Create, Library, and Experiments are now the primary tabs, while Build and Notebook are treated as utilities instead of equal peers.</dd>
+          </dl>
+        </div>
+
+        <div class="issue-card" tabindex="0" data-surface="create">
+          <div class="card-top"><span class="card-area">Layout</span><span class="status status-done">Fixed</span></div>
+          <div class="card-title">Create layout controls now behave like layout preferences instead of pseudo-navigation</div>
+          <div class="card-expand-hint">click to expand</div>
+          <dl class="card-detail">
+            <dt>Verified state</dt><dd>The old editor/library/focus shell choreography was reduced to clear layout choices inside Create.</dd>
+            <dt>Location</dt><dd><code>App.jsx:149-157</code>, <code>App.jsx:357-364</code></dd>
+            <dt>What changed</dt><dd>Users now pick between Focus and Dual Pane, while Library is promoted to its own section instead of acting like a layout toggle.</dd>
+          </dl>
+        </div>
+
+        <div class="issue-card" tabindex="0" data-surface="create">
+          <div class="card-top"><span class="card-area">Save flow</span><span class="status status-done">Fixed</span></div>
+          <div class="card-title">Save metadata no longer interrupts the Create flow inline</div>
+          <div class="card-expand-hint">click to expand</div>
+          <dl class="card-detail">
+            <dt>Verified state</dt><dd>Save details now live in a dedicated side panel that keeps the editor and generated output visible in the background.</dd>
+            <dt>Location</dt><dd><code>App.jsx:786-860</code></dd>
+            <dt>What changed</dt><dd>Title, collection, and tags are handled in a separate save surface instead of being inserted inline beneath the output stack.</dd>
+          </dl>
+        </div>
+
+        <div class="issue-card" tabindex="0" data-surface="create">
+          <div class="card-top"><span class="card-area">Results</span><span class="status status-done">Fixed</span></div>
+          <div class="card-title">Create results no longer force improved output, diff, variants, and notes into one vertical stack</div>
+          <div class="card-expand-hint">click to expand</div>
+          <dl class="card-detail">
+            <dt>Verified state</dt><dd>The result surface now uses tabs for Improved, Diff, Variants, and Notes, which makes comparison and review materially easier to scan.</dd>
+            <dt>Location</dt><dd><code>App.jsx:159-165</code>, <code>App.jsx:528-630</code></dd>
+            <dt>What changed</dt><dd>Output comparison moved from stacked sections and toggle links into a dedicated tabbed panel with scoped actions like Preview and Use variant.</dd>
+          </dl>
+        </div>
+
+        <div class="issue-card" tabindex="0" data-surface="create">
+          <div class="card-top"><span class="card-area">Recovery</span><span class="status status-done">Fixed</span></div>
+          <div class="card-title">Create error handling now presents compact recovery actions instead of a heavy alert block</div>
+          <div class="card-expand-hint">click to expand</div>
+          <dl class="card-detail">
+            <dt>Verified state</dt><dd>Error feedback is now framed as a recovery card with next steps and direct action buttons like Try Again or Open Provider Settings.</dd>
+            <dt>Location</dt><dd><code>App.jsx:554-586</code></dd>
+            <dt>What changed</dt><dd>Provider-response failures no longer dominate the page visually while offering weak guidance. The state is now lighter and more actionable.</dd>
+          </dl>
+        </div>
+
+        <div class="issue-card" tabindex="0" data-surface="create">
+          <div class="card-top"><span class="card-area">Discoverability</span><span class="status status-done">Fixed</span></div>
+          <div class="card-title">Frequently Used no longer competes with the result area</div>
+          <div class="card-expand-hint">click to expand</div>
+          <dl class="card-detail">
+            <dt>Verified state</dt><dd>Frequently Used now lives in its own collapsible helper section above authoring instead of beneath generated results.</dd>
+            <dt>Location</dt><dd><code>App.jsx:416-454</code></dd>
+            <dt>What changed</dt><dd>Reuse helpers are now positioned as authoring support, with explicit Copy and Load actions and clearer expectations around what each action does.</dd>
+          </dl>
+        </div>
+
+        <div class="issue-card" tabindex="0" data-surface="library">
+          <div class="card-top"><span class="card-area">Action overload</span><span class="status status-done">Fixed</span></div>
+          <div class="card-title">Library rows no longer expose the full action set inline</div>
+          <div class="card-expand-hint">click to expand</div>
+          <dl class="card-detail">
+            <dt>Verified state</dt><dd>Primary row actions are constrained to Use, Copy, and More, with destructive or low-frequency actions moved behind the expanded state.</dd>
+            <dt>Location</dt><dd><code>LibraryPanel.jsx:128-171</code>, <code>LibraryPanel.jsx:221-228</code></dd>
+            <dt>What changed</dt><dd>The row is now materially calmer to scan, and Delete is no longer adjacent to the highest-frequency actions.</dd>
+          </dl>
+        </div>
+
+        <div class="issue-card" tabindex="0" data-surface="experiments">
+          <div class="card-top"><span class="card-area">Evaluation</span><span class="status status-done">Fixed</span></div>
+          <div class="card-title">Winner selection is now inline instead of being primarily modal-driven</div>
+          <div class="card-expand-hint">click to expand</div>
+          <dl class="card-detail">
+            <dt>Verified state</dt><dd>A/B evaluation now exposes direct per-variant winner actions inside the main experiment workflow.</dd>
+            <dt>Location</dt><dd><code>ABTestTab.jsx:63-69</code></dd>
+            <dt>What changed</dt><dd>Picking a winner is now a low-friction inline step rather than a secondary modal-heavy interruption.</dd>
+          </dl>
+        </div>
+
+        <div class="issue-card" tabindex="0" data-surface="composer">
+          <div class="card-top"><span class="card-area">Interaction</span><span class="status status-done">Fixed</span></div>
+          <div class="card-title">Composer no longer teaches drag-and-drop as the only obvious ordering model</div>
+          <div class="card-expand-hint">click to expand</div>
+          <dl class="card-detail">
+            <dt>Verified state</dt><dd>Library rows now use explicit Add buttons, and composer blocks expose Move Up and Move Down controls alongside optional drag reordering.</dd>
+            <dt>Location</dt><dd><code>ComposerTab.jsx:11-18</code>, <code>ComposerTab.jsx:29-47</code>, <code>ComposerTab.jsx:139-166</code></dd>
+            <dt>What changed</dt><dd>Keyboard-friendly sequencing is now first-class instead of being subordinate to a drag-canvas mental model.</dd>
+          </dl>
+        </div>
+
+        <div class="issue-card" tabindex="0" data-surface="connection">
+          <div class="card-top"><span class="card-area">Setup</span><span class="status status-done">Fixed</span></div>
+          <div class="card-title">Provider setup no longer misrepresents supported providers</div>
+          <div class="card-expand-hint">click to expand</div>
+          <dl class="card-detail">
+            <dt>Verified state</dt><dd>Desktop settings and extension options now expose Anthropic, OpenAI, Gemini, OpenRouter, and Ollama with provider-specific fields.</dd>
+            <dt>Location</dt><dd><code>DesktopSettingsModal.jsx:172-349</code>, <code>public/options.html:220-339</code>, <code>public/options.js:1-160</code></dd>
+            <dt>What changed</dt><dd>The UI now matches the actual provider surface instead of implying a single-provider onboarding model.</dd>
+          </dl>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <section class="issue-group open" data-status="open">
+    <button class="group-toggle" type="button" aria-expanded="true">
+      <span>Open (<span class="g-count">0</span>)</span>
+      <span style="display:flex;align-items:center;gap:.5rem"><span class="badge badge-open g-count-badge">0</span><span class="chev">&rsaquo;</span></span>
+    </button>
+    <div class="group-body">
+      <p style="padding:.3rem .2rem;color:var(--text-muted);font-size:.88rem;">No active implementation issues are currently tracked as open. Remaining items are follow-up validation or deferred structural work.</p>
+    </div>
+  </section>
+
+  <section class="issue-group open" data-status="partial">
+    <button class="group-toggle" type="button" aria-expanded="true">
+      <span>Needs Verification / Follow-up (<span class="g-count">7</span>)</span>
+      <span style="display:flex;align-items:center;gap:.5rem"><span class="badge badge-partial g-count-badge">7</span><span class="chev">&rsaquo;</span></span>
+    </button>
+    <div class="group-body">
+      <div class="card-grid">
+        <div class="issue-card" tabindex="0" data-surface="create">
+          <div class="card-top"><span class="card-area">Workflow</span><span class="status status-partial">Follow-up</span></div>
+          <div class="card-title">Create is clearer, but the authoring surface above results is still dense and sequentially heavy</div>
+          <div class="card-expand-hint">click to expand</div>
+          <dl class="card-detail">
+            <dt>Why follow-up</dt><dd>The result area, error state, and helper placement are improved, but input, prompt quality, lint, action controls, and run history still read as one dense authoring sequence.</dd>
+            <dt>Location</dt><dd><code>App.jsx:395-735</code></dd>
+          </dl>
+        </div>
+
+        <div class="issue-card" tabindex="0" data-surface="library">
+          <div class="card-top"><span class="card-area">Detail view</span><span class="status status-partial">Follow-up</span></div>
+          <div class="card-title">Library detail still expands inline, so the list can still jitter under heavy inspection</div>
+          <div class="card-expand-hint">click to expand</div>
+          <dl class="card-detail">
+            <dt>Why follow-up</dt><dd>Version history now has a stable modal path, but prompt detail, notes, variants, and several actions still live inside expanding rows.</dd>
+            <dt>Location</dt><dd><code>LibraryPanel.jsx:161-230</code>, <code>VersionDiffModal.jsx:99-195</code></dd>
+          </dl>
+        </div>
+
+        <div class="issue-card" tabindex="0" data-surface="experiments">
+          <div class="card-top"><span class="card-area">Flow break</span><span class="status status-partial">Follow-up</span></div>
+          <div class="card-title">Experiments and history are better instrumented, but still split across two surfaces</div>
+          <div class="card-expand-hint">click to expand</div>
+          <dl class="card-detail">
+            <dt>Why follow-up</dt><dd>A/B now includes inline winner picking and local history, but the broader run-analysis loop still requires moving into the separate Run History panel.</dd>
+            <dt>Location</dt><dd><code>ABTestTab.jsx:101-153</code>, <code>RunTimelinePanel.jsx:242-360</code></dd>
+          </dl>
+        </div>
+
+        <div class="issue-card" tabindex="0" data-surface="global">
+          <div class="card-top"><span class="card-area">Accessibility</span><span class="status status-partial">Follow-up</span></div>
+          <div class="card-title">Accessibility debt is reduced, but icon labeling and light-mode background parity still need cleanup</div>
+          <div class="card-expand-hint">click to expand</div>
+          <dl class="card-detail">
+            <dt>Why follow-up</dt><dd>Tabs are larger and semantic, but several header icon buttons remain unlabeled and the global stylesheet still hardcodes a dark body background.</dd>
+            <dt>Location</dt><dd><code>App.jsx:309-315</code>, <code>index.css:5-8</code></dd>
+          </dl>
+        </div>
+
+        <div class="issue-card" tabindex="0" data-surface="create">
+          <div class="card-top"><span class="card-area">Validation</span><span class="status status-partial">Follow-up</span></div>
+          <div class="card-title">Two-tier save needs workflow validation with heavy prompt iterators</div>
+          <div class="card-expand-hint">click to expand</div>
+          <dl class="card-detail">
+            <dt>Why follow-up</dt><dd>The redesigned save path is directionally better, but the balance between fast save and detailed save should be verified with real usage.</dd>
+            <dt>Source</dt><dd><code>revised-plb-redesign-spec.html</code> Create section</dd>
+          </dl>
+        </div>
+
+        <div class="issue-card" tabindex="0" data-surface="create">
+          <div class="card-top"><span class="card-area">Validation</span><span class="status status-partial">Follow-up</span></div>
+          <div class="card-title">Create Library drawer actions need user testing</div>
+          <div class="card-expand-hint">click to expand</div>
+          <dl class="card-detail">
+            <dt>Why follow-up</dt><dd>Insert, Load, Preview, and Open in Library is a stronger model, but it needs validation for speed and clarity inside the narrow extension panel.</dd>
+            <dt>Source</dt><dd><code>revised-plb-redesign-spec.html</code> Library drawer from Create</dd>
+          </dl>
+        </div>
+
+        <div class="issue-card" tabindex="0" data-surface="experiments">
+          <div class="card-top"><span class="card-area">Validation</span><span class="status status-partial">Follow-up</span></div>
+          <div class="card-title">Auto-save metadata plus explicit outcome save should be tested for clarity</div>
+          <div class="card-expand-hint">click to expand</div>
+          <dl class="card-detail">
+            <dt>Why follow-up</dt><dd>The revised experiments contract is stronger, but users may still need clearer cues around what is saved automatically versus what remains pending.</dd>
+            <dt>Source</dt><dd><code>revised-plb-redesign-spec.html</code> Experiments screen</dd>
+          </dl>
+        </div>
+
+        <div class="issue-card" tabindex="0" data-surface="composer">
+          <div class="card-top"><span class="card-area">Validation</span><span class="status status-partial">Follow-up</span></div>
+          <div class="card-title">Composer overlay entry points should be checked across extension and desktop shells</div>
+          <div class="card-expand-hint">click to expand</div>
+          <dl class="card-detail">
+            <dt>Why follow-up</dt><dd>Composer-as-utility is the right IA call, but its exact presentation may need shell-specific tuning.</dd>
+            <dt>Source</dt><dd><code>revised-plb-redesign-spec.html</code> Composer section</dd>
+          </dl>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <section class="issue-group" data-status="deferred">
+    <button class="group-toggle" type="button" aria-expanded="false">
+      <span>Deferred / Planned (<span class="g-count">4</span>)</span>
+      <span style="display:flex;align-items:center;gap:.5rem"><span class="badge badge-deferred g-count-badge">4</span><span class="chev">&rsaquo;</span></span>
+    </button>
+    <div class="group-body">
+      <div class="card-grid">
+        <div class="issue-card" tabindex="0" data-surface="global">
+          <div class="card-top"><span class="card-area">Accessibility</span><span class="status status-deferred">Deferred</span></div>
+          <div class="card-title">Full WCAG AA contrast audit after the visual system lands</div>
+          <div class="card-expand-hint">click to expand</div>
+          <dl class="card-detail">
+            <dt>Why deferred</dt><dd>Still required, but best executed once the revised typography, spacing, and token system are in place.</dd>
+            <dt>Source</dt><dd>Redesign spec Phase 4 accessibility gate</dd>
+          </dl>
+        </div>
+
+        <div class="issue-card" tabindex="0" data-surface="connection">
+          <div class="card-top"><span class="card-area">Architecture</span><span class="status status-deferred">Deferred</span></div>
+          <div class="card-title">Shared Connection Center implementation across onboarding, settings, and Options</div>
+          <div class="card-expand-hint">click to expand</div>
+          <dl class="card-detail">
+            <dt>Why deferred</dt><dd>The mental model must align early, but a fully shared component can follow after workflow correctness is settled.</dd>
+            <dt>Source</dt><dd>Redesign spec Connection Center and rollout notes</dd>
+          </dl>
+        </div>
+
+        <div class="issue-card" tabindex="0" data-surface="global">
+          <div class="card-top"><span class="card-area">Typography</span><span class="status status-deferred">Deferred</span></div>
+          <div class="card-title">Reduce micro-label density and raise the global type scale</div>
+          <div class="card-expand-hint">click to expand</div>
+          <dl class="card-detail">
+            <dt>Why deferred</dt><dd>This is high-value polish and accessibility work, but it belongs after the structural workflow changes are in place.</dd>
+            <dt>Source</dt><dd>Redesign spec Visual Direction Phase 4</dd>
+          </dl>
+        </div>
+
+        <div class="issue-card" tabindex="0" data-surface="global">
+          <div class="card-top"><span class="card-area">Responsive</span><span class="status status-deferred">Deferred</span></div>
+          <div class="card-title">Panel width and bottom-sheet tuning for narrow extension shells</div>
+          <div class="card-expand-hint">click to expand</div>
+          <dl class="card-detail">
+            <dt>Why deferred</dt><dd>Panel governance is defined, but breakpoint-specific tuning is better done once the new panel surfaces exist.</dd>
+            <dt>Source</dt><dd>Redesign spec Panel Governance section</dd>
+          </dl>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <section class="issue-group" id="userGroup" style="display:none" data-status="open">
+    <button class="group-toggle" type="button" aria-expanded="false">
+      <span id="userGroupTitle">User Submitted (0)</span>
+      <span style="display:flex;align-items:center;gap:.5rem"><span class="badge badge-open" id="userBadge">0</span><span class="chev">&rsaquo;</span></span>
+    </button>
+    <div class="group-body">
+      <div class="card-grid" id="userBody"></div>
+    </div>
+  </section>
+
   <div class="form-wrap">
     <div class="form-header">Report a UI Issue</div>
     <form class="form-panel" id="issueForm">
       <div class="form-grid">
         <div class="form-field">
           <label for="f-area">Area</label>
-          <select id="f-area" required></select>
+          <select id="f-area" required>
+            <option value="">Select...</option>
+            <option>Navigation</option><option>Workflow</option><option>Layout</option>
+            <option>Save flow</option><option>Discoverability</option><option>Action overload</option>
+            <option>Setup</option><option>Evaluation</option><option>Interaction</option>
+            <option>Accessibility</option><option>Responsive</option><option>Other</option>
+          </select>
         </div>
         <div class="form-field">
           <label for="f-surface">Surface</label>
@@ -497,596 +782,111 @@
   </div>
 </div>
 </main>
-<footer class="os-footer" id="footerEl"></footer>
 
-<!--
-  ═══════════════════════════════════════════════════════════════
-  ISSUE DATA — This is the single source of truth.
-  Agents: edit this JSON block to add, resolve, or defer issues.
-  Schema per entry:
-    id:           string  — zero-padded 3-digit sequential ID
-    severity:     string  — "P1" | "P2" | "P3"
-    status:       string  — "open" | "partial" | "done" | "deferred"
-    area:         string  — category tag (e.g. "Navigation", "Layout")
-    tool:         string  — surface filter tag (e.g. "global", "create")
-    title:        string  — short issue title
-    impact:       string  — user impact / verified state description
-    fix:          string  — what changed or why follow-up is needed
-    verification: string  — how to verify the fix or current state
-    location:     string  — file/component/line reference
-    notes:        string  — additional context (optional)
-    added:        string  — ISO date when issue was opened
-    resolved:     string  — ISO date when resolved (optional)
-
-  Total issues: 22
-    done: 10 | partial: 8 | open: 0 | deferred: 4
-  ═══════════════════════════════════════════════════════════════
--->
-<script type="application/json" id="issue-data">
-{
-  "project": "Prompt Lab",
-  "subtitle": "Current-state tracker for Prompt Lab\u2019s extension and shared workbench UI. Statuses below were refreshed against the current working tree; the prior snapshot is preserved in the archive.",
-  "navLinks": [
-    { "label": "Home", "href": "./index.html" },
-    { "label": "Setup", "href": "./setup.html" },
-    { "label": "Guide", "href": "./guide.html" },
-    { "label": "Privacy", "href": "./privacy.html" },
-    { "label": "Redesign Spec \u2192", "href": "../revised-plb-redesign-spec.html", "class": "bridge" }
-  ],
-  "areaOptions": [
-    "Accessibility", "Action overload", "Architecture", "Detail view",
-    "Discoverability", "Evaluation", "Flow break", "Interaction",
-    "Layout", "Navigation", "Recovery", "Responsive", "Results",
-    "Save flow", "Setup", "Typography", "Validation", "Workflow", "Other"
-  ],
-  "toolFilters": [
-    { "key": "global", "label": "Global" },
-    { "key": "create", "label": "Create" },
-    { "key": "library", "label": "Library" },
-    { "key": "experiments", "label": "Experiments" },
-    { "key": "connection", "label": "Connection" },
-    { "key": "composer", "label": "Composer" }
-  ],
-  "storageKey": "plb-ui-issues-user",
-  "issues": [
-    {
-      "id": "001",
-      "severity": "P2",
-      "status": "done",
-      "area": "Navigation",
-      "tool": "global",
-      "title": "Primary workspace navigation no longer gives every legacy surface equal weight",
-      "impact": "The shell now centers three primary workspaces and moves secondary utilities into a separate, lower-weight control strip.",
-      "fix": "Create, Library, and Experiments are now the primary tabs, while Build and Notebook are treated as utilities instead of equal peers.",
-      "location": "App.jsx:320-341",
-      "added": "2026-03-15",
-      "resolved": "2026-03-18"
-    },
-    {
-      "id": "002",
-      "severity": "P2",
-      "status": "done",
-      "area": "Layout",
-      "tool": "create",
-      "title": "Create layout controls now behave like layout preferences instead of pseudo-navigation",
-      "impact": "The old editor/library/focus shell choreography was reduced to clear layout choices inside Create.",
-      "fix": "Users now pick between Focus and Dual Pane, while Library is promoted to its own section instead of acting like a layout toggle.",
-      "location": "App.jsx:149-157, App.jsx:357-364",
-      "added": "2026-03-15",
-      "resolved": "2026-03-18"
-    },
-    {
-      "id": "003",
-      "severity": "P2",
-      "status": "done",
-      "area": "Save flow",
-      "tool": "create",
-      "title": "Save metadata no longer interrupts the Create flow inline",
-      "impact": "Save details now live in a dedicated side panel that keeps the editor and generated output visible in the background.",
-      "fix": "Title, collection, and tags are handled in a separate save surface instead of being inserted inline beneath the output stack.",
-      "location": "App.jsx:786-860",
-      "added": "2026-03-15",
-      "resolved": "2026-03-18"
-    },
-    {
-      "id": "004",
-      "severity": "P2",
-      "status": "done",
-      "area": "Results",
-      "tool": "create",
-      "title": "Create results no longer force improved output, diff, variants, and notes into one vertical stack",
-      "impact": "The result surface now uses tabs for Improved, Diff, Variants, and Notes, which makes comparison and review materially easier to scan.",
-      "fix": "Output comparison moved from stacked sections and toggle links into a dedicated tabbed panel with scoped actions like Preview and Use variant.",
-      "location": "App.jsx:159-165, App.jsx:528-630",
-      "added": "2026-03-15",
-      "resolved": "2026-03-18"
-    },
-    {
-      "id": "005",
-      "severity": "P2",
-      "status": "done",
-      "area": "Recovery",
-      "tool": "create",
-      "title": "Create error handling now presents compact recovery actions instead of a heavy alert block",
-      "impact": "Error feedback is now framed as a recovery card with next steps and direct action buttons like Try Again or Open Provider Settings.",
-      "fix": "Provider-response failures no longer dominate the page visually while offering weak guidance. The state is now lighter and more actionable.",
-      "location": "App.jsx:554-586",
-      "added": "2026-03-15",
-      "resolved": "2026-03-18"
-    },
-    {
-      "id": "006",
-      "severity": "P2",
-      "status": "done",
-      "area": "Discoverability",
-      "tool": "create",
-      "title": "Frequently Used no longer competes with the result area",
-      "impact": "Frequently Used now lives in its own collapsible helper section above authoring instead of beneath generated results.",
-      "fix": "Reuse helpers are now positioned as authoring support, with explicit Copy and Load actions and clearer expectations around what each action does.",
-      "location": "App.jsx:416-454",
-      "added": "2026-03-15",
-      "resolved": "2026-03-18"
-    },
-    {
-      "id": "007",
-      "severity": "P2",
-      "status": "done",
-      "area": "Action overload",
-      "tool": "library",
-      "title": "Library rows no longer expose the full action set inline",
-      "impact": "Primary row actions are constrained to Use, Copy, and More, with destructive or low-frequency actions moved behind the expanded state.",
-      "fix": "The row is now materially calmer to scan, and Delete is no longer adjacent to the highest-frequency actions.",
-      "location": "LibraryPanel.jsx:128-171, LibraryPanel.jsx:221-228",
-      "added": "2026-03-15",
-      "resolved": "2026-03-18"
-    },
-    {
-      "id": "008",
-      "severity": "P2",
-      "status": "done",
-      "area": "Evaluation",
-      "tool": "experiments",
-      "title": "Winner selection is now inline instead of being primarily modal-driven",
-      "impact": "A/B evaluation now exposes direct per-variant winner actions inside the main experiment workflow.",
-      "fix": "Picking a winner is now a low-friction inline step rather than a secondary modal-heavy interruption.",
-      "location": "ABTestTab.jsx:63-69",
-      "added": "2026-03-15",
-      "resolved": "2026-03-18"
-    },
-    {
-      "id": "009",
-      "severity": "P2",
-      "status": "done",
-      "area": "Interaction",
-      "tool": "composer",
-      "title": "Composer no longer teaches drag-and-drop as the only obvious ordering model",
-      "impact": "Library rows now use explicit Add buttons, and composer blocks expose Move Up and Move Down controls alongside optional drag reordering.",
-      "fix": "Keyboard-friendly sequencing is now first-class instead of being subordinate to a drag-canvas mental model.",
-      "location": "ComposerTab.jsx:11-18, ComposerTab.jsx:29-47, ComposerTab.jsx:139-166",
-      "added": "2026-03-15",
-      "resolved": "2026-03-18"
-    },
-    {
-      "id": "010",
-      "severity": "P2",
-      "status": "done",
-      "area": "Setup",
-      "tool": "connection",
-      "title": "Provider setup no longer misrepresents supported providers",
-      "impact": "Desktop settings and extension options now expose Anthropic, OpenAI, Gemini, OpenRouter, and Ollama with provider-specific fields.",
-      "fix": "The UI now matches the actual provider surface instead of implying a single-provider onboarding model.",
-      "location": "DesktopSettingsModal.jsx:172-349, public/options.html:220-339, public/options.js:1-160",
-      "added": "2026-03-15",
-      "resolved": "2026-03-18"
-    },
-    {
-      "id": "011",
-      "severity": "P2",
-      "status": "partial",
-      "area": "Workflow",
-      "tool": "create",
-      "title": "Create is clearer, but the authoring surface above results is still dense and sequentially heavy",
-      "impact": "The result area, error state, and helper placement are improved, but input, prompt quality, lint, action controls, and run history still read as one dense authoring sequence.",
-      "location": "App.jsx:395-735",
-      "added": "2026-03-15"
-    },
-    {
-      "id": "012",
-      "severity": "P2",
-      "status": "partial",
-      "area": "Detail view",
-      "tool": "library",
-      "title": "Library detail still expands inline, so the list can still jitter under heavy inspection",
-      "impact": "Version history now has a stable modal path, but prompt detail, notes, variants, and several actions still live inside expanding rows.",
-      "location": "LibraryPanel.jsx:161-230, VersionDiffModal.jsx:99-195",
-      "added": "2026-03-15"
-    },
-    {
-      "id": "013",
-      "severity": "P2",
-      "status": "partial",
-      "area": "Flow break",
-      "tool": "experiments",
-      "title": "Experiments and history are better instrumented, but still split across two surfaces",
-      "impact": "A/B now includes inline winner picking and local history, but the broader run-analysis loop still requires moving into the separate Run History panel.",
-      "location": "ABTestTab.jsx:101-153, RunTimelinePanel.jsx:242-360",
-      "added": "2026-03-15"
-    },
-    {
-      "id": "014",
-      "severity": "P2",
-      "status": "partial",
-      "area": "Accessibility",
-      "tool": "global",
-      "title": "Accessibility debt is reduced, but icon labeling and light-mode background parity still need cleanup",
-      "impact": "Tabs are larger and semantic, but several header icon buttons remain unlabeled and the global stylesheet still hardcodes a dark body background.",
-      "location": "App.jsx:309-315, index.css:5-8",
-      "added": "2026-03-15"
-    },
-    {
-      "id": "015",
-      "severity": "P2",
-      "status": "partial",
-      "area": "Validation",
-      "tool": "create",
-      "title": "Two-tier save needs workflow validation with heavy prompt iterators",
-      "impact": "The redesigned save path is directionally better, but the balance between fast save and detailed save should be verified with real usage.",
-      "location": "revised-plb-redesign-spec.html (Create section)",
-      "added": "2026-03-15"
-    },
-    {
-      "id": "016",
-      "severity": "P2",
-      "status": "partial",
-      "area": "Validation",
-      "tool": "create",
-      "title": "Create Library drawer actions need user testing",
-      "impact": "Insert, Load, Preview, and Open in Library is a stronger model, but it needs validation for speed and clarity inside the narrow extension panel.",
-      "location": "revised-plb-redesign-spec.html (Library drawer from Create)",
-      "added": "2026-03-15"
-    },
-    {
-      "id": "017",
-      "severity": "P2",
-      "status": "partial",
-      "area": "Validation",
-      "tool": "experiments",
-      "title": "Auto-save metadata plus explicit outcome save should be tested for clarity",
-      "impact": "The revised experiments contract is stronger, but users may still need clearer cues around what is saved automatically versus what remains pending.",
-      "location": "revised-plb-redesign-spec.html (Experiments screen)",
-      "added": "2026-03-15"
-    },
-    {
-      "id": "018",
-      "severity": "P2",
-      "status": "partial",
-      "area": "Validation",
-      "tool": "composer",
-      "title": "Composer overlay entry points should be checked across extension and desktop shells",
-      "impact": "Composer-as-utility is the right IA call, but its exact presentation may need shell-specific tuning.",
-      "location": "revised-plb-redesign-spec.html (Composer section)",
-      "added": "2026-03-15"
-    },
-    {
-      "id": "019",
-      "severity": "P3",
-      "status": "deferred",
-      "area": "Accessibility",
-      "tool": "global",
-      "title": "Full WCAG AA contrast audit after the visual system lands",
-      "impact": "Still required, but best executed once the revised typography, spacing, and token system are in place.",
-      "notes": "Redesign spec Phase 4 accessibility gate",
-      "added": "2026-03-15"
-    },
-    {
-      "id": "020",
-      "severity": "P3",
-      "status": "deferred",
-      "area": "Architecture",
-      "tool": "connection",
-      "title": "Shared Connection Center implementation across onboarding, settings, and Options",
-      "impact": "The mental model must align early, but a fully shared component can follow after workflow correctness is settled.",
-      "notes": "Redesign spec Connection Center and rollout notes",
-      "added": "2026-03-15"
-    },
-    {
-      "id": "021",
-      "severity": "P3",
-      "status": "deferred",
-      "area": "Typography",
-      "tool": "global",
-      "title": "Reduce micro-label density and raise the global type scale",
-      "impact": "This is high-value polish and accessibility work, but it belongs after the structural workflow changes are in place.",
-      "notes": "Redesign spec Visual Direction Phase 4",
-      "added": "2026-03-15"
-    },
-    {
-      "id": "022",
-      "severity": "P3",
-      "status": "deferred",
-      "area": "Responsive",
-      "tool": "global",
-      "title": "Panel width and bottom-sheet tuning for narrow extension shells",
-      "impact": "Panel governance is defined, but breakpoint-specific tuning is better done once the new panel surfaces exist.",
-      "notes": "Redesign spec Panel Governance section",
-      "added": "2026-03-15"
-    }
-  ]
-}
-</script>
+<footer class="os-footer">
+  Prompt Lab &middot; UI Issues Tracker &middot; Updated 2026-03-18 &middot;
+  <a href="./index.html">Back to Prompt Lab</a>
+</footer>
 
 <script>
-(function() {
-  'use strict';
+(function(){
+  var surfaceFilters = ['global', 'create', 'library', 'experiments', 'connection', 'composer'];
 
-  var dataEl = document.getElementById('issue-data');
-  var config = JSON.parse(dataEl.textContent);
-  var issues = config.issues || [];
-
-  // Escape HTML
-  function esc(s) {
-    return String(s || '').replace(/[&<>"']/g, function(c) {
-      return { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c];
+  document.querySelectorAll('.group-toggle').forEach(function(btn){
+    btn.addEventListener('click', function(){
+      var g = btn.closest('.issue-group');
+      var open = g.classList.toggle('open');
+      btn.setAttribute('aria-expanded', String(open));
     });
-  }
-
-  // Config: header
-  document.getElementById('eyebrow').textContent = config.project + ' \u00b7 UI Audit Tracker \u00b7 Updated ' + (document.getElementById('main').getAttribute('data-last-verified') || '');
-  document.getElementById('subtitle').textContent = config.subtitle || '';
-  document.title = config.project + ' \u2014 UI Issues Tracker';
-
-  // Config: nav
-  var navBar = document.getElementById('navBar');
-  (config.navLinks || []).forEach(function(link) {
-    var a = document.createElement('a');
-    a.href = link.href;
-    a.textContent = link.label;
-    if (link.active) a.className = 'active';
-    if (link['class']) a.className = (a.className ? a.className + ' ' : '') + link['class'];
-    navBar.appendChild(a);
   });
 
-  // Config: area options in form
-  var areaSelect = document.getElementById('f-area');
-  var opt0 = document.createElement('option');
-  opt0.value = '';
-  opt0.textContent = 'Select...';
-  areaSelect.appendChild(opt0);
-  (config.areaOptions || []).forEach(function(area) {
-    var o = document.createElement('option');
-    o.value = area;
-    o.textContent = area;
-    areaSelect.appendChild(o);
+  document.querySelectorAll('.issue-card').forEach(function(card){
+    card.addEventListener('click', function(){ card.classList.toggle('expanded'); });
+    card.addEventListener('keydown', function(e){
+      if (e.key === 'Enter' || e.key === ' ') {
+        e.preventDefault();
+        card.classList.toggle('expanded');
+      }
+    });
   });
-
-  // Config: footer
-  document.getElementById('footerEl').innerHTML =
-    esc(config.project) + ' \u00b7 UI Issues Tracker \u00b7 Updated ' +
-    esc(document.getElementById('main').getAttribute('data-last-verified') || '') + ' \u00b7 ' +
-    '<a href="' + esc((config.navLinks || [{}])[0].href || './index.html') + '">Back to ' + esc(config.project) + '</a>';
-
-  // Group issues by status
-  var STATUS_ORDER = ['done', 'open', 'partial', 'deferred'];
-  var STATUS_LABELS = { done: 'Verified Fixed', open: 'Open', partial: 'Needs Verification / Follow-up', deferred: 'Deferred / Planned' };
-  var STATUS_BADGE = { done: 'badge-done', open: 'badge-open', partial: 'badge-partial', deferred: 'badge-deferred' };
-  var STATUS_CSS = { done: 'status-done', open: 'status-open', partial: 'status-partial', deferred: 'status-deferred' };
-  var STATUS_TEXT = { done: 'Fixed', open: 'Open', partial: 'Follow-up', deferred: 'Deferred' };
-
-  var grouped = {};
-  STATUS_ORDER.forEach(function(s) { grouped[s] = []; });
-  issues.forEach(function(issue) {
-    var s = issue.status || 'open';
-    if (!grouped[s]) grouped[s] = [];
-    grouped[s].push(issue);
-  });
-
-  // Build filter bar
-  var filterBar = document.getElementById('filterBar');
-  var allFilters = [
-    { key: 'all', label: 'All' },
-    { key: 'open', label: 'Open' },
-    { key: 'partial', label: 'Follow-up' },
-    { key: 'deferred', label: 'Deferred' }
-  ];
-  (config.toolFilters || []).forEach(function(tf) {
-    allFilters.push({ key: 'tool:' + tf.key, label: tf.label });
-  });
-
-  var spanLabel = document.createElement('span');
-  spanLabel.className = 'label';
-  spanLabel.textContent = 'Show:';
-  filterBar.appendChild(spanLabel);
 
   var activeFilter = 'all';
-  allFilters.forEach(function(f) {
-    var btn = document.createElement('button');
-    btn.className = 'fbtn' + (f.key === 'all' ? ' active' : '');
-    btn.setAttribute('data-filter', f.key);
-    btn.textContent = f.label;
-    btn.addEventListener('click', function() {
-      filterBar.querySelectorAll('.fbtn').forEach(function(b) { b.classList.remove('active'); });
+  document.querySelectorAll('.fbtn').forEach(function(btn){
+    btn.addEventListener('click', function(){
+      document.querySelectorAll('.fbtn').forEach(function(b){ b.classList.remove('active'); });
       btn.classList.add('active');
-      activeFilter = f.key;
+      activeFilter = btn.getAttribute('data-filter');
       applyFilter();
     });
-    filterBar.appendChild(btn);
   });
 
-  // Render issue card
-  function renderCard(issue) {
-    var card = document.createElement('div');
-    card.className = 'issue-card';
-    card.tabIndex = 0;
-    if (issue.tool) card.setAttribute('data-tool', issue.tool);
-
-    var statusClass = STATUS_CSS[issue.status] || 'status-open';
-    var statusText = STATUS_TEXT[issue.status] || issue.status;
-
-    var topRight = '<span class="status ' + statusClass + '">' + esc(statusText) + '</span>';
-    if (issue.severity && issue.status !== 'done') {
-      topRight = '<span class="card-sev card-sev-' + esc(issue.severity) + '">' + esc(issue.severity) + '</span>';
-    }
-
-    var detailParts = [];
-
-    // Status-specific primary label
-    if (issue.status === 'done') {
-      if (issue.impact) detailParts.push('<dt>Verified state</dt><dd>' + esc(issue.impact) + '</dd>');
-      if (issue.location) detailParts.push('<dt>Location</dt><dd><code>' + esc(issue.location) + '</code></dd>');
-      if (issue.fix) detailParts.push('<dt>What changed</dt><dd>' + esc(issue.fix) + '</dd>');
-    } else if (issue.status === 'partial') {
-      if (issue.impact) detailParts.push('<dt>Why follow-up</dt><dd>' + esc(issue.impact) + '</dd>');
-      if (issue.location) detailParts.push('<dt>Location</dt><dd><code>' + esc(issue.location) + '</code></dd>');
-    } else if (issue.status === 'deferred') {
-      if (issue.impact) detailParts.push('<dt>Why deferred</dt><dd>' + esc(issue.impact) + '</dd>');
-      if (issue.notes) detailParts.push('<dt>Source</dt><dd>' + esc(issue.notes) + '</dd>');
-    } else {
-      if (issue.impact) detailParts.push('<dt>Impact</dt><dd>' + esc(issue.impact) + '</dd>');
-      if (issue.location) detailParts.push('<dt>Location</dt><dd><code>' + esc(issue.location) + '</code></dd>');
-      if (issue.fix) detailParts.push('<dt>Fix</dt><dd>' + esc(issue.fix) + '</dd>');
-    }
-    if (issue.verification) detailParts.push('<dt>Verification</dt><dd>' + esc(issue.verification) + '</dd>');
-    if (issue.notes && issue.status !== 'deferred') detailParts.push('<dt>Notes</dt><dd>' + esc(issue.notes) + '</dd>');
-    if (issue.resolved) detailParts.push('<dt>Resolved</dt><dd>' + esc(issue.resolved) + '</dd>');
-
-    card.innerHTML =
-      '<div class="card-top"><span class="card-area">' + esc(issue.area || '') + '</span>' + topRight + '</div>' +
-      '<div class="card-title">' + esc(issue.title) + '</div>' +
-      '<div class="card-expand-hint">click to expand</div>' +
-      '<dl class="card-detail">' + detailParts.join('') + '</dl>';
-
-    card.addEventListener('click', function() { card.classList.toggle('expanded'); });
-    card.addEventListener('keydown', function(e) {
-      if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); card.classList.toggle('expanded'); }
-    });
-    return card;
-  }
-
-  // Render groups
-  var groupsEl = document.getElementById('groups');
-  STATUS_ORDER.forEach(function(status) {
-    var items = grouped[status];
-
-    var section = document.createElement('section');
-    section.className = 'issue-group' + (status === 'done' || status === 'open' || status === 'partial' ? ' open' : '');
-    section.setAttribute('data-status', status);
-
-    var expanded = status === 'done' || status === 'open' || status === 'partial';
-    var bodyContent = '';
-
-    if (items.length === 0 && status === 'open') {
-      bodyContent = '<p style="padding:.3rem .2rem;color:var(--text-muted);font-size:.88rem;">No active implementation issues are currently tracked as open. Remaining items are follow-up validation or deferred structural work.</p>';
-    } else if (items.length === 0) {
-      return;
-    } else {
-      bodyContent = '<div class="card-grid"></div>';
-    }
-
-    section.innerHTML =
-      '<button class="group-toggle" type="button" aria-expanded="' + expanded + '">' +
-        '<span>' + esc(STATUS_LABELS[status]) + ' (<span class="g-count">' + items.length + '</span>)</span>' +
-        '<span style="display:flex;align-items:center;gap:.5rem">' +
-          '<span class="badge ' + STATUS_BADGE[status] + ' g-count-badge">' + items.length + '</span>' +
-          '<span class="chev">&rsaquo;</span>' +
-        '</span>' +
-      '</button>' +
-      '<div class="group-body">' + bodyContent + '</div>';
-
-    if (items.length > 0) {
-      var grid = section.querySelector('.card-grid');
-      items.forEach(function(issue) { grid.appendChild(renderCard(issue)); });
-    }
-
-    section.querySelector('.group-toggle').addEventListener('click', function() {
-      var isOpen = section.classList.toggle('open');
-      this.setAttribute('aria-expanded', String(isOpen));
-    });
-
-    groupsEl.appendChild(section);
-  });
-
-  // User submitted section
-  var userSection = document.createElement('section');
-  userSection.className = 'issue-group';
-  userSection.id = 'userGroup';
-  userSection.style.display = 'none';
-  userSection.setAttribute('data-status', 'open');
-  userSection.innerHTML =
-    '<button class="group-toggle" type="button" aria-expanded="false">' +
-      '<span id="userGroupTitle">User Submitted (0)</span>' +
-      '<span style="display:flex;align-items:center;gap:.5rem"><span class="badge badge-open" id="userBadge">0</span><span class="chev">&rsaquo;</span></span>' +
-    '</button>' +
-    '<div class="group-body"><div class="card-grid" id="userBody"></div></div>';
-  userSection.querySelector('.group-toggle').addEventListener('click', function() {
-    var isOpen = userSection.classList.toggle('open');
-    this.setAttribute('aria-expanded', String(isOpen));
-  });
-  groupsEl.appendChild(userSection);
-
-  // Stats
-  function updateStats() {
-    document.getElementById('stat-done').textContent = (grouped.done || []).length;
-    document.getElementById('stat-partial').textContent = (grouped.partial || []).length;
-    document.getElementById('stat-open').textContent = (grouped.open || []).length;
-    document.getElementById('stat-deferred').textContent = (grouped.deferred || []).length;
-    document.getElementById('stat-total').textContent = issues.length;
-  }
-  updateStats();
-
-  // Filter
-  function applyFilter() {
-    document.querySelectorAll('.issue-group').forEach(function(g) {
+  function applyFilter(){
+    document.querySelectorAll('.issue-group').forEach(function(g){
       var status = g.getAttribute('data-status');
       if (!status) return;
+      var show = activeFilter === 'all' || activeFilter === status;
 
-      if (activeFilter === 'all') {
-        g.classList.remove('is-hidden');
-        g.querySelectorAll('.issue-card').forEach(function(c) { c.style.display = ''; });
-        return;
-      }
-
-      if (activeFilter.indexOf('tool:') === 0) {
-        var toolKey = activeFilter.slice(5);
+      if (surfaceFilters.indexOf(activeFilter) !== -1) {
+        show = false;
+        var cards = g.querySelectorAll('.issue-card');
         var anyVisible = false;
-        g.querySelectorAll('.issue-card').forEach(function(c) {
-          var match = (c.getAttribute('data-tool') || '') === toolKey;
-          c.style.display = match ? '' : 'none';
-          if (match) anyVisible = true;
+        cards.forEach(function(c){
+          var surface = c.getAttribute('data-surface') || '';
+          var vis = surface === activeFilter;
+          c.style.display = vis ? '' : 'none';
+          if (vis) anyVisible = true;
         });
-        g.classList.toggle('is-hidden', !anyVisible);
+        show = anyVisible;
       } else {
-        var show = activeFilter === status;
-        g.classList.toggle('is-hidden', !show);
-        g.querySelectorAll('.issue-card').forEach(function(c) { c.style.display = ''; });
+        g.querySelectorAll('.issue-card').forEach(function(c){ c.style.display = ''; });
       }
+
+      g.classList.toggle('is-hidden', !show);
     });
   }
 
-  // User submission persistence
-  var SKEY = config.storageKey || 'plb-ui-issues-user';
-  function loadUser() { try { return JSON.parse(localStorage.getItem(SKEY) || '[]'); } catch(e) { return []; } }
-  function saveUser(list) { try { localStorage.setItem(SKEY, JSON.stringify(list)); } catch(e) {} }
+  var done = document.querySelectorAll('[data-status="done"] .issue-card').length;
+  var partial = document.querySelectorAll('[data-status="partial"] .issue-card').length;
+  var open = document.querySelectorAll('[data-status="open"] .issue-card').length;
+  var deferred = document.querySelectorAll('[data-status="deferred"] .issue-card').length;
+  document.getElementById('stat-done').textContent = done;
+  document.getElementById('stat-partial').textContent = partial;
+  document.getElementById('stat-open').textContent = open;
+  document.getElementById('stat-deferred').textContent = deferred;
+  document.getElementById('stat-total').textContent = done + partial + open + deferred;
+
+  var SKEY = 'plb-ui-issues-user';
+  var userGroup = document.getElementById('userGroup');
+  var userBody = document.getElementById('userBody');
+  var form = document.getElementById('issueForm');
   var msgEl = document.getElementById('formMsg');
-  function flash(text, color) {
+
+  function esc(s){
+    return String(s || '').replace(/[&<>\"']/g, function(c){
+      return {'&':'&amp;','<':'&lt;','>':'&gt;','\"':'&quot;',"'":'&#39;'}[c];
+    });
+  }
+  function load(){ try { return JSON.parse(localStorage.getItem(SKEY) || '[]'); } catch (e) { return []; } }
+  function save(list){ try { localStorage.setItem(SKEY, JSON.stringify(list)); } catch (e) {} }
+  function flash(text, color){
     msgEl.textContent = text;
     msgEl.style.color = color || 'var(--teal)';
     msgEl.classList.add('visible');
-    setTimeout(function() { msgEl.classList.remove('visible'); }, 2500);
+    setTimeout(function(){ msgEl.classList.remove('visible'); }, 2500);
   }
 
-  function renderUserRows() {
-    var userBody = document.getElementById('userBody');
+  function renderUserRows(){
     userBody.innerHTML = '';
-    var items = loadUser();
-    if (!items.length) { userSection.style.display = 'none'; return; }
-    userSection.style.display = '';
+    var items = load();
+    if (!items.length) { userGroup.style.display = 'none'; return; }
+    userGroup.style.display = '';
     document.getElementById('userGroupTitle').textContent = 'User Submitted (' + items.length + ')';
     document.getElementById('userBadge').textContent = items.length;
-    items.forEach(function(item, i) {
+    items.forEach(function(item, i){
       var card = document.createElement('div');
       card.className = 'issue-card';
       card.tabIndex = 0;
-      card.setAttribute('data-tool', item.surface || 'global');
+      card.setAttribute('data-surface', item.surface || 'global');
       card.innerHTML =
         '<div class="card-top"><span class="card-area">' + esc(item.area) + '</span><span class="status status-open">Open</span></div>' +
         '<div class="card-title">' + esc(item.issue) + '</div>' +
@@ -1094,8 +894,8 @@
         '<dl class="card-detail"><dt>Impact</dt><dd>' + esc(item.impact) + '</dd><dt>Location</dt><dd>' + esc(item.location) +
         '</dd><dt>Surface</dt><dd>' + esc(item.surface) +
         '</dd></dl><button class="del-btn" data-idx="' + i + '" title="Remove">&times; Remove</button>';
-      card.addEventListener('click', function(e) { if (!e.target.closest('.del-btn')) card.classList.toggle('expanded'); });
-      card.addEventListener('keydown', function(e) {
+      card.addEventListener('click', function(e){ if (!e.target.closest('.del-btn')) card.classList.toggle('expanded'); });
+      card.addEventListener('keydown', function(e){
         if ((e.key === 'Enter' || e.key === ' ') && !e.target.closest('.del-btn')) {
           e.preventDefault();
           card.classList.toggle('expanded');
@@ -1103,20 +903,20 @@
       });
       userBody.appendChild(card);
     });
-    document.querySelectorAll('#userBody .del-btn').forEach(function(btn) {
-      btn.addEventListener('click', function(e) {
+    document.querySelectorAll('#userBody .del-btn').forEach(function(btn){
+      btn.addEventListener('click', function(e){
         e.stopPropagation();
         var idx = parseInt(this.getAttribute('data-idx'), 10);
-        var items = loadUser();
+        var items = load();
         var removed = items.splice(idx, 1)[0];
-        saveUser(items);
+        save(items);
         flash('Removed: ' + removed.area, 'var(--red)');
         renderUserRows();
       });
     });
   }
 
-  document.getElementById('issueForm').addEventListener('submit', function(e) {
+  form.addEventListener('submit', function(e){
     e.preventDefault();
     var area = document.getElementById('f-area').value.trim();
     var surface = document.getElementById('f-surface').value.trim();
@@ -1127,7 +927,7 @@
       flash('Area, surface, and issue are required', 'var(--red)');
       return;
     }
-    var items = loadUser();
+    var items = load();
     items.push({
       area: area,
       surface: surface,
@@ -1136,12 +936,12 @@
       location: location || 'Not specified',
       date: new Date().toISOString().split('T')[0]
     });
-    saveUser(items);
-    this.reset();
+    save(items);
+    form.reset();
     flash('Added: ' + area + ' issue');
     renderUserRows();
-    userSection.classList.add('open');
-    userSection.querySelector('.group-toggle').setAttribute('aria-expanded', 'true');
+    userGroup.classList.add('open');
+    userGroup.querySelector('.group-toggle').setAttribute('aria-expanded', 'true');
   });
 
   renderUserRows();
