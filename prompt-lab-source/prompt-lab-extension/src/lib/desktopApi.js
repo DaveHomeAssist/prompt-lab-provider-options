@@ -11,7 +11,7 @@ import { createProxyFetch } from './proxyFetch.js';
 const SETTINGS_KEY = 'pl2-provider-settings';
 
 const IS_WEB = typeof import.meta !== 'undefined'
-  && import.meta.env?.VITE_WEB_MODE === 'true';
+  && import.meta.env.VITE_WEB_MODE === 'true';
 
 function getFetchImpl(provider) {
   if (!IS_WEB || provider === 'ollama') return globalThis.fetch;

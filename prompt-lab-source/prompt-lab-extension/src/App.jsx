@@ -43,7 +43,7 @@ export default function App() {
   const [mdPreview, setMdPreview] = useState(false);
   const [enhMdPreview, setEnhMdPreview] = useState(false);
   const [resultTab, setResultTab] = useState('improved');
-  const isWeb = !isExtension && import.meta.env?.VITE_WEB_MODE === 'true';
+  const isWeb = !isExtension && import.meta.env.VITE_WEB_MODE === 'true';
   const {
     viewportWidth,
     viewportHeight,

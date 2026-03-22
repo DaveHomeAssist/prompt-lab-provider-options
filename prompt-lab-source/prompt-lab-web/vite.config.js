@@ -6,7 +6,7 @@ export default defineConfig({
   plugins: [react()],
   define: {
     'import.meta.env.VITE_WEB_MODE': JSON.stringify('true'),
-    'import.meta.env.VITE_PROXY_URL': JSON.stringify('https://prompt-lab-tawny.vercel.app/api/proxy'),
+    'import.meta.env.VITE_PROXY_URL': JSON.stringify('/api/proxy'),
   },
   resolve: {
     alias: {

@@ -85,7 +85,7 @@ export default function BugReportModal({
       const result = await submitBugReport(payload, {
         isWeb,
         locationOrigin: typeof window !== 'undefined' ? window.location.origin : '',
-        override: import.meta.env?.VITE_BUG_REPORT_ENDPOINT,
+        override: import.meta.env.VITE_BUG_REPORT_ENDPOINT,
       });
 
       notify(result.pageUrl ? 'Bug report saved to Notion.' : 'Bug report submitted.');
