@@ -1,0 +1,266 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<meta name="description" content="Free prompt engineering tools from Prompt Lab. Explore prompts, name threads, and build embeddable widgets.">
+<meta name="robots" content="index,follow">
+<meta property="og:title" content="Prompt Lab Tools">
+<meta property="og:description" content="Free prompt engineering tools. Explore prompts, name threads, build embeddable widgets.">
+<meta property="og:type" content="website">
+<meta property="og:url" content="https://promptlab.tools/tools/">
+<meta property="og:image" content="https://promptlab.tools/og-image.png">
+<meta name="twitter:card" content="summary">
+<meta name="twitter:title" content="Prompt Lab Tools">
+<meta name="twitter:description" content="Free prompt engineering tools from Prompt Lab.">
+<title>Tools | Prompt Lab</title>
+<link rel="icon" type="image/png" href="../hero-logo.png">
+<link rel="canonical" href="https://promptlab.tools/tools/">
+<link rel="preload" href="../fonts/outfit.woff2" as="font" type="font/woff2" crossorigin>
+<link rel="preload" href="../fonts/jetbrains-mono.woff2" as="font" type="font/woff2" crossorigin>
+<style>
+@font-face {
+  font-family: 'Outfit';
+  src: url('../fonts/outfit.woff2') format('woff2');
+  font-weight: 300 700;
+  font-display: swap;
+}
+@font-face {
+  font-family: 'JetBrains Mono';
+  src: url('../fonts/jetbrains-mono.woff2') format('woff2');
+  font-weight: 400;
+  font-display: swap;
+}
+
+:root {
+  --lab-violet: #7C3AED;
+  --lab-violet-light: #A78BFA;
+  --lab-violet-dim: #6D28D9;
+  --lab-teal: #2DD4BF;
+  --surface-950: #020617;
+  --surface-900: #0F172A;
+  --surface-800: #1E293B;
+  --surface-400: #94A3B8;
+  --surface-300: #CBD5E1;
+  --surface-100: #F1F5F9;
+  --glass-bg: rgba(255,255,255,0.04);
+  --glass-border: rgba(255,255,255,0.08);
+  --glow-violet: rgba(124,58,237,0.35);
+  --glow-violet-soft: rgba(124,58,237,0.12);
+  --font-display: 'Outfit', system-ui, sans-serif;
+  --font-mono: 'JetBrains Mono', monospace;
+}
+
+*, *::before, *::after { margin: 0; padding: 0; box-sizing: border-box; }
+html { overflow-x: hidden; }
+@media (prefers-reduced-motion: no-preference) { html { scroll-behavior: smooth; } }
+
+body {
+  background: var(--surface-950);
+  color: var(--surface-300);
+  font-family: var(--font-display);
+  line-height: 1.65;
+  min-height: 100vh;
+}
+
+a:focus-visible, button:focus-visible {
+  outline: 2px solid var(--lab-teal);
+  outline-offset: 3px;
+}
+
+.skip-link { position:absolute; left:-9999px; top:auto; padding:8px 16px; z-index:10000; background:#222; color:#fff; text-decoration:none; border-radius:4px; font-size:14px; }
+.skip-link:focus { left:10px; top:10px; }
+
+/* Nav */
+.site-nav {
+  position: fixed; top: 0; left: 0; right: 0; z-index: 100;
+  display: flex; align-items: center; justify-content: space-between;
+  padding: 0.65rem 1.5rem;
+  background: rgba(2,6,23,0.75);
+  backdrop-filter: blur(12px);
+  -webkit-backdrop-filter: blur(12px);
+  border-bottom: 1px solid var(--glass-border);
+}
+.site-nav-brand {
+  display: flex; align-items: center; gap: 0.5rem;
+  font-weight: 600; font-size: 0.9rem; color: var(--surface-100);
+  text-decoration: none;
+}
+.site-nav-brand img { width: 24px; height: 24px; }
+.site-nav-links { display: flex; align-items: center; gap: 0.35rem; }
+.site-nav-links a {
+  padding: 0.4rem 0.75rem; min-height: 44px;
+  font-family: var(--font-mono); font-size: 0.7rem;
+  color: var(--surface-300); text-decoration: none; border-radius: 6px;
+  display: inline-flex; align-items: center;
+  transition: color 0.2s, background 0.2s;
+}
+.site-nav-links a:hover { color: var(--surface-100); background: rgba(255,255,255,0.06); }
+.site-nav-links .nav-cta {
+  color: #fff; background: var(--lab-violet); font-weight: 600;
+  padding: 0.4rem 0.85rem;
+}
+.site-nav-links .nav-cta:hover { background: var(--lab-violet-dim); }
+
+/* Page */
+.page { padding: 6rem 2rem 4rem; max-width: 960px; margin: 0 auto; }
+
+.page-eyebrow {
+  font-family: var(--font-mono); font-size: 0.7rem;
+  letter-spacing: 0.2em; text-transform: uppercase;
+  color: var(--lab-violet-light); margin-bottom: 0.8rem;
+}
+.page-title {
+  font-size: clamp(1.8rem, 3.5vw, 2.5rem); font-weight: 700;
+  color: var(--surface-100); letter-spacing: -0.03em; margin-bottom: 0.6rem;
+}
+.page-sub {
+  color: var(--surface-400); font-size: 1rem; max-width: 560px;
+  line-height: 1.7; margin-bottom: 3rem;
+}
+
+/* Tool cards */
+.tool-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+  gap: 1.25rem;
+}
+
+.tool-card {
+  position: relative;
+  padding: 2rem;
+  border-radius: 16px;
+  border: 1px solid var(--glass-border);
+  background: rgba(15,23,42,0.88);
+  transition: all 0.4s ease;
+  overflow: hidden;
+  text-decoration: none;
+  color: inherit;
+  display: flex;
+  flex-direction: column;
+}
+
+.tool-card::before {
+  content: '';
+  position: absolute; top: 0; left: 0; right: 0; height: 1px;
+  background: linear-gradient(90deg, transparent, var(--lab-violet-light), transparent);
+  opacity: 0;
+  transition: opacity 0.4s ease;
+}
+
+.tool-card:hover {
+  border-color: rgba(124,58,237,0.2);
+  background: rgba(255,255,255,0.07);
+  transform: translateY(-4px);
+  box-shadow: 0 24px 64px rgba(0,0,0,0.3), 0 0 40px var(--glow-violet-soft);
+}
+.tool-card:hover::before { opacity: 1; }
+
+.tool-icon {
+  width: 44px; height: 44px; border-radius: 12px;
+  display: flex; align-items: center; justify-content: center;
+  margin-bottom: 1.2rem;
+  background: rgba(124,58,237,0.1);
+  border: 1px solid rgba(124,58,237,0.15);
+  font-size: 1.3rem;
+}
+
+.tool-name {
+  font-size: 1.1rem; font-weight: 600;
+  color: var(--surface-100); margin-bottom: 0.5rem;
+}
+
+.tool-desc {
+  font-size: 0.9rem; color: var(--surface-400);
+  line-height: 1.7; flex: 1; margin-bottom: 1.2rem;
+}
+
+.tool-cta {
+  font-family: var(--font-mono); font-size: 0.72rem;
+  color: var(--lab-violet-light); letter-spacing: 0.06em;
+  display: inline-flex; align-items: center; gap: 0.4rem;
+}
+
+.tool-badge {
+  font-family: var(--font-mono); font-size: 0.6rem;
+  padding: 0.2rem 0.5rem; border-radius: 999px;
+  background: rgba(45,212,191,0.12); color: var(--lab-teal);
+  border: 1px solid rgba(45,212,191,0.2);
+  letter-spacing: 0.06em; text-transform: uppercase;
+  position: absolute; top: 1.2rem; right: 1.2rem;
+}
+
+/* Footer */
+footer {
+  padding: 2.5rem; text-align: center;
+  border-top: 1px solid rgba(124,58,237,0.08);
+  font-family: var(--font-mono); font-size: 0.7rem;
+  color: #5E7082; letter-spacing: 0.06em;
+}
+footer a { color: var(--lab-violet-light); text-decoration: none; }
+footer .lab-mark { color: var(--lab-violet-light); }
+
+@media (max-width: 600px) {
+  .site-nav { padding: 0.5rem 1rem; }
+  .site-nav-links a:not(.nav-cta) { display: none; }
+  .tool-grid { grid-template-columns: 1fr; }
+}
+</style>
+</head>
+<body>
+<a href="#main" class="skip-link">Skip to content</a>
+
+<nav class="site-nav" aria-label="Site navigation">
+  <a href="../" class="site-nav-brand">
+    <img src="../hero-logo.png" alt="" width="24" height="24">
+    Prompt Lab
+  </a>
+  <div class="site-nav-links">
+    <a href="../">Home</a>
+    <a href="../guide.html">Guide</a>
+    <a href="./">Tools</a>
+    <a href="../privacy.html">Privacy</a>
+    <a href="https://github.com/DaveHomeAssist/prompt-lab" target="_blank" rel="noopener">GitHub</a>
+    <a href="../app/" class="nav-cta">Open App</a>
+  </div>
+</nav>
+
+<main id="main">
+  <div class="page">
+    <div class="page-eyebrow">// tools</div>
+    <h1 class="page-title">Prompt Lab Tools</h1>
+    <p class="page-sub">Free, standalone prompt engineering utilities. Each tool runs in your browser with your own API key — nothing is sent to our servers.</p>
+
+    <div class="tool-grid">
+      <a href="./prompt-explorer.html" class="tool-card">
+        <span class="tool-badge">BYOK</span>
+        <div class="tool-icon">🔍</div>
+        <h2 class="tool-name">Prompt Explorer</h2>
+        <p class="tool-desc">Inspect prompts, compare structures, and navigate prompt content more deliberately. Visualize how your prompts decompose into components.</p>
+        <span class="tool-cta">Open tool →</span>
+      </a>
+
+      <a href="./thread-namer.html" class="tool-card">
+        <span class="tool-badge">BYOK</span>
+        <div class="tool-icon">🏷️</div>
+        <h2 class="tool-name">Thread Namer</h2>
+        <p class="tool-desc">Generate clearer, more reusable conversation titles. Select a project, describe the thread, and get a structured name with emoji taxonomy.</p>
+        <span class="tool-cta">Open tool →</span>
+      </a>
+
+      <a href="../prompt-embed.html" class="tool-card">
+        <div class="tool-icon">📦</div>
+        <h2 class="tool-name">Prompt Embed Builder</h2>
+        <p class="tool-desc">Create embeddable Prompt Lab widgets from the public embed workflow. Generate iframe snippets for documentation or blogs.</p>
+        <span class="tool-cta">Open builder →</span>
+      </a>
+    </div>
+  </div>
+</main>
+
+<footer>
+  <span class="lab-mark">&aleph;</span> Prompt Lab v1.7.0
+  <br><a href="../">Home</a> &middot; <a href="../guide.html">Guide</a> &middot; <a href="../privacy.html">Privacy</a> &middot; <a href="https://github.com/DaveHomeAssist/prompt-lab">Source</a>
+</footer>
+</body>
+</html>

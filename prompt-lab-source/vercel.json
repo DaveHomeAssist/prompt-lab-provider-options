@@ -4,6 +4,10 @@
   "outputDirectory": "prompt-lab-web/dist",
   "framework": null,
   "rewrites": [
+    { "source": "/embed", "destination": "/prompt-embed.html" },
+    { "source": "/tools/embed", "destination": "/tools/prompt-embed.html" },
+    { "source": "/tools", "destination": "/tools/index.html" },
+    { "source": "/tools/", "destination": "/tools/index.html" },
     { "source": "/app", "destination": "/app/index.html" },
     { "source": "/app/(.*)", "destination": "/app/index.html" },
     { "source": "/api/(.*)", "destination": "/api/$1" }

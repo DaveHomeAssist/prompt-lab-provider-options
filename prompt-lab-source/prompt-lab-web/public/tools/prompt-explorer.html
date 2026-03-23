@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Prompt Explorer — Garden OS</title>
+<title>Prompt Explorer — Prompt Lab</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link href="https://fonts.googleapis.com/css2?family=Fraunces:ital,wght@0,600;1,400&family=DM+Sans:wght@300;400;500&family=DM+Mono:wght@400&display=swap" rel="stylesheet">
 <style>
@@ -732,7 +732,7 @@
 <!-- TOP BAR -->
 <div class="topbar">
   <div class="breadcrumb" id="breadcrumb">
-    <span class="bc-item active" data-id="root">Garden OS Bed</span>
+    <span class="bc-item active" data-id="root">Prompt Lab Workspace</span>
   </div>
   <div class="topbar-actions">
     <div class="generating-indicator" id="gen-indicator">
@@ -851,7 +851,7 @@ const ROOT_PROMPT = `Stylized 3D isometric raised garden bed, premium mobile gam
 // ── STATE ──────────────────────────────────────────────
 let nodes = {
   root: {
-    id: 'root', label: 'Garden OS Bed', axis: '', depth: 0, parentId: null,
+    id: 'root', label: 'Prompt Lab Workspace', axis: '', depth: 0, parentId: null,
     prompt: ROOT_PROMPT,
     children: [], expanded: true, imageURL: null,
   }
@@ -1208,7 +1208,7 @@ async function expandByAxis(nodeId, axis) {
 }
 
 async function generateChildren(parentNode, axis) {
-  const systemPrompt = `You are a prompt engineering assistant for an AI image generation tool called Prompt Explorer, used in Garden OS — a garden planning app.
+  const systemPrompt = `You are a prompt engineering assistant for a visual prompt exploration tool called Prompt Explorer, used in Prompt Lab.
 
 Your job: given a parent imagegen prompt and a branching axis, generate exactly 4 child prompt variants. Each child should vary ONLY along the specified axis while preserving all other details from the parent prompt.
 
@@ -1294,7 +1294,7 @@ function getPath(id) {
 function updateBreadcrumb() {
   const bc = document.getElementById('breadcrumb');
   if (!selectedId) {
-    bc.innerHTML = '<span class="bc-item active" onclick="selectNode(\'root\')">Garden OS Bed</span>';
+    bc.innerHTML = '<span class="bc-item active" onclick="selectNode(\'root\')">Prompt Lab Workspace</span>';
     return;
   }
   const path = getPath(selectedId);
