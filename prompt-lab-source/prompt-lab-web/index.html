@@ -6,11 +6,14 @@
 <meta name="description" content="Prompt Lab is a prompt engineering workbench for web, Chrome, and desktop. Engineer, test, and iterate across Anthropic, OpenAI, Gemini, OpenRouter, and Ollama.">
 <meta name="robots" content="index,follow">
 <meta name="theme-color" content="#090512">
+<meta http-equiv="content-language" content="en">
 <meta property="og:title" content="Prompt Lab — Engineer. Test. Iterate.">
 <meta property="og:description" content="A prompt engineering workbench for web, Chrome, and desktop. Write, compare, and refine prompts across five providers from one workspace.">
 <meta property="og:type" content="website">
 <meta property="og:url" content="https://promptlab.tools/">
 <meta property="og:image" content="https://promptlab.tools/og-image.png">
+<meta property="og:site_name" content="Prompt Lab">
+<meta property="og:locale" content="en_US">
 <meta name="twitter:card" content="summary_large_image">
 <meta name="twitter:title" content="Prompt Lab — Engineer. Test. Iterate.">
 <meta name="twitter:description" content="Write, compare, and refine prompts across Anthropic, OpenAI, Gemini, OpenRouter, and Ollama from one workspace.">
@@ -18,6 +21,8 @@
 <title>Prompt Lab | Engineer. Test. Iterate.</title>
 <link rel="icon" type="image/png" href="./hero-logo.png">
 <link rel="canonical" href="https://promptlab.tools/">
+<link rel="alternate" hreflang="en" href="https://promptlab.tools/">
+<link rel="alternate" hreflang="x-default" href="https://promptlab.tools/">
 <link rel="preload" href="./fonts/outfit.woff2" as="font" type="font/woff2" crossorigin>
 <link rel="preload" href="./fonts/jetbrains-mono.woff2" as="font" type="font/woff2" crossorigin>
 <style>
@@ -844,11 +849,14 @@ footer a:hover {
 <script type="application/ld+json">
 {
   "@context": "https://schema.org",
-  "@type": "SoftwareApplication",
+  "@type": "WebApplication",
   "name": "Prompt Lab",
+  "url": "https://promptlab.tools/",
   "description": "Prompt engineering workbench for web, Chrome, and desktop. Engineer, test, and iterate across Anthropic, OpenAI, Gemini, OpenRouter, and Ollama.",
   "applicationCategory": "DeveloperApplication",
   "operatingSystem": "Web, Chrome, Windows, macOS, Linux",
+  "browserRequirements": "Requires JavaScript",
+  "inLanguage": "en",
   "offers": {
     "@type": "Offer",
     "price": "0",
@@ -857,7 +865,8 @@ footer a:hover {
   "author": {
     "@type": "Person",
     "name": "Dave Robertson"
-  }
+  },
+  "featureList": "Multi-provider prompt testing, A/B comparison, Prompt library, Prompt composer, Variable placeholders, Local-first storage"
 }
 </script>
 </head>
