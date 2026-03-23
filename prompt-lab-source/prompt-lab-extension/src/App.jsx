@@ -31,6 +31,7 @@ import MainWorkspace from './MainWorkspace';
 import EditorActions from './EditorActions';
 import { ThemeProvider } from './theme/ThemeProvider.jsx';
 import MarkdownPreview from './MarkdownPreview';
+import { useWebSlot } from './WebSlotContext.jsx';
 
 // ── Main App ──────────────────────────────────────────────────────────────────
 export default function App() {
@@ -42,6 +43,7 @@ export default function App() {
   const [enhMdPreview, setEnhMdPreview] = useState(false);
   const [resultTab, setResultTab] = useState('improved');
   const isWeb = !isExtension && import.meta.env.VITE_WEB_MODE === 'true';
+  const { UserButton: WebUserButton } = useWebSlot();
   const {
     viewportWidth,
     viewportHeight,
@@ -322,6 +324,7 @@ export default function App() {
               </button>
               <button type="button" aria-label="Keyboard shortcuts" onClick={() => setShowShortcuts(true)} className={`ui-control p-1.5 rounded-lg ${m.btn} ${m.textAlt} hover:text-violet-400 transition-colors`}><Ic n="Keyboard" size={13} /></button>
               <button type="button" aria-label="Settings" onClick={() => setShowSettings(true)} className={`ui-control p-1.5 rounded-lg ${m.btn} ${m.textAlt} hover:text-violet-400 transition-colors`}><Ic n="Settings" size={13} /></button>
+              {WebUserButton && <WebUserButton />}
             </div>
           </div>
         </div>
