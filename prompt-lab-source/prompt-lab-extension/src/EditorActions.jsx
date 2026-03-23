@@ -56,6 +56,7 @@ export default function EditorActions({
     : 'Run Cases';
   return (
     <div className="flex flex-col gap-2">
+      <span className={`text-xs ${m.textSub} uppercase tracking-widest font-semibold`}>Enhance Lab</span>
       <div className="flex flex-wrap gap-2">
         <select
           value={enhMode}

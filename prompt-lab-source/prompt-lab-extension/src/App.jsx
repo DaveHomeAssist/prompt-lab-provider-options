@@ -464,7 +464,17 @@ export default function App() {
                         className={`text-[10px] px-2 py-0.5 transition-colors ${mdPreview ? 'bg-violet-600 text-white' : `${m.btn} ${m.textAlt}`}`}>Preview</button>
                     </div>
                   </div>
-                  <span className={`text-xs ${m.textMuted}`}>{wc}w · {raw.length}c{score ? ` · ~${score.tokens} tok` : ''}</span>
+                  <span className={`text-xs ${m.textMuted} flex items-center gap-2`}>
+                    {wc}w · {raw.length}c{score ? ` · ~${score.tokens} tok` : ''}
+                    {score && (() => {
+                      const cnt = [score.role, score.task, score.format, score.constraints, score.context].filter(Boolean).length;
+                      return (
+                        <span className={`inline-flex items-center gap-1 text-[10px] font-bold ${cnt >= 4 ? 'text-green-500' : cnt >= 2 ? 'text-yellow-500' : 'text-red-500'}`}>
+                          <Ic n={cnt >= 4 ? 'Check' : 'AlertTriangle'} size={8} />{cnt}/5
+                        </span>
+                      );
+                    })()}
+                  </span>
                 </div>
                 {mdPreview ? (
                   <div className={`${inp} overflow-y-auto`} style={{ minHeight: '12rem', maxHeight: '24rem' }}>
@@ -474,26 +484,6 @@ export default function App() {
                   <textarea rows={8} className={inp} placeholder="Paste or write your prompt here…" value={raw} onChange={e => setRaw(e.target.value)} />
                 )}
               </div>
-              {/* Scoring */}
-              {score && (() => {
-                const checks = [['Role', score.role], ['Task', score.task], ['Format', score.format], ['Constraints', score.constraints], ['Context', score.context]];
-                const cnt = checks.filter(c => c[1]).length;
-                return (
-                  <div className={`${m.surface} border ${m.border} rounded-lg p-3`}>
-                    <div className="flex justify-between items-center mb-2">
-                      <span className={`text-xs font-semibold ${m.textSub} uppercase tracking-wider`}>Prompt Quality</span>
-                      <span className={`text-xs font-bold ${cnt >= 4 ? 'text-green-500' : cnt >= 2 ? 'text-yellow-500' : 'text-red-500'}`}>{cnt}/5</span>
-                    </div>
-                    <div className="flex gap-3 flex-wrap">
-                      {checks.map(([lbl, ok]) => (
-                        <span key={lbl} className={`flex items-center gap-1 text-xs ${ok ? m.scoreGood : m.scoreBad}`}>
-                          {ok ? <Ic n="Check" size={9} /> : <Ic n="X" size={9} />}{lbl}
-                        </span>
-                      ))}
-                    </div>
-                  </div>
-                );
-              })()}
               {/* Lint Issues */}
               {lintIssues.length > 0 && (
                 <div className={`${m.surface} border ${m.border} rounded-lg`}>
@@ -518,7 +508,6 @@ export default function App() {
                 </div>
               )}
               {/* Mode + Enhance */}
-              <span className={`text-xs ${m.textSub} uppercase tracking-widest font-semibold`}>Enhance Lab</span>
               <EditorActions
                 m={m}
                 compact={compact}
