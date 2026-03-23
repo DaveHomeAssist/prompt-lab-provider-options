@@ -1,0 +1,245 @@
+Another stale background task from the earlier exploration — nothing to act on. The plan is set. Let me know when you're ready to start building.
+auth-execution-packet.md
+Date: 2026-03-23
+
+Objective
+Implement the next monetization and hosted-auth phases for Prompt Lab without destabilizing the shared-core architecture used by the hosted web app, extension, and desktop shells.
+
+Guiding constraints
+- Preserve the shared React core in `prompt-lab-extension/src`.
+- Keep auth scoped to `promptlab.tools` hosted web only.
+- Do not extend auth into extension or desktop in this phase.
+- Treat library recovery as closed-out infrastructure that must remain working.
+- Keep all Stripe work in test mode until the full loop is verified.
+
+Phase 0: Baseline and Closeout Verification
+Timeline: 0.5 day
+Owner: Lead engineer
+Support: QA/dev verifier
+
+Goals
+- Confirm the current recovery path and Node/runtime assumptions remain healthy before new work lands.
+- Freeze the current implementation baseline so auth and billing work are not layered on top of unknown regressions.
+
+Key milestones
+- Verify hosted library recovery still works on the live web app.
+- Verify Node 22 is active locally and in deploy config.
+- Record a clean baseline of current auth-related files and missing API routes.
+
+Required resources
+- Local repo checkout
+- Vercel project access
+- Node 22 runtime
+- Browser for manual recovery checks
+
+Deliverables
+- Baseline verification note in repo docs or session log
+- Confirmed current-state inventory of existing auth shell files and absent billing endpoints
+
+Phase 1: Hosted Web Auth Implementation
+Timeline: 1 day
+Owner: Lead engineer
+Support: UI engineer/design reviewer
+
+Goals
+- Add hosted-web-only authentication with Clerk.
+- Keep shared-core app behavior intact outside the web shell.
+
+Key milestones
+- Wrap the hosted web entry point in `ClerkProvider`.
+- Add sign-in and sign-up flow with Clerk prebuilt components.
+- Add normalized `useCurrentUser()` wrapper.
+- Confirm safe fallback behavior when Clerk config is absent in local/dev contexts.
+
+Required resources
+- Clerk application and publishable key
+- `.env.local` / Vercel env configuration
+- Existing hosted app shell under `prompt-lab-web/src`
+
+Responsible parties
+- Lead engineer: implementation
+- Product owner: confirm web-only auth scope
+- Design reviewer: validate auth screen fit with Prompt Lab visual system
+
+Deliverables
+- Hosted auth shell wired into the web app
+- Current-user abstraction with owned shape
+- Updated docs for auth env vars and behavior
+
+Acceptance criteria
+- User can sign in and sign up on the hosted web app.
+- Signed-in session survives refresh.
+- Shared app still renders correctly in extension and desktop without Clerk.
+
+Phase 2: Stripe Scaffold
+Timeline: 1 day
+Owner: Lead engineer
+Support: Ops/deployment owner
+
+Goals
+- Add minimal Stripe billing scaffolding for hosted web test mode.
+- Avoid premature feature gating or account-model expansion.
+
+Key milestones
+- Create Stripe test products and prices.
+- Add `create-checkout-session` endpoint.
+- Add `create-portal-session` endpoint.
+- Add minimal success and cancel pages.
+- Add documented Stripe env var wiring in Vercel.
+
+Required resources
+- Stripe test account
+- Vercel environment variable access
+- Hosted app auth identity from Phase 1
+
+Responsible parties
+- Lead engineer: API endpoints and page wiring
+- Ops/deployment owner: env configuration
+- Product owner: confirm product/price naming
+
+Deliverables
+- Checkout endpoint
+- Portal endpoint
+- Success/cancel pages
+- Env var documentation
+
+Acceptance criteria
+- Authenticated hosted user can start a Stripe Checkout session in test mode.
+- Billing portal endpoint returns a valid session for the same user.
+- Success/cancel pages resolve cleanly in the hosted app.
+
+Phase 3: Entitlements Layer
+Timeline: 1 day
+Owner: Lead engineer
+Support: Backend/platform reviewer
+
+Goals
+- Add the minimal entitlement system needed to support paid feature gating later.
+- Make entitlement lookup fail safe.
+
+Key milestones
+- Add Stripe webhook endpoint.
+- Add server-side entitlement lookup utility keyed by hosted auth identity.
+- Add client `useEntitlements()` hook.
+- Define a minimal entitlement map for current test mode.
+
+Required resources
+- Stripe webhook secret
+- Durable storage choice for entitlement state
+- Clerk user identity from Phase 1
+
+Responsible parties
+- Lead engineer: implementation
+- Backend/platform reviewer: validate storage and webhook handling
+- Product owner: confirm entitlement keys
+
+Deliverables
+- Webhook endpoint
+- Entitlement storage/lookup utility
+- Client entitlement hook
+- Initial entitlement key map
+
+Acceptance criteria
+- Webhook events update entitlement state for the correct user.
+- Missing or invalid entitlement state fails closed for premium features.
+- The hosted app can query entitlement state without breaking the existing app shell.
+
+Phase 4: End-to-End Verification
+Timeline: 0.5 to 1 day
+Owner: QA/dev verifier
+Support: Lead engineer
+
+Goals
+- Prove the hosted flow works from sign-in through subscribe/cancel.
+- Confirm library recovery and existing app behavior did not regress.
+
+Key milestones
+- Run full test-mode flow: sign in, subscribe, return, view entitled state, open billing portal, cancel, confirm downgrade.
+- Re-run library recovery smoke test.
+- Re-run core hosted app smoke test for prompt creation/library/use.
+
+Required resources
+- Test Stripe card
+- Browser session in at least two contexts
+- Access to live or preview deploys
+
+Responsible parties
+- QA/dev verifier: manual execution
+- Lead engineer: fix blockers found in verification
+
+Deliverables
+- Verification checklist with pass/fail status
+- Known issues list if any phase blocks release
+
+Acceptance criteria
+- Subscribe/cancel loop works in test mode.
+- Session persistence works across refresh and second browser/device checks.
+- No library recovery regression.
+- Hosted app still builds and deploys under Node 22.
+
+Phase 5: Environment Hygiene and Documentation
+Timeline: 0.5 day
+Owner: Lead engineer
+Support: Docs owner
+
+Goals
+- Leave the repo in a resumable state after the sprint.
+- Make operational assumptions explicit.
+
+Key milestones
+- Document all required env vars for Clerk and Stripe.
+- Update architecture docs to distinguish implemented vs planned billing/auth work.
+- Confirm Node version requirements match local/dev/deploy reality.
+- Add handoff note describing what is complete and what remains.
+
+Required resources
+- Existing docs inventory and architecture files
+- Current Vercel settings
+- Current package manifests
+
+Responsible parties
+- Lead engineer: technical updates
+- Docs owner: wording and source-of-truth cleanup
+
+Deliverables
+- Updated setup and architecture documentation
+- Sprint handoff summary
+
+Acceptance criteria
+- A returning developer can understand the hosted auth/billing state from repo docs alone.
+- No stale “implemented” claims remain for features that are still scaffold-only or planned.
+
+Overall Timeline
+- Phase 0: 0.5 day
+- Phase 1: 1 day
+- Phase 2: 1 day
+- Phase 3: 1 day
+- Phase 4: 0.5 to 1 day
+- Phase 5: 0.5 day
+- Total estimated duration: 4.5 to 5 days
+
+Critical dependencies
+- Clerk must be working before Stripe checkout work begins.
+- Stripe identity binding depends on the hosted auth model.
+- Entitlements depend on Stripe webhook events and a chosen storage model.
+- Final verification depends on all prior phases being deployed to a testable environment.
+
+Top risks
+- Hosted auth shell diverges from shared-core assumptions and introduces regressions.
+- Stripe endpoints are added before identity/state handling is stable.
+- Entitlement state is treated as authoritative before storage and webhook reliability are proven.
+- Documentation overstates what is implemented, causing future confusion.
+
+Recommended milestone checkpoints
+- Checkpoint 1: Auth shell working in preview deploy
+- Checkpoint 2: Stripe checkout and portal endpoints reachable in test mode
+- Checkpoint 3: Entitlement updates observable from webhook to client hook
+- Checkpoint 4: Full subscribe/cancel verification complete
+- Checkpoint 5: Docs and handoff updated
+
+Definition of done
+- Hosted web auth is live and scoped correctly.
+- Stripe scaffold works in test mode.
+- Entitlement state can be queried and used safely.
+- Recovery and core hosted app behaviors still work.
+- Documentation accurately reflects the implemented system.

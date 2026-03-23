@@ -1,9 +1,11 @@
 {
-  "buildCommand": "npm install diff-match-patch && cd prompt-lab-web && npm install && npm run build",
+  "buildCommand": "npm ci && cd prompt-lab-web && npm ci && npm run build",
   "installCommand": "echo 'root install handled in buildCommand'",
   "outputDirectory": "prompt-lab-web/dist",
   "framework": null,
   "rewrites": [
+    { "source": "/billing/success", "destination": "/billing-success.html" },
+    { "source": "/billing/cancel", "destination": "/billing-cancel.html" },
     { "source": "/embed", "destination": "/prompt-embed.html" },
     { "source": "/tools/embed", "destination": "/tools/prompt-embed.html" },
     { "source": "/tools", "destination": "/tools/index.html" },

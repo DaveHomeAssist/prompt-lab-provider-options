@@ -18,6 +18,37 @@ This packet covers:
 
 It is intentionally execution-oriented. It is not a product strategy memo.
 
+## Day 1 Status Snapshot
+
+Completed on 2026-03-23:
+
+- Node version pin confirmed at `22` in both repo root and `prompt-lab-source`
+- legacy library recovery bridge live and validated
+- silent auto-recovery path verified for seed-only library state
+- postMessage handshake verified for the tawny-origin recovery path
+- Recover button verified in the hosted web Library panel
+- auth decision completed: Clerk selected
+
+Bonus shipped the same day:
+
+- Issue 011: create authoring density reduction
+- Issue 012: library detail slide-open animation stabilization
+
+## Locked Decisions
+
+- Clerk is the selected auth provider for hosted web auth.
+- Clerk scope is `promptlab.tools` hosted web only for now.
+- The extension remains auth-free and continues using local API keys and local storage.
+- If extension auth is ever needed later, it should bridge through the web app session model rather than introducing a second Clerk application.
+- `ClerkProvider` should wrap the app root before sign-in or sign-up screens are added.
+- `useCurrentUser()` should return an owned normalized shape:
+  - `id`
+  - `email`
+  - `displayName`
+  - `isSignedIn`
+- Clerk publishable key should be exposed as `VITE_CLERK_PUBLISHABLE_KEY`.
+- Clerk prebuilt components are acceptable, but the implementation should budget for `appearance` theming so auth screens do not break the Prompt Lab visual system.
+
 ## Current Repo Reality
 
 ### Already done
@@ -27,15 +58,16 @@ It is intentionally execution-oriented. It is not a product strategy memo.
 - Recovery bootstrap exists in [app/index.html](/Users/daverobertson/Desktop/Code/10-active-projects/prompt-lab/prompt-lab-source/prompt-lab-web/app/index.html).
 - Recovery UI and merge flow exist in [LibraryPanel.jsx](/Users/daverobertson/Desktop/Code/10-active-projects/prompt-lab/prompt-lab-source/prompt-lab-extension/src/LibraryPanel.jsx), [usePromptLibrary.js](/Users/daverobertson/Desktop/Code/10-active-projects/prompt-lab/prompt-lab-source/prompt-lab-extension/src/hooks/usePromptLibrary.js), and [legacyLibraryMigration.js](/Users/daverobertson/Desktop/Code/10-active-projects/prompt-lab/prompt-lab-source/prompt-lab-extension/src/lib/legacyLibraryMigration.js).
 - Recovery tests already exist in [legacyLibraryMigration.test.js](/Users/daverobertson/Desktop/Code/10-active-projects/prompt-lab/prompt-lab-source/prompt-lab-extension/src/tests/legacyLibraryMigration.test.js).
+- Hosted auth shell exists in [main-web.jsx](/Users/daverobertson/Desktop/Code/10-active-projects/prompt-lab/prompt-lab-source/prompt-lab-web/src/main-web.jsx), [AuthGate.jsx](/Users/daverobertson/Desktop/Code/10-active-projects/prompt-lab/prompt-lab-source/prompt-lab-web/src/AuthGate.jsx), and [useCurrentUser.js](/Users/daverobertson/Desktop/Code/10-active-projects/prompt-lab/prompt-lab-source/prompt-lab-web/src/useCurrentUser.js).
+- Hosted entitlements client layer exists in [useEntitlements.js](/Users/daverobertson/Desktop/Code/10-active-projects/prompt-lab/prompt-lab-source/prompt-lab-web/src/useEntitlements.js).
+- Stripe and entitlement endpoints exist under [api/](/Users/daverobertson/Desktop/Code/10-active-projects/prompt-lab/prompt-lab-source/api): `create-checkout-session.js`, `create-portal-session.js`, `entitlements.js`, and `webhook.js`.
+- Stripe dependency is already present in [package.json](/Users/daverobertson/Desktop/Code/10-active-projects/prompt-lab/prompt-lab-source/package.json).
 
 ### Not implemented yet
 
-- No Clerk or Supabase auth wiring is present in the active source tree.
-- No sign-in or sign-up pages are present for hosted auth.
-- No `useCurrentUser` wrapper hook exists.
-- No Stripe checkout, billing portal, or webhook endpoints exist under [api/](/Users/daverobertson/Desktop/Code/10-active-projects/prompt-lab/prompt-lab-source/api).
-- No entitlement server utility or client hook exists.
-- No Stripe-related dependencies or config are present in [package.json](/Users/daverobertson/Desktop/Code/10-active-projects/prompt-lab/prompt-lab-source/package.json).
+- Full end-to-end hosted billing verification is not yet closed out.
+- Production env validation for Clerk and Stripe still needs explicit verification.
+- Release-grade documentation is still behind the actual implementation state.
 
 ### Existing related infrastructure
 
@@ -58,18 +90,17 @@ These should be treated as closeout and verification tasks, not fresh implementa
 
 ### Open workstreams
 
-1. Auth decision
-2. Auth implementation
-3. Stripe scaffold
-4. Entitlements
-5. End-to-end test and release verification
+1. Auth verification and environment hardening
+2. Billing and entitlement verification
+3. End-to-end test and release verification
+4. Documentation and handoff cleanup
 
 ### Duplicates or rollups
 
 - `Auth decision: evaluate Clerk vs Supabase, commit to one`
 - `Auth Decision: Clerk`
 
-These collapse into one decision lane.
+These collapse into one decision lane and are now complete.
 
 - `Stripe Scaffold API`
 - `Build /api/create-checkout-session endpoint`
@@ -94,13 +125,19 @@ These collapse into one verification lane.
 
 ## Recommended Execution Order
 
-1. Library recovery closeout and verification
-2. Auth decision
-3. Auth implementation
-4. Stripe scaffold
-5. Entitlements
-6. End-to-end verification
-7. Environment hygiene
+1. Auth verification and environment hardening
+2. Billing and entitlement verification
+3. End-to-end verification
+4. Environment hygiene
+
+## Next Queue
+
+Priority order for the next hosted-web sprint block:
+
+1. Verify session persistence across refresh, browser, and device cases
+2. Confirm hosted production behavior when Clerk env is missing
+3. Verify checkout, entitlements, and billing portal against real test-mode configuration
+4. Update repo docs so they match the code already in tree
 
 ## Acceptance Gates
 
@@ -155,7 +192,7 @@ Use this execution order:
 Important current-state constraints:
 - library recovery and the legacy bridge already exist; treat that lane as closeout and verification, not greenfield work
 - .nvmrc already exists at repo root and prompt-lab-source and is pinned to Node 22
-- auth, Stripe, and entitlements do not appear to be implemented yet
+- hosted auth, Stripe scaffold, and entitlement wiring are present in the repo and need verification plus env hardening, not greenfield implementation
 - keep the shared-core architecture intact across hosted web, extension, and desktop surfaces
 
 Make direct code changes only where needed, keep scope tight, verify each phase with the smallest relevant tests or build runs you can execute, and report concisely with:
@@ -267,4 +304,3 @@ If you only need the next move:
 4. Add the smallest possible Stripe scaffold.
 5. Add entitlement plumbing.
 6. Run the full subscribe/cancel test loop.
-
