@@ -1,5 +1,20 @@
 import { SignIn, SignUp, UserButton, useAuth } from '@clerk/clerk-react';
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
+
+const SIGN_IN_HASH = '#sign-in';
+const SIGN_UP_HASH = '#sign-up';
+
+function viewFromHash(hash = '') {
+  return hash === SIGN_UP_HASH ? 'sign-up' : 'sign-in';
+}
+
+function syncHashToView(nextView) {
+  if (typeof window === 'undefined') return;
+  const nextHash = nextView === 'sign-up' ? SIGN_UP_HASH : SIGN_IN_HASH;
+  if (window.location.hash !== nextHash) {
+    window.history.replaceState(null, '', nextHash);
+  }
+}
 
 /**
  * Auth gate for the hosted web app.
@@ -9,7 +24,23 @@ import { useState } from 'react';
  */
 export default function AuthGate({ children }) {
   const { isSignedIn, isLoaded } = useAuth();
-  const [authView, setAuthView] = useState('sign-in');
+  const [authView, setAuthView] = useState(() => (
+    typeof window === 'undefined' ? 'sign-in' : viewFromHash(window.location.hash)
+  ));
+
+  useEffect(() => {
+    if (typeof window === 'undefined') return undefined;
+
+    const syncFromLocation = () => {
+      const nextView = viewFromHash(window.location.hash);
+      syncHashToView(nextView);
+      setAuthView(nextView);
+    };
+
+    syncFromLocation();
+    window.addEventListener('hashchange', syncFromLocation);
+    return () => window.removeEventListener('hashchange', syncFromLocation);
+  }, []);
 
   if (!isLoaded) {
     return (
@@ -52,21 +83,25 @@ export default function AuthGate({ children }) {
         <SignIn
           routing="hash"
           afterSignInUrl="/app/"
-          signUpUrl="#sign-up"
+          signUpUrl={SIGN_UP_HASH}
           appearance={{ elements: { rootBox: { width: '100%', maxWidth: '400px' } } }}
         />
       ) : (
         <SignUp
           routing="hash"
           afterSignUpUrl="/app/"
-          signInUrl="#sign-in"
+          signInUrl={SIGN_IN_HASH}
           appearance={{ elements: { rootBox: { width: '100%', maxWidth: '400px' } } }}
         />
       )}
 
       <button
         type="button"
-        onClick={() => setAuthView(authView === 'sign-in' ? 'sign-up' : 'sign-in')}
+        onClick={() => {
+          const nextView = authView === 'sign-in' ? 'sign-up' : 'sign-in';
+          syncHashToView(nextView);
+          setAuthView(nextView);
+        }}
         style={{
           background: 'none', border: 'none', color: '#7c3aed',
           fontSize: '0.8125rem', cursor: 'pointer', padding: '0.5rem',
