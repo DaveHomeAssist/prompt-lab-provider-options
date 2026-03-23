@@ -126,6 +126,47 @@ button:focus-visible {
   gap: 0.75rem;
   text-decoration: none;
   min-height: 44px;
+  z-index: 2;
+}
+
+/* ── hamburger toggle (hidden on desktop) ── */
+.nav-toggle {
+  display: none;
+}
+
+.nav-toggle-label {
+  display: none;
+  width: 44px;
+  height: 44px;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  border-radius: 10px;
+  border: 1px solid var(--panel-line);
+  background: rgba(255, 255, 255, 0.03);
+  z-index: 2;
+  flex-shrink: 0;
+}
+
+.nav-toggle-label svg {
+  width: 20px;
+  height: 20px;
+  stroke: var(--text-soft);
+  stroke-width: 2;
+  stroke-linecap: round;
+  fill: none;
+}
+
+.nav-toggle-label .icon-close {
+  display: none;
+}
+
+.nav-toggle:checked ~ .nav-toggle-label .icon-menu {
+  display: none;
+}
+
+.nav-toggle:checked ~ .nav-toggle-label .icon-close {
+  display: block;
 }
 
 .site-nav-brand img {
@@ -734,12 +775,29 @@ footer a:hover {
 
 @media (max-width: 760px) {
   .site-nav-inner {
-    align-items: flex-start;
-    flex-direction: column;
+    flex-wrap: wrap;
+  }
+
+  .nav-toggle-label {
+    display: inline-flex;
   }
 
   .site-nav-links {
+    display: none;
+    flex-direction: column;
+    width: 100%;
+    gap: 0.25rem;
+    padding: 0.75rem 0 0.5rem;
+    border-top: 1px solid var(--panel-line);
+  }
+
+  .nav-toggle:checked ~ .site-nav-links {
+    display: flex;
+  }
+
+  .site-nav-links a {
     justify-content: flex-start;
+    width: 100%;
   }
 
   .hero {
@@ -764,7 +822,6 @@ footer a:hover {
     width: min(var(--max), calc(100vw - 1.4rem));
   }
 
-  .site-nav-links a,
   .button {
     width: 100%;
   }
@@ -814,6 +871,11 @@ footer a:hover {
         <span>Engineer. Test. Iterate.</span>
       </span>
     </a>
+    <input type="checkbox" id="nav-toggle" class="nav-toggle" aria-hidden="true">
+    <label for="nav-toggle" class="nav-toggle-label" aria-label="Toggle navigation">
+      <svg class="icon-menu" viewBox="0 0 24 24"><line x1="3" y1="6" x2="21" y2="6"/><line x1="3" y1="12" x2="21" y2="12"/><line x1="3" y1="18" x2="21" y2="18"/></svg>
+      <svg class="icon-close" viewBox="0 0 24 24"><line x1="6" y1="6" x2="18" y2="18"/><line x1="18" y1="6" x2="6" y2="18"/></svg>
+    </label>
     <div class="site-nav-links">
       <a href="#features">Features</a>
       <a href="#surfaces">Surfaces</a>
@@ -1075,5 +1137,13 @@ footer a:hover {
 <footer>
   Prompt Lab v1.7.0 &middot; <a href="./guide.html">Guide</a> &middot; <a href="./setup.html">Setup</a> &middot; <a href="./privacy.html">Privacy</a> &middot; <a href="https://github.com/DaveHomeAssist/prompt-lab" target="_blank" rel="noopener">Source</a>
 </footer>
+<script>
+/* Close mobile nav when an in-page anchor is tapped */
+document.querySelectorAll('.site-nav-links a[href^="#"]').forEach(function(a) {
+  a.addEventListener('click', function() {
+    document.getElementById('nav-toggle').checked = false;
+  });
+});
+</script>
 </body>
 </html>
