@@ -102,7 +102,7 @@ function parseSseChunks(buffer, flush = false, pickText) {
   return { buffer: working, chunks };
 }
 
-function parseAnthropicSse(buffer, flush = false) {
+export function parseAnthropicSse(buffer, flush = false) {
   return parseSseChunks(buffer, flush, (data) => {
     if (data?.type === 'content_block_delta') return data?.delta?.text || '';
     if (data?.type === 'message_delta') return data?.delta?.text || '';
@@ -110,7 +110,7 @@ function parseAnthropicSse(buffer, flush = false) {
   });
 }
 
-function parseOpenAiSse(buffer, flush = false) {
+export function parseOpenAiSse(buffer, flush = false) {
   return parseSseChunks(buffer, flush, (data) => data?.choices?.[0]?.delta?.content || '');
 }
 
