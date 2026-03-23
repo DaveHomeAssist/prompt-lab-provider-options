@@ -1,18 +1,46 @@
-const CORS_HEADERS = {
-  'Access-Control-Allow-Origin': '*',
-  'Access-Control-Allow-Methods': 'POST, OPTIONS',
-  'Access-Control-Allow-Headers': 'Content-Type',
-};
-
 const NOTION_API_URL = 'https://api.notion.com/v1/pages';
 const MAX_BLOCK_TEXT = 1800;
+const RATE_LIMIT = 30;
+const RATE_WINDOW_MS = 60_000;
+const ipHits = new Map();
+const ALLOWED_ORIGINS = new Set([
+  'https://promptlab.tools',
+  'https://www.promptlab.tools',
+  'https://prompt-lab-tawny.vercel.app',
+]);
 
-function json(body, status = 200) {
+function getCorsHeaders(origin = '') {
+  const allowed = ALLOWED_ORIGINS.has(origin) ? origin : '';
+  return {
+    'Access-Control-Allow-Origin': allowed,
+    'Access-Control-Allow-Methods': 'POST, OPTIONS',
+    'Access-Control-Allow-Headers': 'Content-Type',
+    'Vary': 'Origin',
+  };
+}
+
+function isRateLimited(ip) {
+  const now = Date.now();
+  let entry = ipHits.get(ip);
+  if (!entry || now >= entry.resetAt) {
+    entry = { count: 0, resetAt: now + RATE_WINDOW_MS };
+    ipHits.set(ip, entry);
+  }
+  entry.count++;
+  if (ipHits.size > 500) {
+    for (const [key, value] of ipHits) {
+      if (now >= value.resetAt) ipHits.delete(key);
+    }
+  }
+  return entry.count > RATE_LIMIT;
+}
+
+function json(body, status = 200, corsHeaders = {}) {
   return new Response(JSON.stringify(body), {
     status,
     headers: {
       'Content-Type': 'application/json',
-      ...CORS_HEADERS,
+      ...corsHeaders,
     },
   });
 }
@@ -87,26 +115,42 @@ function detailsParagraph(label, value) {
 }
 
 export default async function handler(request) {
+  const origin = request.headers.get('origin') || '';
+  const corsHeaders = getCorsHeaders(origin);
+
   if (request.method === 'OPTIONS') {
-    return new Response(null, { status: 204, headers: CORS_HEADERS });
+    return new Response(null, { status: 204, headers: corsHeaders });
   }
 
   if (request.method !== 'POST') {
-    return json({ error: 'Method not allowed' }, 405);
+    return json({ error: 'Method not allowed' }, 405, corsHeaders);
+  }
+
+  if (!ALLOWED_ORIGINS.has(origin)) {
+    return json({ error: 'Origin not allowed' }, 403, corsHeaders);
   }
 
   const notionToken = process.env.NOTION_TOKEN;
   const parentPageId = process.env.NOTION_BUG_REPORT_PARENT_PAGE_ID;
 
   if (!notionToken || !parentPageId) {
-    return json({ error: 'Bug reporting is not configured.' }, 503);
+    return json({ error: 'Bug reporting is not configured.' }, 503, corsHeaders);
   }
 
   try {
+    const clientIp = request.ip
+      || request.headers.get('x-forwarded-for')?.split(',')[0]?.trim()
+      || request.headers.get('x-real-ip')
+      || 'unknown';
+
+    if (isRateLimited(clientIp)) {
+      return json({ error: 'Rate limit exceeded. Try again shortly.' }, 429, corsHeaders);
+    }
+
     const payload = await request.json();
 
     if (payload?.website) {
-      return json({ ok: true, ignored: true });
+      return json({ ok: true, ignored: true }, 200, corsHeaders);
     }
 
     const title = clampText(payload?.title, 160);
@@ -122,7 +166,7 @@ export default async function handler(request) {
     const promptContext = payload?.promptContext && typeof payload.promptContext === 'object' ? payload.promptContext : null;
 
     if (!title || !steps) {
-      return json({ error: 'Title and steps are required.' }, 400);
+      return json({ error: 'Title and steps are required.' }, 400, corsHeaders);
     }
 
     const createdAt = new Date().toISOString();
@@ -199,11 +243,11 @@ export default async function handler(request) {
 
     const notionData = await notionResponse.json();
     if (!notionResponse.ok) {
-      return json({ error: notionData?.message || 'Notion request failed', detail: notionData }, notionResponse.status);
+      return json({ error: notionData?.message || 'Notion request failed' }, notionResponse.status, corsHeaders);
     }
 
-    return json({ ok: true, id: notionData.id, pageUrl: notionData.url });
+    return json({ ok: true, id: notionData.id, pageUrl: notionData.url }, 200, corsHeaders);
   } catch (error) {
-    return json({ error: error?.message || 'Bug report failed' }, 500);
+    return json({ error: error?.message || 'Bug report failed' }, 500, corsHeaders);
   }
 }

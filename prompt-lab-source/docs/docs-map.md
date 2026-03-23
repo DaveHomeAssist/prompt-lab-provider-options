@@ -27,10 +27,13 @@ Use these to understand the repo shape, live surfaces, and current issue log.
 
 - `../ARCHITECTURE.md`
 - `../ROADMAP.md`
+- `monetization-auth-execution-packet.md`
 - `CURRENT_MENU_SYSTEM.md`
 - `glossary.md`
 
 Use these for runtime shape, platform model, UI/state mapping, and shared terminology.
+
+Use `monetization-auth-execution-packet.md` when the task is auth, billing, entitlements, or the imported Notion monetization sprint.
 
 ### Extension work
 
@@ -120,6 +123,13 @@ These are working-context files, not canonical product documentation.
 - `../DOCS_INVENTORY.md`
 - `docs-style-guide.md`
 - `glossary.md`
+
+### I need the auth or monetization sprint plan
+
+- `monetization-auth-execution-packet.md`
+- `../ARCHITECTURE.md`
+- `../vercel.json`
+- `../api/`
 
 ## Authoring vs published copies
 

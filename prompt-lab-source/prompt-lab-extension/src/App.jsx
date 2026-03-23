@@ -11,12 +11,14 @@ import useEditorState from './hooks/useEditorState.js';
 import useExecutionFlow from './hooks/useExecutionFlow.js';
 import usePersistenceFlow from './hooks/usePersistenceFlow.js';
 import useABTest from './hooks/useABTest.js';
+import useFirstRun from './hooks/useFirstRun.js';
 import Toast from './Toast';
 import TagChip from './TagChip';
 import PadTab from './PadTab';
 import ComposerTab from './ComposerTab';
 import ABTestTab from './ABTestTab';
 import LibraryPanel from './LibraryPanel';
+import SetupCard from './SetupCard';
 import DesktopSettingsModal from './DesktopSettingsModal';
 import VersionDiffModal from './VersionDiffModal';
 import RunTimelinePanel from './RunTimelinePanel';
@@ -39,21 +41,17 @@ export default function App() {
   const [showDesktopSettings, setShowDesktopSettings] = useState(false);
   const [showGoldenComparison, setShowGoldenComparison] = useState(true);
   const [showQuickInject, setShowQuickInject] = useState(false);
-  const [showSetupCard, setShowSetupCard] = useState(() => {
-    try {
-      const stored = localStorage.getItem('pl2-provider-settings');
-      const dismissed = localStorage.getItem('pl2-setup-dismissed');
-      if (dismissed === 'true') return false;
-      if (!stored) return true;
-      const parsed = JSON.parse(stored);
-      return !parsed || !Object.values(parsed).some((v) => typeof v === 'string' && v.trim().length > 4);
-    } catch { return true; }
-  });
   const [mdPreview, setMdPreview] = useState(false);
   const [enhMdPreview, setEnhMdPreview] = useState(false);
   const [resultTab, setResultTab] = useState('improved');
   const isWeb = !isExtension && import.meta.env.VITE_WEB_MODE === 'true';
   const { UserButton: WebUserButton } = useWebSlot();
+  const {
+    showSetupCard,
+    isFirstEverLaunch,
+    dismissSetupCard,
+    markFirstRunComplete,
+  } = useFirstRun();
   const {
     viewportWidth,
     viewportHeight,
@@ -97,7 +95,13 @@ export default function App() {
     lib,
     editor: editorState,
   });
-  const executionFlow = useExecutionFlow({ ui, lib, editor: editorState, persistence: persistenceFlow });
+  const executionFlow = useExecutionFlow({
+    ui,
+    lib,
+    editor: editorState,
+    persistence: persistenceFlow,
+    onEnhanceSuccess: markFirstRunComplete,
+  });
   const ed = {
     ...editorState,
     ...persistenceFlow,
@@ -466,28 +470,12 @@ export default function App() {
                 </div>
               )}
               {showSetupCard && activeSection === 'create' && (
-                <div className={`${m.surface} border border-violet-500/30 rounded-lg p-3 flex items-start gap-3`}>
-                  <Ic n="Zap" size={16} className="text-violet-400 shrink-0 mt-0.5" />
-                  <div className="flex-1 min-w-0">
-                    <p className={`text-sm font-semibold ${m.text}`}>Get started</p>
-                    <p className={`text-xs ${m.textMuted} mt-0.5`}>Add an API key for at least one provider to start enhancing prompts.</p>
-                    <button
-                      type="button"
-                      onClick={openOptions}
-                      className="ui-control mt-2 px-3 py-1.5 bg-violet-600 hover:bg-violet-500 text-white text-xs font-semibold rounded-lg transition-colors"
-                    >
-                      Set Up Provider
-                    </button>
-                  </div>
-                  <button
-                    type="button"
-                    onClick={() => { setShowSetupCard(false); try { localStorage.setItem('pl2-setup-dismissed', 'true'); } catch {} }}
-                    className={`${m.textMuted} hover:${m.text} shrink-0`}
-                    aria-label="Dismiss setup card"
-                  >
-                    <Ic n="X" size={12} />
-                  </button>
-                </div>
+                <SetupCard
+                  m={m}
+                  isFirstEver={isFirstEverLaunch}
+                  onOpenSettings={openOptions}
+                  onDismiss={dismissSetupCard}
+                />
               )}
               {/* Input */}
               <div>

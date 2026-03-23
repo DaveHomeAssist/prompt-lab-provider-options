@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from 'react';
+import React, { useEffect, useMemo, useState } from 'react';
 import Ic from './icons';
 import { DEFAULTS } from './lib/providerRegistry.js';
 import {
@@ -85,6 +85,7 @@ export default function DesktopSettingsModal({ show, onClose, m, notify }) {
   async function handleSave() {
     try {
       await saveProviderSettings(settings);
+      window.dispatchEvent(new CustomEvent('pl:provider-settings-updated'));
       setConnectionStatus('Settings saved.');
       setConnectionStatusType('success');
       notify?.('Provider settings saved');

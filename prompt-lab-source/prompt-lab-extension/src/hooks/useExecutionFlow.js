@@ -25,7 +25,7 @@ const nowMs = () =>
 /**
  * Execution controller for enhance + evaluate flows.
  */
-export default function useExecutionFlow({ ui, lib, editor, persistence }) {
+export default function useExecutionFlow({ ui, lib, editor, persistence, onEnhanceSuccess }) {
   const { notify, setTab, tab } = ui;
   const {
     raw, enhanced, variants, notes, enhMode,
@@ -230,6 +230,11 @@ export default function useExecutionFlow({ ui, lib, editor, persistence }) {
       setOptimisticSaveVisible(false);
       setStreamPreview('');
       setStreaming(false);
+      try {
+        await Promise.resolve(onEnhanceSuccess?.());
+      } catch (callbackError) {
+        logWarn('enhance success callback', callbackError);
+      }
     } catch (caught) {
       if (caught?.name === 'AbortError' || abortController?.signal?.aborted) {
         if (reqId === enhanceReqRef.current) {

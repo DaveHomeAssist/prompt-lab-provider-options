@@ -61,6 +61,7 @@ Updated: 2026-03-22
 | Path | Scope | Status | Notes |
 |---|---|---|---|
 | `docs/CURRENT_MENU_SYSTEM.md` | Current menu/navigation model | Active | Code-grounded reference for header layers, state mapping, and command palette/menu behavior. |
+| `docs/monetization-auth-execution-packet.md` | Deduplicated auth/Stripe sprint packet with current-state evidence and Claude-ready prompts. | Active | Use this instead of the raw imported Notion task list when executing monetization/auth work. |
 | `docs/SCRATCHPAD_SHORTCUTS.md` | Scratchpad shortcut policy | Active | Defines the supported scratchpad shortcuts and explicitly documents browser-reserved combos that are intentionally unsupported. |
 | `docs/RUN_OBJECT_SCHEMA_RESEARCH.md` | Run-object schema analysis | Active | Research/reference material for run data modeling. |
 | `docs/UX_AUDIT_2026-03-17.md` | Product UX audit | Active | Time-bounded audit; verify against current code before treating any finding as live truth. |

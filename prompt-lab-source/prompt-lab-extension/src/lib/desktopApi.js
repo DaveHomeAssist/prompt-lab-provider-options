@@ -31,29 +31,13 @@ export function saveSettings(settings) {
   localStorage.setItem(SETTINGS_KEY, JSON.stringify(settings));
 }
 
-/**
- * On the hosted web surface the proxy injects server-side API keys,
- * so provider-layer validation needs a truthy key to proceed.
- * We use a 'proxy' sentinel so it's clear no real client key exists.
- * On non-web surfaces this is a no-op — users supply their own keys (BYOK).
- */
-function withProxyKeys(settings, provider) {
-  if (!IS_WEB) return settings;
-  const s = { ...settings };
-  if (provider === 'anthropic' && !s.apiKey)            s.apiKey = 'proxy';
-  if (provider === 'openai'    && !s.openaiApiKey)      s.openaiApiKey = 'proxy';
-  if (provider === 'gemini'    && !s.geminiApiKey)       s.geminiApiKey = 'proxy';
-  if (provider === 'openrouter' && !s.openrouterApiKey)  s.openrouterApiKey = 'proxy';
-  return s;
-}
-
 export async function callModelDirect(payload, { settingsOverride, onChunk, signal } = {}) {
   const s = settingsOverride || loadSettings();
   const provider = normalizeProvider(s.provider);
   return callProvider({
     provider,
     payload,
-    settings: withProxyKeys(s, provider),
+    settings: s,
     fetchImpl: getFetchImpl(provider),
     onChunk,
     signal,
