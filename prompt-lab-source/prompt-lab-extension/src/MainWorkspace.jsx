@@ -7,9 +7,11 @@ export default function MainWorkspace({
   editorPane,
   libraryPane,
 }) {
-  const rootClass = isWeb
-    ? `grid ${compact ? 'grid-cols-1' : 'grid-cols-2'} min-h-0`
-    : `grid ${compact ? 'grid-cols-1' : 'grid-cols-2'} flex-1 min-h-0 overflow-hidden`;
+  const dualPane = showEditorPane && showLibraryPane && !compact;
+  const gridCols = compact ? 'grid-cols-1' : 'grid-cols-[minmax(0,1fr)_minmax(0,1fr)]';
+  const rootClass = (isWeb && !dualPane)
+    ? `grid ${gridCols} min-h-0`
+    : `grid ${gridCols} flex-1 min-h-0 overflow-hidden`;
 
   return (
     <div className={rootClass}>
@@ -32,4 +34,3 @@ export default function MainWorkspace({
     </div>
   );
 }
-
