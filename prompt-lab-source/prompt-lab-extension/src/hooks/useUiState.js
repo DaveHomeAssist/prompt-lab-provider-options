@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react';
+import { useCallback, useEffect, useState } from 'react';
 import usePersistedState from '../usePersistedState.js';
 
 export default function useUiState() {
@@ -18,6 +18,7 @@ export default function useUiState() {
   const [showCmdPalette, setShowCmdPalette] = useState(false);
   const [showShortcuts, setShowShortcuts] = useState(false);
   const [cmdQuery, setCmdQuery] = useState('');
+  const notify = useCallback(message => setToast(message), []);
 
   const tab = (() => {
     if (primaryView === 'notebook') return 'pad';
@@ -79,7 +80,7 @@ export default function useUiState() {
     setTab,
     toast,
     setToast,
-    notify: message => setToast(message),
+    notify,
     showSettings,
     setShowSettings,
     showCmdPalette,

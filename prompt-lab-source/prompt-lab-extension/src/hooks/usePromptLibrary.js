@@ -1,4 +1,4 @@
-import { useEffect, useState, useCallback, useRef } from 'react';
+import { useEffect, useState, useCallback, useRef, useMemo } from 'react';
 import { DEFAULT_LIBRARY_SEEDS } from '../constants.js';
 import { encodeShare, looksSensitive } from '../promptUtils.js';
 import {
@@ -37,9 +37,9 @@ export default function usePromptLibrary(notify) {
   const [draggingLibraryId, setDraggingLibraryId] = useState(null);
   const [dragOverLibraryId, setDragOverLibraryId] = useState(null);
   const [recoveringLegacyLibrary, setRecoveringLegacyLibrary] = useState(false);
+  // ── Refs for stable callbacks that need current values ──
   const libraryRef = useRef(library);
   const collectionsRef = useRef(collections);
-
   useEffect(() => { libraryRef.current = library; }, [library]);
   useEffect(() => { collectionsRef.current = collections; }, [collections]);
 
@@ -119,7 +119,9 @@ export default function usePromptLibrary(notify) {
     if (libReady) saveJson(storageKeys.collections, collections);
   }, [collections, libReady]);
 
-  const updateLibraryEntry = (entryId, updater) => {
+  // ── Stable callbacks ──
+
+  const updateLibraryEntry = useCallback((entryId, updater) => {
     let changed = false;
     setLibrary(prev => prev.map(entry => {
       if (entry.id !== entryId) return entry;
@@ -129,9 +131,9 @@ export default function usePromptLibrary(notify) {
       return next;
     }));
     return changed;
-  };
+  }, []);
 
-  const doSave = ({ raw, enhanced, variants, notes, tags, title, collection, editingId, changeNote }) => {
+  const doSave = useCallback(({ raw, enhanced, variants, notes, tags, title, collection, editingId, changeNote }) => {
     const cleanTitle = ensureString(title).trim() || suggestTitleFromText(enhanced || raw);
     const payload = {
       title: cleanTitle,
@@ -163,20 +165,20 @@ export default function usePromptLibrary(notify) {
     setLibrary(prev => [entry, ...prev]);
     notify('Saved!');
     return { id: entry.id, title: entry.title };
-  };
+  }, [updateLibraryEntry, notify]);
 
-  const del = id => {
+  const del = useCallback(id => {
     if (!window.confirm('Delete this prompt?')) return;
     setLibrary(prev => prev.filter(entry => entry.id !== id));
     notify('Prompt deleted.');
-  };
+  }, [notify]);
 
-  const bumpUse = id => updateLibraryEntry(id, entry => ({
+  const bumpUse = useCallback(id => updateLibraryEntry(id, entry => ({
     ...entry,
     useCount: entry.useCount + 1,
-  }));
+  })), [updateLibraryEntry]);
 
-  const moveLibraryEntry = (sourceId, targetId) => {
+  const moveLibraryEntry = useCallback((sourceId, targetId) => {
     if (!sourceId || !targetId || sourceId === targetId) return;
     setLibrary(prev => {
       const from = prev.findIndex(entry => entry.id === sourceId);
@@ -187,9 +189,9 @@ export default function usePromptLibrary(notify) {
       next.splice(to, 0, moved);
       return next;
     });
-  };
+  }, []);
 
-  const renameEntry = (id, nextTitle, editingId, setSaveTitle) => {
+  const renameEntry = useCallback((id, nextTitle, editingId, setSaveTitle) => {
     const trimmed = nextTitle.trim();
     if (!trimmed) return;
     updateLibraryEntry(id, entry => ({
@@ -200,24 +202,24 @@ export default function usePromptLibrary(notify) {
     setRenamingId(null);
     setRenameValue('');
     notify('Renamed.');
-  };
+  }, [updateLibraryEntry, notify]);
 
-  const restoreVersion = (entryId, version) => {
+  const restoreVersion = useCallback((entryId, version) => {
     updateLibraryEntry(entryId, entry => restorePromptVersion(entry, version));
     notify('Restored!');
-  };
+  }, [updateLibraryEntry, notify]);
 
-  const openVersionHistory = (entryId, initialIdx = 0) => {
+  const openVersionHistory = useCallback((entryId, initialIdx = 0) => {
     setExpandedVersionId(entryId);
     setDiffVersionIdx(initialIdx);
-  };
+  }, []);
 
-  const closeVersionHistory = () => {
+  const closeVersionHistory = useCallback(() => {
     setExpandedVersionId(null);
     setDiffVersionIdx(null);
-  };
+  }, []);
 
-  const pinGoldenResponse = (entryId, { text, runId, provider, model } = {}) => {
+  const pinGoldenResponse = useCallback((entryId, { text, runId, provider, model } = {}) => {
     const pinnedText = ensureString(text);
     if (!pinnedText.trim()) return false;
     const changed = updateLibraryEntry(entryId, entry => updatePromptEntry(entry, {
@@ -231,35 +233,36 @@ export default function usePromptLibrary(notify) {
     }));
     if (changed) notify('Golden response pinned.');
     return changed;
-  };
+  }, [updateLibraryEntry, notify]);
 
-  const clearGoldenResponse = (entryId) => {
+  const clearGoldenResponse = useCallback((entryId) => {
     const changed = updateLibraryEntry(entryId, entry => {
       if (!entry.goldenResponse) return entry;
       return updatePromptEntry(entry, { goldenResponse: null });
     });
     if (changed) notify('Golden response cleared.');
     return changed;
-  };
+  }, [updateLibraryEntry, notify]);
 
-  const setGoldenThreshold = (entryId, threshold) => {
+  const setGoldenThreshold = useCallback((entryId, threshold) => {
     updateLibraryEntry(entryId, entry => updatePromptEntry(entry, { goldenThreshold: threshold }));
-  };
+  }, [updateLibraryEntry]);
 
-  const exportLib = () => {
-    if (library.length === 0) {
+  const exportLib = useCallback(() => {
+    const lib = libraryRef.current;
+    if (lib.length === 0) {
       notify('Library is empty.');
       return;
     }
-    if (library.some(entry => looksSensitive(entry.original) || looksSensitive(entry.enhanced) || looksSensitive(entry.notes))
+    if (lib.some(entry => looksSensitive(entry.original) || looksSensitive(entry.enhanced) || looksSensitive(entry.notes))
       && !window.confirm('Export may include sensitive prompt content. Continue?')) return;
-    const url = URL.createObjectURL(new Blob([JSON.stringify(library, null, 2)], { type: 'application/json' }));
+    const url = URL.createObjectURL(new Blob([JSON.stringify(lib, null, 2)], { type: 'application/json' }));
     const anchor = Object.assign(document.createElement('a'), { href: url, download: 'prompt-library.json' });
     anchor.click();
     setTimeout(() => URL.revokeObjectURL(url), 0);
-  };
+  }, [notify]);
 
-  const importLib = event => {
+  const importLib = useCallback(event => {
     const file = event.target.files[0];
     if (!file) return;
     if (file.size > 2 * 1024 * 1024) {
@@ -284,15 +287,15 @@ export default function usePromptLibrary(notify) {
     };
     reader.readAsText(file);
     event.target.value = '';
-  };
+  }, [notify]);
 
-  const getShareUrl = entry => {
+  const getShareUrl = useCallback(entry => {
     if (!entry) return null;
     const code = encodeShare(entry);
     return code ? `${window.location.origin}${window.location.pathname}#share=${code}` : null;
-  };
+  }, []);
 
-  const starterLibraries = getStarterLibraries();
+  const starterLibraries = useMemo(() => getStarterLibraries(), []);
 
   const loadStarterPack = useCallback((packId) => {
     const result = loadPack(packId, libraryRef.current, setLibrary, collectionsRef.current, setCollections);
@@ -347,24 +350,38 @@ export default function usePromptLibrary(notify) {
     }
   }, [applyLegacyPayload, notify, recoveringLegacyLibrary]);
 
-  const allLibTags = [...new Set(library.flatMap(entry => entry.tags || []))];
-  const filtered = [...library]
-    .filter(entry => {
-      const query = search.toLowerCase();
-      const title = ensureString(entry.title).toLowerCase();
-      return (!query || title.includes(query) || (entry.tags || []).some(tag => tag.toLowerCase().includes(query)))
-        && (!activeTag || (entry.tags || []).includes(activeTag))
-        && (!activeCollection || entry.collection === activeCollection);
-    })
-    .sort((left, right) => {
-      if (sortBy === 'manual') return 0;
-      if (sortBy === 'oldest') return new Date(left.createdAt) - new Date(right.createdAt);
-      if (sortBy === 'most-used') return right.useCount - left.useCount;
-      return new Date(right.createdAt) - new Date(left.createdAt);
-    });
-  const quickInject = [...library].sort((left, right) => right.useCount - left.useCount).slice(0, 5);
+  // ── Memoized derived data ──
 
-  return {
+  const allLibTags = useMemo(
+    () => [...new Set(library.flatMap(entry => entry.tags || []))],
+    [library]
+  );
+
+  const filtered = useMemo(() => {
+    return [...library]
+      .filter(entry => {
+        const query = search.toLowerCase();
+        const title = ensureString(entry.title).toLowerCase();
+        return (!query || title.includes(query) || (entry.tags || []).some(tag => tag.toLowerCase().includes(query)))
+          && (!activeTag || (entry.tags || []).includes(activeTag))
+          && (!activeCollection || entry.collection === activeCollection);
+      })
+      .sort((left, right) => {
+        if (sortBy === 'manual') return 0;
+        if (sortBy === 'oldest') return new Date(left.createdAt) - new Date(right.createdAt);
+        if (sortBy === 'most-used') return right.useCount - left.useCount;
+        return new Date(right.createdAt) - new Date(left.createdAt);
+      });
+  }, [library, search, activeTag, activeCollection, sortBy]);
+
+  const quickInject = useMemo(
+    () => [...library].sort((left, right) => right.useCount - left.useCount).slice(0, 5),
+    [library]
+  );
+
+  // ── Stable return object ──
+
+  return useMemo(() => ({
     library, setLibrary, libReady, collections, setCollections,
     search, setSearch, activeTag, setActiveTag, activeCollection, setActiveCollection,
     sortBy, setSortBy, expandedId, setExpandedId, expandedVersionId, setExpandedVersionId, diffVersionIdx, setDiffVersionIdx,
@@ -376,5 +393,16 @@ export default function usePromptLibrary(notify) {
     recoverLegacyWebLibrary, recoveringLegacyLibrary,
     starterLibraries, loadStarterPack,
     allLibTags, filtered, quickInject,
-  };
+  }), [
+    library, libReady, collections,
+    search, activeTag, activeCollection,
+    sortBy, expandedId, expandedVersionId, diffVersionIdx,
+    shareId, renamingId, renameValue,
+    draggingLibraryId, dragOverLibraryId,
+    doSave, del, bumpUse, moveLibraryEntry, renameEntry, restoreVersion, openVersionHistory, closeVersionHistory,
+    pinGoldenResponse, clearGoldenResponse, setGoldenThreshold,
+    exportLib, importLib, getShareUrl,
+    starterLibraries, loadStarterPack,
+    allLibTags, filtered, quickInject,
+  ]);
 }

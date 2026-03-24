@@ -1,1159 +1,1368 @@
 <!DOCTYPE html>
 <html lang="en">
-
 <head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Thread Namer</title>
-    <style>
-        @import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600&family=JetBrains+Mono:wght@400;500&display=swap');
-
-        *,
-        *::before,
-        *::after {
-            box-sizing: border-box;
-            margin: 0;
-            padding: 0;
-        }
-
-        :root {
-            --bg: #f5f4f1;
-            --surface: #ffffff;
-            --surface2: #f9f8f6;
-            --border: #e4e2dc;
-            --border-dim: #ede9e3;
-            --text: #2a2825;
-            --muted: #8c8880;
-            --dim: #c4bfb8;
-
-            --accent: #6b4fbb;
-            --accent-light: #f0ecfa;
-            --accent-mid: #d6cdf5;
-            --accent-text: #5a3ea8;
-
-            --tag-bg: #f0ecfa;
-            --tag-text: #5a3ea8;
-            --tag-border: #d6cdf5;
-
-            --green: #2d7d52;
-            --green-bg: #edf6f0;
-        }
-
-        body {
-            background: var(--bg);
-            color: var(--text);
-            font-family: 'Inter', sans-serif;
-            min-height: 100vh;
-            display: flex;
-            flex-direction: column;
-            align-items: center;
-            padding: 40px 20px 80px;
-        }
-
-        /* ── header ── */
-        .header {
-            width: 100%;
-            max-width: 720px;
-            margin-bottom: 32px;
-            display: flex;
-            align-items: baseline;
-            gap: 12px;
-        }
-
-        .header-title {
-            font-family: 'JetBrains Mono', monospace;
-            font-size: 18px;
-            font-weight: 500;
-            color: var(--text);
-            letter-spacing: -0.01em;
-        }
-
-        .header-title span {
-            color: var(--accent);
-        }
-
-        .header-sub {
-            font-size: 12px;
-            color: var(--muted);
-            font-weight: 400;
-        }
-
-        /* ── project selector ── */
-        .section-label {
-            font-family: 'JetBrains Mono', monospace;
-            font-size: 9px;
-            letter-spacing: 0.12em;
-            color: var(--muted);
-            text-transform: uppercase;
-            margin-bottom: 8px;
-        }
-
-        .project-selector {
-            width: 100%;
-            max-width: 720px;
-            margin-bottom: 16px;
-        }
-
-        .project-tabs {
-            display: flex;
-            gap: 5px;
-            flex-wrap: wrap;
-        }
-
-        .project-tab {
-            font-family: 'Inter', sans-serif;
-            font-size: 12px;
-            font-weight: 500;
-            padding: 6px 12px;
-            border-radius: 20px;
-            border: 1px solid var(--border);
-            background: var(--surface);
-            color: var(--muted);
-            cursor: pointer;
-            transition: all 0.12s ease;
-            display: flex;
-            align-items: center;
-            gap: 5px;
-            white-space: nowrap;
-        }
-
-        .project-tab:hover {
-            border-color: var(--accent-mid);
-            color: var(--accent-text);
-            background: var(--accent-light);
-        }
-
-        .project-tab.active {
-            background: var(--accent);
-            border-color: var(--accent);
-            color: #fff;
-        }
-
-        /* ── two col layout ── */
-        .main-layout {
-            width: 100%;
-            max-width: 720px;
-            display: grid;
-            grid-template-columns: 1fr 260px;
-            gap: 12px;
-            align-items: start;
-        }
-
-        @media (max-width: 600px) {
-            .main-layout {
-                grid-template-columns: 1fr;
-            }
-        }
-
-        /* ── card ── */
-        .card {
-            background: var(--surface);
-            border: 1px solid var(--border);
-            border-radius: 10px;
-            overflow: hidden;
-        }
-
-        .card-header {
-            padding: 11px 16px;
-            border-bottom: 1px solid var(--border-dim);
-            display: flex;
-            align-items: center;
-            gap: 8px;
-        }
-
-        .card-header-label {
-            font-family: 'JetBrains Mono', monospace;
-            font-size: 9px;
-            letter-spacing: 0.12em;
-            color: var(--muted);
-            text-transform: uppercase;
-            flex: 1;
-        }
-
-        .project-badge {
-            font-family: 'JetBrains Mono', monospace;
-            font-size: 9px;
-            padding: 2px 7px;
-            border-radius: 10px;
-            background: var(--tag-bg);
-            color: var(--tag-text);
-            border: 1px solid var(--tag-border);
-            letter-spacing: 0.06em;
-        }
-
-        .card-body {
-            padding: 16px;
-        }
-
-        /* ── taxonomy ── */
-        .taxonomy-grid {
-            display: flex;
-            flex-direction: column;
-            gap: 3px;
-        }
-
-        .tax-item {
-            font-size: 11.5px;
-            padding: 5px 8px;
-            border-radius: 6px;
-            background: var(--surface2);
-            border: 1px solid var(--border-dim);
-            color: var(--muted);
-            display: flex;
-            align-items: center;
-            gap: 7px;
-            cursor: default;
-            transition: background 0.1s;
-        }
-
-        .tax-item:hover {
-            background: var(--accent-light);
-        }
-
-        .tax-item .tax-emoji {
-            font-size: 13px;
-            line-height: 1;
-            flex-shrink: 0;
-        }
-
-        .tax-item .tax-label {
-            color: var(--text);
-            font-size: 11px;
-            font-weight: 400;
-        }
-
-        /* ── input area ── */
-        textarea {
-            width: 100%;
-            min-height: 100px;
-            background: var(--surface2);
-            border: 1px solid var(--border);
-            border-radius: 7px;
-            color: var(--text);
-            font-family: 'Inter', sans-serif;
-            font-size: 13.5px;
-            line-height: 1.6;
-            padding: 12px 14px;
-            resize: vertical;
-            outline: none;
-            transition: border-color 0.12s;
-        }
-
-        textarea:focus {
-            border-color: var(--accent);
-        }
-
-        textarea::placeholder {
-            color: var(--dim);
-        }
-
-        .date-row {
-            display: flex;
-            align-items: center;
-            gap: 10px;
-            margin-top: 10px;
-        }
-
-        .date-label {
-            font-family: 'JetBrains Mono', monospace;
-            font-size: 9px;
-            color: var(--muted);
-            letter-spacing: 0.1em;
-            text-transform: uppercase;
-            white-space: nowrap;
-        }
-
-        input[type="date"] {
-            background: var(--surface2);
-            border: 1px solid var(--border);
-            border-radius: 6px;
-            color: var(--text);
-            font-family: 'JetBrains Mono', monospace;
-            font-size: 11px;
-            padding: 5px 9px;
-            outline: none;
-            transition: border-color 0.12s;
-            color-scheme: light;
-        }
-
-        input[type="date"]:focus {
-            border-color: var(--accent);
-        }
-
-        .generate-btn {
-            margin-left: auto;
-            font-family: 'Inter', sans-serif;
-            font-size: 12px;
-            font-weight: 600;
-            letter-spacing: 0.02em;
-            padding: 7px 18px;
-            border-radius: 6px;
-            border: none;
-            background: var(--accent);
-            color: #fff;
-            cursor: pointer;
-            transition: all 0.12s;
-            display: flex;
-            align-items: center;
-            gap: 6px;
-        }
-
-        .generate-btn:hover:not(:disabled) {
-            background: #5a3ea8;
-        }
-
-        .generate-btn:disabled {
-            opacity: 0.35;
-            cursor: not-allowed;
-        }
-
-        /* ── output ── */
-        .output-wrap {
-            width: 100%;
-            max-width: 720px;
-            margin-top: 12px;
-        }
-
-        .output-card {
-            background: var(--surface);
-            border: 1px solid var(--border);
-            border-radius: 10px;
-            overflow: hidden;
-            display: none;
-        }
-
-        .output-card.visible {
-            display: block;
-        }
-
-        .output-header {
-            padding: 10px 16px;
-            border-bottom: 1px solid var(--border-dim);
-            display: flex;
-            align-items: center;
-            gap: 8px;
-        }
-
-        .output-dot {
-            width: 6px;
-            height: 6px;
-            border-radius: 50%;
-            background: var(--green);
-            flex-shrink: 0;
-        }
-
-        .output-header-label {
-            font-family: 'JetBrains Mono', monospace;
-            font-size: 9px;
-            letter-spacing: 0.12em;
-            color: var(--muted);
-            text-transform: uppercase;
-            flex: 1;
-        }
-
-        .output-title {
-            font-family: 'JetBrains Mono', monospace;
-            font-size: 16px;
-            font-weight: 500;
-            color: var(--text);
-            padding: 18px 16px 14px;
-            line-height: 1.5;
-            letter-spacing: -0.01em;
-        }
-
-        .output-footer {
-            padding: 10px 16px;
-            border-top: 1px solid var(--border-dim);
-            display: flex;
-            gap: 7px;
-            align-items: center;
-        }
-
-        .copy-btn {
-            font-family: 'Inter', sans-serif;
-            font-size: 11px;
-            font-weight: 500;
-            padding: 5px 12px;
-            border-radius: 5px;
-            border: 1px solid var(--border);
-            background: var(--surface2);
-            color: var(--text);
-            cursor: pointer;
-            transition: all 0.12s;
-        }
-
-        .copy-btn:hover {
-            border-color: var(--accent-mid);
-            color: var(--accent-text);
-        }
-
-        .copy-btn.copied {
-            border-color: var(--green);
-            color: var(--green);
-            background: var(--green-bg);
-        }
-
-        .regen-btn {
-            font-family: 'Inter', sans-serif;
-            font-size: 11px;
-            font-weight: 500;
-            padding: 5px 12px;
-            border-radius: 5px;
-            border: 1px solid var(--border);
-            background: transparent;
-            color: var(--muted);
-            cursor: pointer;
-            transition: all 0.12s;
-            margin-left: auto;
-        }
-
-        .regen-btn:hover {
-            color: var(--text);
-            border-color: var(--dim);
-        }
-
-        /* ── loading ── */
-        .loading-inline {
-            display: none;
-            align-items: center;
-            gap: 9px;
-            padding: 14px 16px;
-            font-size: 12px;
-            color: var(--muted);
-            font-family: 'JetBrains Mono', monospace;
-            background: var(--surface);
-            border: 1px solid var(--border);
-            border-radius: 10px;
-        }
-
-        .loading-inline.visible {
-            display: flex;
-        }
-
-        .spinner {
-            width: 13px;
-            height: 13px;
-            border: 2px solid var(--border);
-            border-top-color: var(--accent);
-            border-radius: 50%;
-            animation: spin 0.65s linear infinite;
-            flex-shrink: 0;
-        }
-
-        @keyframes spin {
-            to {
-                transform: rotate(360deg);
-            }
-        }
-
-        /* ── error ── */
-        .error-msg {
-            display: none;
-            font-size: 11.5px;
-            color: #b91c1c;
-            padding: 9px 13px;
-            background: #fef2f2;
-            border: 1px solid #fecaca;
-            border-radius: 7px;
-            margin-top: 10px;
-            font-family: 'JetBrains Mono', monospace;
-        }
-
-        .error-msg.visible {
-            display: block;
-        }
-
-        /* ── history ── */
-        .history-section {
-            width: 100%;
-            max-width: 720px;
-            margin-top: 16px;
-            display: none;
-        }
-
-        .history-header {
-            display: flex;
-            align-items: center;
-            justify-content: space-between;
-            margin-bottom: 7px;
-        }
-
-        .clear-history {
-            background: none;
-            border: none;
-            color: var(--dim);
-            font-family: 'JetBrains Mono', monospace;
-            font-size: 9px;
-            cursor: pointer;
-            letter-spacing: 0.1em;
-            text-transform: uppercase;
-            transition: color 0.12s;
-        }
-
-        .clear-history:hover {
-            color: var(--muted);
-        }
-
-        .history-list {
-            display: flex;
-            flex-direction: column;
-            gap: 4px;
-        }
-
-        .history-item {
-            font-family: 'JetBrains Mono', monospace;
-            font-size: 11.5px;
-            padding: 8px 12px;
-            background: var(--surface);
-            border: 1px solid var(--border-dim);
-            border-radius: 7px;
-            color: var(--text);
-            display: flex;
-            align-items: center;
-            gap: 9px;
-            cursor: default;
-            transition: border-color 0.12s;
-        }
-
-        .history-item:hover {
-            border-color: var(--border);
-        }
-
-        .h-project {
-            font-size: 8.5px;
-            padding: 2px 6px;
-            border-radius: 8px;
-            background: var(--tag-bg);
-            color: var(--tag-text);
-            white-space: nowrap;
-            flex-shrink: 0;
-        }
-
-        .h-title {
-            flex: 1;
-            font-size: 11px;
-        }
-
-        .h-copy {
-            font-size: 9px;
-            color: var(--dim);
-            background: none;
-            border: 1px solid transparent;
-            cursor: pointer;
-            font-family: 'JetBrains Mono', monospace;
-            padding: 2px 6px;
-            border-radius: 4px;
-            transition: all 0.12s;
-            flex-shrink: 0;
-        }
-
-        .h-copy:hover {
-            color: var(--accent-text);
-            border-color: var(--accent-mid);
-            background: var(--accent-light);
-        }
-    </style>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Thread Namer</title>
+<style>
+  @import url('https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500;600&family=IBM+Plex+Sans:wght@300;400;500;600&display=swap');
+
+  *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+  :root {
+    --bg: #0d0d0f;
+    --surface: #141417;
+    --surface2: #1a1a1f;
+    --border: #252530;
+    --border-bright: #35354a;
+    --text: #c8c8d8;
+    --muted: #6a6a80;
+    --dim: #3a3a50;
+
+    /* project accent tokens */
+    --accent: #a78bfa;
+    --accent-dim: rgba(167,139,250,0.12);
+    --accent-glow: rgba(167,139,250,0.25);
+  }
+
+  body {
+    background: var(--bg);
+    color: var(--text);
+    font-family: 'IBM Plex Sans', sans-serif;
+    min-height: 100vh;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    padding: 48px 24px 80px;
+  }
+
+  /* ── header ── */
+  .header {
+    width: 100%;
+    max-width: 680px;
+    margin-bottom: 40px;
+  }
+
+  .header-eyebrow {
+    font-family: 'IBM Plex Mono', monospace;
+    font-size: 10px;
+    letter-spacing: 0.18em;
+    color: var(--muted);
+    text-transform: uppercase;
+    margin-bottom: 10px;
+  }
+
+  .header-title {
+    font-family: 'IBM Plex Mono', monospace;
+    font-size: 22px;
+    font-weight: 600;
+    color: #fff;
+    letter-spacing: -0.02em;
+  }
+
+  .header-title span {
+    color: var(--accent);
+  }
+
+  /* ── project selector ── */
+  .project-selector {
+    width: 100%;
+    max-width: 680px;
+    margin-bottom: 24px;
+  }
+
+  .section-label {
+    font-family: 'IBM Plex Mono', monospace;
+    font-size: 9px;
+    letter-spacing: 0.16em;
+    color: var(--muted);
+    text-transform: uppercase;
+    margin-bottom: 10px;
+  }
+
+  .project-tabs {
+    display: flex;
+    gap: 6px;
+    flex-wrap: wrap;
+  }
+
+  .project-tab {
+    font-family: 'IBM Plex Mono', monospace;
+    font-size: 11px;
+    font-weight: 500;
+    padding: 7px 14px;
+    border-radius: 4px;
+    border: 1px solid var(--border);
+    background: var(--surface);
+    color: var(--muted);
+    cursor: pointer;
+    transition: all 0.15s ease;
+    display: flex;
+    align-items: center;
+    gap: 7px;
+  }
+
+  .project-tab:hover {
+    border-color: var(--border-bright);
+    color: var(--text);
+  }
+
+  .project-tab.active {
+    background: var(--accent-dim);
+    border-color: var(--accent);
+    color: #fff;
+  }
+
+  .project-tab .tab-emoji {
+    font-size: 13px;
+    line-height: 1;
+  }
+
+  /* ── card ── */
+  .card {
+    width: 100%;
+    max-width: 680px;
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    overflow: hidden;
+    margin-bottom: 16px;
+  }
+
+  .card-header {
+    padding: 16px 20px;
+    border-bottom: 1px solid var(--border);
+    display: flex;
+    align-items: center;
+    gap: 10px;
+  }
+
+  .card-header-dot {
+    width: 7px;
+    height: 7px;
+    border-radius: 50%;
+    background: var(--accent);
+    flex-shrink: 0;
+  }
+
+  .card-header-label {
+    font-family: 'IBM Plex Mono', monospace;
+    font-size: 10px;
+    letter-spacing: 0.12em;
+    color: var(--muted);
+    text-transform: uppercase;
+    flex: 1;
+  }
+
+  .project-badge {
+    font-family: 'IBM Plex Mono', monospace;
+    font-size: 9px;
+    padding: 3px 8px;
+    border-radius: 3px;
+    background: var(--accent-dim);
+    color: var(--accent);
+    border: 1px solid rgba(167,139,250,0.2);
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+  }
+
+  .card-body {
+    padding: 20px;
+  }
+
+  /* ── emoji taxonomy ── */
+  .taxonomy-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(130px, 1fr));
+    gap: 6px;
+    margin-bottom: 4px;
+  }
+
+  .tax-item {
+    font-family: 'IBM Plex Mono', monospace;
+    font-size: 11px;
+    padding: 5px 8px;
+    border-radius: 4px;
+    background: var(--surface2);
+    border: 1px solid var(--border);
+    color: var(--muted);
+    display: flex;
+    align-items: center;
+    gap: 6px;
+  }
+
+  .tax-item .tax-emoji { font-size: 13px; }
+  .tax-item .tax-label { color: var(--text); font-size: 10px; }
+
+  /* ── textarea ── */
+  .input-wrapper {
+    position: relative;
+  }
+
+  textarea {
+    width: 100%;
+    min-height: 110px;
+    background: var(--surface2);
+    border: 1px solid var(--border);
+    border-radius: 6px;
+    color: var(--text);
+    font-family: 'IBM Plex Sans', sans-serif;
+    font-size: 14px;
+    line-height: 1.6;
+    padding: 14px 16px;
+    resize: vertical;
+    outline: none;
+    transition: border-color 0.15s;
+  }
+
+  textarea:focus {
+    border-color: var(--accent);
+  }
+
+  textarea::placeholder {
+    color: var(--dim);
+  }
+
+  /* ── date row ── */
+  .date-row {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    margin-top: 12px;
+  }
+
+  .date-label {
+    font-family: 'IBM Plex Mono', monospace;
+    font-size: 10px;
+    color: var(--muted);
+    letter-spacing: 0.1em;
+    white-space: nowrap;
+  }
+
+  input[type="date"] {
+    background: var(--surface2);
+    border: 1px solid var(--border);
+    border-radius: 4px;
+    color: var(--text);
+    font-family: 'IBM Plex Mono', monospace;
+    font-size: 12px;
+    padding: 6px 10px;
+    outline: none;
+    transition: border-color 0.15s;
+    color-scheme: dark;
+  }
+
+  input[type="date"]:focus {
+    border-color: var(--accent);
+  }
+
+  /* ── generate btn ── */
+  .generate-btn {
+    margin-left: auto;
+    font-family: 'IBM Plex Mono', monospace;
+    font-size: 12px;
+    font-weight: 600;
+    letter-spacing: 0.06em;
+    padding: 8px 20px;
+    border-radius: 4px;
+    border: 1px solid var(--accent);
+    background: var(--accent-dim);
+    color: var(--accent);
+    cursor: pointer;
+    transition: all 0.15s;
+    display: flex;
+    align-items: center;
+    gap: 7px;
+  }
+
+  .generate-btn:hover:not(:disabled) {
+    background: rgba(167,139,250,0.2);
+    box-shadow: 0 0 12px var(--accent-glow);
+  }
+
+  .generate-btn:disabled {
+    opacity: 0.4;
+    cursor: not-allowed;
+  }
+
+  /* ── output ── */
+  .output-card {
+    width: 100%;
+    max-width: 680px;
+    background: var(--surface);
+    border: 1px solid var(--border-bright);
+    border-radius: 8px;
+    overflow: hidden;
+    margin-bottom: 16px;
+    display: none;
+  }
+
+  .output-card.visible { display: block; }
+
+  .output-header {
+    padding: 12px 20px;
+    border-bottom: 1px solid var(--border);
+    display: flex;
+    align-items: center;
+    gap: 10px;
+  }
+
+  .output-header-label {
+    font-family: 'IBM Plex Mono', monospace;
+    font-size: 9px;
+    letter-spacing: 0.14em;
+    color: var(--muted);
+    text-transform: uppercase;
+    flex: 1;
+  }
+
+  .output-title {
+    font-family: 'IBM Plex Mono', monospace;
+    font-size: 17px;
+    font-weight: 600;
+    color: #fff;
+    padding: 20px 20px 16px;
+    line-height: 1.4;
+    letter-spacing: -0.01em;
+  }
+
+  .output-footer {
+    padding: 12px 20px;
+    border-top: 1px solid var(--border);
+    display: flex;
+    gap: 8px;
+    align-items: center;
+  }
+
+  .copy-btn {
+    font-family: 'IBM Plex Mono', monospace;
+    font-size: 11px;
+    padding: 6px 14px;
+    border-radius: 4px;
+    border: 1px solid var(--border-bright);
+    background: var(--surface2);
+    color: var(--text);
+    cursor: pointer;
+    transition: all 0.15s;
+  }
+
+  .copy-btn:hover { border-color: var(--accent); color: var(--accent); }
+  .copy-btn.copied { border-color: #4ade80; color: #4ade80; }
+
+  .regen-btn {
+    font-family: 'IBM Plex Mono', monospace;
+    font-size: 11px;
+    padding: 6px 14px;
+    border-radius: 4px;
+    border: 1px solid var(--border);
+    background: transparent;
+    color: var(--muted);
+    cursor: pointer;
+    transition: all 0.15s;
+    margin-left: auto;
+  }
+
+  .regen-btn:hover { color: var(--text); border-color: var(--border-bright); }
+
+  /* ── loading ── */
+  .loading-state {
+    display: none;
+    align-items: center;
+    gap: 10px;
+    padding: 20px;
+    font-family: 'IBM Plex Mono', monospace;
+    font-size: 12px;
+    color: var(--muted);
+  }
+
+  .loading-state.visible { display: flex; }
+
+  .spinner {
+    width: 14px;
+    height: 14px;
+    border: 2px solid var(--dim);
+    border-top-color: var(--accent);
+    border-radius: 50%;
+    animation: spin 0.7s linear infinite;
+  }
+
+  @keyframes spin { to { transform: rotate(360deg); } }
+
+  /* ── error ── */
+  .error-msg {
+    display: none;
+    font-family: 'IBM Plex Mono', monospace;
+    font-size: 11px;
+    color: #f87171;
+    padding: 10px 14px;
+    background: rgba(248,113,113,0.08);
+    border: 1px solid rgba(248,113,113,0.2);
+    border-radius: 4px;
+    width: 100%;
+    max-width: 680px;
+    margin-bottom: 12px;
+  }
+
+  .error-msg.visible { display: block; }
+
+  /* ── history ── */
+  .history-section {
+    width: 100%;
+    max-width: 680px;
+    margin-top: 8px;
+  }
+
+  .history-title {
+    font-family: 'IBM Plex Mono', monospace;
+    font-size: 9px;
+    letter-spacing: 0.14em;
+    color: var(--muted);
+    text-transform: uppercase;
+    margin-bottom: 8px;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+  }
+
+  .clear-history {
+    background: none;
+    border: none;
+    color: var(--dim);
+    font-family: 'IBM Plex Mono', monospace;
+    font-size: 9px;
+    cursor: pointer;
+    letter-spacing: 0.1em;
+    transition: color 0.15s;
+  }
+
+  .clear-history:hover { color: var(--muted); }
+
+  .history-list {
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+  }
+
+  .history-item {
+    font-family: 'IBM Plex Mono', monospace;
+    font-size: 12px;
+    padding: 9px 14px;
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 4px;
+    color: var(--text);
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    cursor: pointer;
+    transition: border-color 0.15s;
+  }
+
+  .history-item:hover { border-color: var(--border-bright); }
+
+  .history-item .h-project {
+    font-size: 9px;
+    padding: 2px 6px;
+    border-radius: 3px;
+    background: var(--accent-dim);
+    color: var(--accent);
+    letter-spacing: 0.08em;
+    white-space: nowrap;
+  }
+
+  .history-item .h-title { flex: 1; }
+
+  .history-item .h-copy {
+    font-size: 9px;
+    color: var(--dim);
+    background: none;
+    border: none;
+    cursor: pointer;
+    font-family: 'IBM Plex Mono', monospace;
+    padding: 2px 6px;
+    border-radius: 3px;
+    transition: all 0.15s;
+  }
+
+  .history-item .h-copy:hover { color: var(--accent); background: var(--accent-dim); }
+
+  /* ── settings ── */
+  .settings-card {
+    width: 100%;
+    max-width: 680px;
+    margin-bottom: 16px;
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    overflow: hidden;
+  }
+
+  .settings-card summary {
+    list-style: none;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 12px;
+    padding: 14px 18px;
+    font-family: 'IBM Plex Mono', monospace;
+    font-size: 11px;
+    letter-spacing: 0.08em;
+    color: var(--text);
+    text-transform: uppercase;
+  }
+
+  .settings-card summary::-webkit-details-marker { display: none; }
+
+  .settings-meta {
+    color: var(--muted);
+    font-size: 10px;
+    letter-spacing: 0.04em;
+    text-transform: none;
+  }
+
+  .settings-body {
+    padding: 0 18px 18px;
+    border-top: 1px solid var(--border);
+  }
+
+  .settings-grid {
+    display: grid;
+    grid-template-columns: 1fr 220px;
+    gap: 12px;
+    margin-top: 16px;
+  }
+
+  .settings-field {
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+  }
+
+  .settings-field span {
+    font-family: 'IBM Plex Mono', monospace;
+    font-size: 10px;
+    letter-spacing: 0.08em;
+    color: var(--muted);
+    text-transform: uppercase;
+  }
+
+  .settings-field input {
+    width: 100%;
+    background: var(--surface2);
+    border: 1px solid var(--border);
+    border-radius: 6px;
+    color: var(--text);
+    font-family: 'IBM Plex Mono', monospace;
+    font-size: 12px;
+    padding: 11px 12px;
+    outline: none;
+  }
+
+  .settings-field select {
+    width: 100%;
+    background: var(--surface2);
+    border: 1px solid var(--border);
+    border-radius: 6px;
+    color: var(--text);
+    font-family: 'IBM Plex Mono', monospace;
+    font-size: 12px;
+    padding: 11px 12px;
+    outline: none;
+  }
+
+  .settings-field input:focus,
+  .settings-field select:focus {
+    border-color: var(--accent);
+  }
+
+  .settings-note {
+    color: var(--muted);
+    font-size: 12px;
+    line-height: 1.5;
+    margin-top: 12px;
+  }
+
+  .settings-actions {
+    display: flex;
+    gap: 10px;
+    margin-top: 14px;
+    flex-wrap: wrap;
+  }
+
+  .settings-btn {
+    border: 1px solid var(--border-bright);
+    background: var(--surface2);
+    color: var(--text);
+    border-radius: 6px;
+    padding: 10px 12px;
+    cursor: pointer;
+    font-family: 'IBM Plex Mono', monospace;
+    font-size: 11px;
+    letter-spacing: 0.06em;
+    text-transform: uppercase;
+    transition: all 0.15s ease;
+  }
+
+  .settings-btn:hover {
+    border-color: var(--accent);
+    color: #fff;
+    background: var(--accent-dim);
+  }
+
+  @media (max-width: 720px) {
+    .settings-grid {
+      grid-template-columns: 1fr;
+    }
+  }
+</style>
 </head>
-
 <body>
 
-    <div class="header">
-        <div class="header-title">// <span>thread</span>.rename</div>
-        <div class="header-sub">Prompt Lab · Thread Namer</div>
+<div class="header">
+  <div class="header-eyebrow">Developer Mode · Thread Namer</div>
+  <div class="header-title">// <span>rename</span> thread</div>
+</div>
+
+<details class="settings-card" id="settingsCard">
+  <summary>
+    <span>Model Settings</span>
+    <span class="settings-meta" id="settingsSummary">No API key saved</span>
+  </summary>
+  <div class="settings-body">
+    <div class="settings-grid">
+      <label class="settings-field">
+        <span>Provider</span>
+        <select id="providerInput">
+          <option value="openai">OpenAI</option>
+          <option value="gemini">Gemini</option>
+        </select>
+      </label>
+      <label class="settings-field">
+        <span id="apiKeyLabel">API Key</span>
+        <input type="password" id="apiKeyInput" placeholder="sk-..." autocomplete="off">
+      </label>
+      <label class="settings-field">
+        <span>Text Model</span>
+        <input type="text" id="textModelInput" placeholder="gpt-4.1-mini">
+      </label>
     </div>
-
-    <!-- SETTINGS -->
-    <div class="project-selector">
-        <div class="section-label">Provider</div>
-        <div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap;margin-bottom:12px;">
-            <select id="providerSelect" style="font-family:'JetBrains Mono',monospace;font-size:11px;padding:6px 10px;border-radius:4px;border:1px solid var(--border);background:var(--surface);color:var(--text);">
-                <option value="openai">OpenAI</option>
-                <option value="gemini">Gemini</option>
-            </select>
-            <input type="password" id="apiKeyInput" placeholder="API key" autocomplete="off" style="flex:1;min-width:180px;font-family:'JetBrains Mono',monospace;font-size:11px;padding:6px 10px;border-radius:4px;border:1px solid var(--border);background:var(--surface);color:var(--text);">
-            <input type="text" id="modelInput" placeholder="Model" style="width:140px;font-family:'JetBrains Mono',monospace;font-size:11px;padding:6px 10px;border-radius:4px;border:1px solid var(--border);background:var(--surface);color:var(--text);">
-            <button onclick="saveProviderSettings()" style="font-family:'JetBrains Mono',monospace;font-size:10px;padding:6px 12px;border-radius:4px;border:1px solid var(--accent-mid);background:var(--accent-light);color:var(--accent-text);cursor:pointer;">Save</button>
-        </div>
-        <div id="settingsStatus" style="font-family:'JetBrains Mono',monospace;font-size:10px;color:var(--muted);margin-bottom:12px;"></div>
+    <div class="settings-note">
+      Stored only in this browser via localStorage. This is fine for a local prototype, but do not expose a production API key in a public page.
     </div>
-
-    <!-- PROJECT SELECTOR -->
-    <div class="project-selector">
-        <div class="section-label">Project</div>
-        <div class="project-tabs" id="projectTabs"></div>
+    <div class="settings-actions">
+      <button class="settings-btn" type="button" onclick="saveSettings()">Save Settings</button>
+      <button class="settings-btn" type="button" onclick="clearSettings()">Clear Key</button>
     </div>
+  </div>
+</details>
 
-    <!-- MAIN LAYOUT -->
-    <div class="main-layout">
+<!-- PROJECT SELECTOR -->
+<div class="project-selector">
+  <div class="section-label">01 · Select Project</div>
+  <div class="project-tabs" id="projectTabs"></div>
+</div>
 
-        <!-- LEFT: INPUT -->
-        <div>
-            <div class="card">
-                <div class="card-header">
-                    <div class="card-header-label">Thread Summary</div>
-                    <div class="project-badge" id="activeBadge">—</div>
-                </div>
-                <div class="card-body">
-                    <textarea id="summaryInput"
-                        placeholder="Paste or type a brief summary of what the conversation covers…"></textarea>
-                    <div class="date-row">
-                        <span class="date-label">Date</span>
-                        <input type="date" id="dateInput">
-                        <button class="generate-btn" id="generateBtn" onclick="generate()" disabled>
-                            <span id="btnLabel">Generate</span>
-                        </button>
-                    </div>
-                </div>
-            </div>
-        </div>
+<!-- EMOJI TAXONOMY -->
+<div class="card" id="taxonomyCard">
+  <div class="card-header">
+    <div class="card-header-dot"></div>
+    <div class="card-header-label">Emoji Taxonomy</div>
+    <div class="project-badge" id="activeBadge">—</div>
+  </div>
+  <div class="card-body">
+    <div class="taxonomy-grid" id="taxonomyGrid"></div>
+  </div>
+</div>
 
-        <!-- RIGHT: TAXONOMY -->
-        <div>
-            <div class="card">
-                <div class="card-header">
-                    <div class="card-header-label">Emoji Taxonomy</div>
-                </div>
-                <div class="card-body" style="padding:10px 12px;">
-                    <div class="taxonomy-grid" id="taxonomyGrid"></div>
-                </div>
-            </div>
-        </div>
-
+<!-- INPUT -->
+<div class="card">
+  <div class="card-header">
+    <div class="card-header-dot"></div>
+    <div class="card-header-label">02 · Thread Summary</div>
+  </div>
+  <div class="card-body">
+    <textarea
+      id="summaryInput"
+      placeholder="Paste or type a brief summary of what the conversation covers…"
+    ></textarea>
+    <div class="date-row">
+      <span class="date-label">DATE</span>
+      <input type="date" id="dateInput">
+      <button class="generate-btn" id="generateBtn" onclick="generate()" disabled>
+        <span id="btnLabel">GENERATE</span>
+      </button>
     </div>
+  </div>
+</div>
 
-    <!-- OUTPUT AREA -->
-    <div class="output-wrap">
-        <div class="loading-inline" id="loadingCard">
-            <div class="spinner"></div>
-            <span>Generating title…</span>
-        </div>
-        <div class="error-msg" id="errorMsg"></div>
-        <div class="output-card" id="outputCard">
-            <div class="output-header">
-                <div class="output-dot"></div>
-                <div class="output-header-label">Generated Title</div>
-            </div>
-            <div class="output-title" id="outputTitle"></div>
-            <div class="output-footer">
-                <button class="copy-btn" id="copyBtn" onclick="copyTitle()">Copy</button>
-                <button class="regen-btn" onclick="generate()">↺ Regenerate</button>
-            </div>
-        </div>
-    </div>
+<!-- ERROR -->
+<div class="error-msg" id="errorMsg"></div>
 
-    <!-- HISTORY -->
-    <div class="history-section" id="historySection">
-        <div class="history-header">
-            <div class="section-label">Session History</div>
-            <button class="clear-history" onclick="clearHistory()">Clear</button>
-        </div>
-        <div class="history-list" id="historyList"></div>
-    </div>
+<!-- LOADING -->
+<div class="output-card" id="loadingCard" style="display:none">
+  <div class="loading-state visible">
+    <div class="spinner"></div>
+    <span id="loadingText">Generating title…</span>
+  </div>
+</div>
 
-    <script src="./openai-local-tools.js"></script>
-    <script>
-        const SETTINGS_KEY = 'thread-namer-v2.settings';
-        const PROVIDER_DEFAULTS = {
-            openai: { model: 'gpt-4.1-mini', placeholder: 'sk-...' },
-            gemini: { model: 'gemini-2.5-flash', placeholder: 'AIza...' },
-        };
+<!-- OUTPUT -->
+<div class="output-card" id="outputCard">
+  <div class="output-header">
+    <div class="output-header-label">Generated Title</div>
+  </div>
+  <div class="output-title" id="outputTitle"></div>
+  <div class="output-footer">
+    <button class="copy-btn" id="copyBtn" onclick="copyTitle()">COPY</button>
+    <button class="regen-btn" onclick="generate()">↺ REGENERATE</button>
+  </div>
+</div>
 
-        function loadProviderSettings() {
-            try {
-                return JSON.parse(localStorage.getItem(SETTINGS_KEY)) || { provider: 'openai', apiKey: '', model: '' };
-            } catch { return { provider: 'openai', apiKey: '', model: '' }; }
-        }
+<!-- HISTORY -->
+<div class="history-section" id="historySection" style="display:none">
+  <div class="history-title">
+    <span>Session History</span>
+    <button class="clear-history" onclick="clearHistory()">CLEAR</button>
+  </div>
+  <div class="history-list" id="historyList"></div>
+</div>
 
-        function saveProviderSettings() {
-            const provider = document.getElementById('providerSelect').value;
-            const apiKey = document.getElementById('apiKeyInput').value.trim();
-            const model = document.getElementById('modelInput').value.trim() || PROVIDER_DEFAULTS[provider].model;
-            localStorage.setItem(SETTINGS_KEY, JSON.stringify({ provider, apiKey, model }));
-            document.getElementById('settingsStatus').textContent = '✓ Settings saved';
-            setTimeout(() => { document.getElementById('settingsStatus').textContent = ''; }, 2000);
-        }
+<script src="./openai-local-tools.js"></script>
+<script>
+// ─── PROJECT DEFINITIONS ─────────────────────────────────────────────────────
 
-        function initProviderUI() {
-            const s = loadProviderSettings();
-            document.getElementById('providerSelect').value = s.provider || 'openai';
-            document.getElementById('apiKeyInput').value = s.apiKey || '';
-            document.getElementById('apiKeyInput').placeholder = PROVIDER_DEFAULTS[s.provider]?.placeholder || 'API key';
-            document.getElementById('modelInput').value = s.model || '';
-            document.getElementById('modelInput').placeholder = PROVIDER_DEFAULTS[s.provider]?.model || 'model';
-            document.getElementById('providerSelect').addEventListener('change', function() {
-                const p = this.value;
-                document.getElementById('apiKeyInput').placeholder = PROVIDER_DEFAULTS[p].placeholder;
-                document.getElementById('modelInput').placeholder = PROVIDER_DEFAULTS[p].model;
-                if (!document.getElementById('modelInput').value.trim()) {
-                    document.getElementById('modelInput').value = '';
-                }
-            });
-        }
+const PROJECTS = {
+  'garden-os': {
+    label: 'Garden OS',
+    emoji: '🌱',
+    badge: 'GARDEN-OS',
+    taxonomy: [
+      { e: '🌱', l: 'Garden OS (primary)' },
+      { e: '🧱', l: 'Structure' },
+      { e: '🔨', l: 'Building' },
+      { e: '📐', l: 'Diagrams' },
+      { e: '📊', l: 'Data' },
+      { e: '🧭', l: 'Planning' },
+      { e: '🧪', l: 'Experiments' },
+      { e: '🌐', l: 'Architecture' },
+      { e: '📋', l: 'Operations' },
+      { e: '🛠', l: 'Troubleshooting' },
+      { e: '📚', l: 'Documentation' },
+      { e: '🧠', l: 'Planning Logic' },
+      { e: '🧩', l: 'System Design' },
+    ],
+    systemPrompt: `You are a documentation organizer for the Garden OS project.
+Your job is to rename chat threads so they are short, clear, and visually scannable in a long conversation list.
 
-        const PROJECTS = {
-            'prompt-lab': {
-                label: 'Prompt Lab',
-                emoji: '🔬',
-                badge: 'PLB',
-                taxonomy: [
-                    { e: '🔬', l: 'Primary' },
-                    { e: '⚙️', l: 'Extension / Config' },
-                    { e: '🧩', l: 'Architecture' },
-                    { e: '🎨', l: 'UI / Design' },
-                    { e: '📦', l: 'Build / Deploy' },
-                    { e: '🗃', l: 'Library / Storage' },
-                    { e: '✏️', l: 'Editor / Prompts' },
-                    { e: '🧪', l: 'Testing / A-B' },
-                    { e: '🔌', l: 'API / Integration' },
-                    { e: '🐛', l: 'Debug / Fix' },
-                    { e: '📋', l: 'Planning / Spec' },
-                    { e: '🚀', l: 'Ship / Release' },
-                    { e: '🔐', l: 'Auth / Security' },
-                    { e: '📡', l: 'Network / Fetch' },
-                    { e: '🧠', l: 'AI / LLM Logic' },
-                ],
-                systemPrompt: `You rename chat threads for the Prompt Lab browser extension project (MV3, React, Vite, Tailwind).
+Garden OS is a small ecosystem of tools that includes:
+- a garden planner
+- build guides
+- operations guides
+- documentation
+- architecture discussions
+- UI experiments
+- diagrams
+- system maps
 
-Format: [emoji][emoji] | short descriptive title – MM-DD
-- First emoji always 🔬
-- Second from taxonomy: ⚙️ extension ✏️ editor 🗃 library 🧩 arch 🎨 ui 📦 build 🧪 test 🔌 api 🐛 debug 📋 spec 🚀 ship 🔐 auth 📡 network 🧠 ai
-- Under 8 words, concrete nouns, system language
-- End with MM-DD from provided date
+Rules:
+1. Titles must follow this structure:
+[emoji][emoji] | short descriptive title – MM-DD
 
-Return ONLY the title in a code block.`,
-            },
+2. Use 2 emojis that visually represent the topic.
+First emoji: 🌱 (always Garden OS primary)
+Secondary emoji from this taxonomy:
+🧱 structure / 🔨 building / 📐 diagrams / 📊 data / 🧭 planning
+🧪 experiments / 🌐 architecture / 📋 operations / 🛠 troubleshooting
+📚 documentation / 🧠 planning logic / 🧩 system design
 
-            'garden-os': {
-                label: 'Garden OS',
-                emoji: '🌱',
-                badge: 'GOS',
-                taxonomy: [
-                    { e: '🌱', l: 'Primary' },
-                    { e: '🧱', l: 'Structure' },
-                    { e: '🔨', l: 'Building' },
-                    { e: '📐', l: 'Diagrams' },
-                    { e: '📊', l: 'Data' },
-                    { e: '🧭', l: 'Planning' },
-                    { e: '🧪', l: 'Experiments' },
-                    { e: '🌐', l: 'Architecture' },
-                    { e: '📋', l: 'Operations' },
-                    { e: '🛠', l: 'Troubleshooting' },
-                    { e: '📚', l: 'Documentation' },
-                    { e: '🧠', l: 'Logic / Design' },
-                    { e: '🧩', l: 'System Design' },
-                    { e: '🎮', l: 'Gameplay / UX' },
-                    { e: '🌿', l: 'Content / Lore' },
-                ],
-                systemPrompt: `You rename chat threads for Garden OS — a local-first garden planner / decision support single-file browser tool.
+3. Title must be under 8 words, concrete, not vague.
+4. Always end with the date in MM-DD format as provided.
+5. Prefer nouns and system language.
 
-Format: [emoji][emoji] | short descriptive title – MM-DD
-- First emoji always 🌱
-- Second from taxonomy: 🧱 structure 🔨 building 📐 diagrams 📊 data 🧭 planning 🧪 experiments 🌐 arch 📋 ops 🛠 debug 📚 docs 🧠 logic 🧩 system 🎮 gameplay 🌿 lore
-- Under 8 words, concrete nouns, system language
-- End with MM-DD from provided date
+Return ONLY a single title in a markdown code block. No explanation, no alternatives.`,
+  },
 
-Return ONLY the title in a code block.`,
-            },
+  'prompt-lab': {
+    label: 'Prompt Lab',
+    emoji: '🔬',
+    badge: 'PROMPT-LAB',
+    taxonomy: [
+      { e: '🔬', l: 'Prompt Lab (primary)' },
+      { e: '⚙️', l: 'Extension Config' },
+      { e: '🧩', l: 'Architecture' },
+      { e: '🎨', l: 'UI/Design' },
+      { e: '📦', l: 'Build/Deploy' },
+      { e: '🗃', l: 'Library/Storage' },
+      { e: '✏️', l: 'Editor/Prompts' },
+      { e: '🧪', l: 'Testing/A-B' },
+      { e: '🔌', l: 'API/Integration' },
+      { e: '🐛', l: 'Debug/Fix' },
+      { e: '📋', l: 'Planning/Spec' },
+      { e: '🚀', l: 'Shipping/Release' },
+    ],
+    systemPrompt: `You are a documentation organizer for the Prompt Lab project.
+Prompt Lab is a Chromium browser extension (MV3/Vivaldi) — a full AI prompt engineering workspace with prompt enhancement, library management, A/B testing, and a notepad. Built with React 18, Vite, and Tailwind.
 
-            'graph-explorer': {
-                label: 'Graph Explorer',
-                emoji: '🕸',
-                badge: 'GEX',
-                taxonomy: [
-                    { e: '🕸', l: 'Primary' },
-                    { e: '🧩', l: 'Node / Edge Logic' },
-                    { e: '🎨', l: 'UI / Canvas' },
-                    { e: '📐', l: 'Layout / Algorithm' },
-                    { e: '⚙️', l: 'Config / Settings' },
-                    { e: '📊', l: 'Data / Schema' },
-                    { e: '🔌', l: 'API / Integration' },
-                    { e: '🧪', l: 'Experiment' },
-                    { e: '🐛', l: 'Debug / Fix' },
-                    { e: '📋', l: 'Planning / Spec' },
-                    { e: '🚀', l: 'Deploy / Ship' },
-                    { e: '🌐', l: 'Architecture' },
-                    { e: '🔍', l: 'Search / Filter' },
-                    { e: '📡', l: 'Data Feed' },
-                ],
-                systemPrompt: `You rename chat threads for Graph Explorer — an interactive graph visualization tool (Canvas 2D, node/edge logic).
+Your job is to rename chat threads so they are short, clear, and visually scannable.
 
-Format: [emoji][emoji] | short descriptive title – MM-DD
-- First emoji always 🕸
-- Second from taxonomy: 🧩 nodes 🎨 canvas 📐 layout ⚙️ config 📊 schema 🔌 api 🧪 experiment 🐛 debug 📋 spec 🚀 ship 🌐 arch 🔍 search 📡 feed
-- Under 8 words, concrete nouns
-- End with MM-DD from provided date
+Rules:
+1. Titles must follow this structure:
+[emoji][emoji] | short descriptive title – MM-DD
 
-Return ONLY the title in a code block.`,
-            },
+2. Use 2 emojis that visually represent the topic.
+First emoji: 🔬 (always Prompt Lab primary)
+Secondary emoji from this taxonomy:
+⚙️ extension config / 🧩 architecture / 🎨 UI design / 📦 build & deploy
+🗃 library & storage / ✏️ editor & prompts / 🧪 A-B testing / 🔌 API integration
+🐛 debug & fix / 📋 planning & spec / 🚀 shipping & release
 
-            'phosphene': {
-                label: 'Phosphene',
-                emoji: '💡',
-                badge: 'PHO',
-                taxonomy: [
-                    { e: '💡', l: 'Primary' },
-                    { e: '✨', l: 'Animation / Motion' },
-                    { e: '🎨', l: 'Visual Design' },
-                    { e: '🎛', l: 'Audio / Console' },
-                    { e: '📺', l: 'Video / Broadcast' },
-                    { e: '🎭', l: 'Live Production' },
-                    { e: '🖥', l: 'Canvas / Rendering' },
-                    { e: '🧩', l: 'Architecture' },
-                    { e: '🧪', l: 'Experiment' },
-                    { e: '📐', l: 'Layout / Geometry' },
-                    { e: '🚀', l: 'Deploy / Ship' },
-                    { e: '📋', l: 'Planning / Spec' },
-                    { e: '🎚', l: 'Parameters / Tuning' },
-                    { e: '🌈', l: 'Color / Palette' },
-                ],
-                systemPrompt: `You rename chat threads for Phosphene — a React Canvas 2D animation collection for live AV production (GrandMA2, Yamaha DM7, Roland V-160HD).
+3. Title must be under 8 words, concrete, not vague.
+4. Always end with the date in MM-DD format as provided.
+5. Prefer nouns and system language.
 
-Format: [emoji][emoji] | short descriptive title – MM-DD
-- First emoji always 💡
-- Second from taxonomy: ✨ animation 🎨 design 🎛 audio 📺 video 🎭 live 🖥 canvas 🧩 arch 🧪 experiment 📐 layout 🚀 ship 📋 spec 🎚 params 🌈 color
-- Under 8 words, concrete nouns
-- End with MM-DD from provided date
+Return ONLY a single title in a markdown code block. No explanation, no alternatives.`,
+  },
 
-Return ONLY the title in a code block.`,
-            },
+  'metagrid': {
+    label: 'MetaGrid',
+    emoji: '⚡',
+    badge: 'METAGRID',
+    taxonomy: [
+      { e: '⚡', l: 'MetaGrid (primary)' },
+      { e: '🌐', l: 'Architecture' },
+      { e: '📡', l: 'Wireless Tech' },
+      { e: '💼', l: 'Investor/Pitch' },
+      { e: '🗺', l: 'Site/Map' },
+      { e: '📊', l: 'Data/Stats' },
+      { e: '🔬', l: 'Tech/R&D' },
+      { e: '📋', l: 'Spec/Docs' },
+      { e: '🎨', l: 'UI/Design' },
+      { e: '🧩', l: 'System Design' },
+      { e: '🚀', l: 'Launch/Deploy' },
+      { e: '💡', l: 'Concept/Strategy' },
+    ],
+    systemPrompt: `You are a documentation organizer for the MetaGrid project.
+MetaGrid is a patent-pending wireless power transfer technology targeting remote AI data center infrastructure. The project includes an investor awareness website (React SPA), a Fig 4 Handshake Simulator (PyQt6), and supporting technical documentation.
 
-            'trailkeeper': {
-                label: 'Trailkeeper',
-                emoji: '🧭',
-                badge: 'TRK',
-                taxonomy: [
-                    { e: '🧭', l: 'Primary' },
-                    { e: '🗺', l: 'Map / Route' },
-                    { e: '📍', l: 'Waypoint / Pin' },
-                    { e: '📊', l: 'Data / Stats' },
-                    { e: '🎨', l: 'UI / Design' },
-                    { e: '💾', l: 'Storage / Schema' },
-                    { e: '🔌', l: 'API / Integration' },
-                    { e: '🧩', l: 'Architecture' },
-                    { e: '🐛', l: 'Debug / Fix' },
-                    { e: '📋', l: 'Planning / Spec' },
-                    { e: '🚀', l: 'Deploy / Ship' },
-                    { e: '🌲', l: 'Content / Trails' },
-                    { e: '⚙️', l: 'Config / Settings' },
-                ],
-                systemPrompt: `You rename chat threads for Trailkeeper — a trail logging and route tracking single-file browser tool with localStorage schema.
+Your job is to rename chat threads so they are short, clear, and visually scannable.
 
-Format: [emoji][emoji] | short descriptive title – MM-DD
-- First emoji always 🧭
-- Second from taxonomy: 🗺 map 📍 waypoint 📊 data 🎨 ui 💾 storage 🔌 api 🧩 arch 🐛 debug 📋 spec 🚀 ship 🌲 trails ⚙️ config
-- Under 8 words, concrete nouns
-- End with MM-DD from provided date
+Rules:
+1. Titles must follow this structure:
+[emoji][emoji] | short descriptive title – MM-DD
 
-Return ONLY the title in a code block.`,
-            },
+2. Use 2 emojis that visually represent the topic.
+First emoji: ⚡ (always MetaGrid primary)
+Secondary emoji from this taxonomy:
+🌐 architecture / 📡 wireless tech / 💼 investor & pitch / 🗺 site & map
+📊 data & stats / 🔬 tech R&D / 📋 spec & docs / 🎨 UI design
+🧩 system design / 🚀 launch & deploy / 💡 concept & strategy
 
-            'metagrid': {
-                label: 'MetaGrid',
-                emoji: '⚡',
-                badge: 'MTG',
-                taxonomy: [
-                    { e: '⚡', l: 'Primary' },
-                    { e: '🌐', l: 'Architecture' },
-                    { e: '📡', l: 'Wireless Tech' },
-                    { e: '💼', l: 'Investor / Pitch' },
-                    { e: '🗺', l: 'Site / Map' },
-                    { e: '📊', l: 'Data / Stats' },
-                    { e: '🔬', l: 'Tech / R&D' },
-                    { e: '📋', l: 'Spec / Docs' },
-                    { e: '🎨', l: 'UI / Design' },
-                    { e: '🧩', l: 'System Design' },
-                    { e: '🚀', l: 'Launch / Deploy' },
-                    { e: '💡', l: 'Concept / Strategy' },
-                    { e: '🛡', l: 'IP / Patent' },
-                ],
-                systemPrompt: `You rename chat threads for MetaGrid — a patent-pending wireless power transfer tech for remote AI data centers, with investor website and Fig 4 Handshake Simulator (PyQt6).
+3. Title must be under 8 words, concrete, not vague.
+4. Always end with the date in MM-DD format as provided.
+5. Prefer nouns and system language.
 
-Format: [emoji][emoji] | short descriptive title – MM-DD
-- First emoji always ⚡
-- Second from taxonomy: 🌐 arch 📡 wireless 💼 investor 🗺 site 📊 data 🔬 rd 📋 spec 🎨 ui 🧩 system 🚀 launch 💡 concept 🛡 patent
-- Under 8 words, concrete nouns
-- End with MM-DD from provided date
+Return ONLY a single title in a markdown code block. No explanation, no alternatives.`,
+  },
 
-Return ONLY the title in a code block.`,
-            },
+  'graph-explorer': {
+    label: 'Graph Explorer',
+    emoji: '🕸',
+    badge: 'GRAPH-EXPLORER',
+    taxonomy: [
+      { e: '🕸', l: 'Graph Explorer (primary)' },
+      { e: '🧩', l: 'Node/Edge Logic' },
+      { e: '🎨', l: 'UI/Canvas' },
+      { e: '📐', l: 'Layout/Algorithm' },
+      { e: '⚙️', l: 'Config/Settings' },
+      { e: '📊', l: 'Data/Schema' },
+      { e: '🔌', l: 'API/Integration' },
+      { e: '🧪', l: 'Experiment' },
+      { e: '🐛', l: 'Debug/Fix' },
+      { e: '📋', l: 'Planning/Spec' },
+      { e: '🚀', l: 'Deploy/Ship' },
+      { e: '🌐', l: 'Architecture' },
+    ],
+    systemPrompt: `You are a documentation organizer for the Graph Explorer project.
+Graph Explorer is an interactive graph visualization and exploration tool. It involves node/edge rendering, layout algorithms, Canvas 2D, and data schema work.
 
-            'freelance': {
-                label: 'Freelance',
-                emoji: '💼',
-                badge: 'FRL',
-                taxonomy: [
-                    { e: '💼', l: 'Primary' },
-                    { e: '🎨', l: 'UI / Design' },
-                    { e: '📝', l: 'Copy / Content' },
-                    { e: '🔍', l: 'SEO / Discovery' },
-                    { e: '📦', l: 'Build / Deploy' },
-                    { e: '🧩', l: 'Components' },
-                    { e: '📱', l: 'Responsive / Mobile' },
-                    { e: '📊', l: 'Analytics' },
-                    { e: '🐛', l: 'Debug / Fix' },
-                    { e: '📋', l: 'Planning / Spec' },
-                    { e: '🚀', l: 'Launch / Ship' },
-                    { e: '🤝', l: 'Client / Contact' },
-                    { e: '💰', l: 'Pricing / Templates' },
-                ],
-                systemPrompt: `You rename chat threads for the Freelance AV Technician landing page — GitHub Pages site, SEO, live production services.
+Your job is to rename chat threads so they are short, clear, and visually scannable.
 
-Format: [emoji][emoji] | short descriptive title – MM-DD
-- First emoji always 💼
-- Second from taxonomy: 🎨 ui 📝 copy 🔍 seo 📦 build 🧩 components 📱 mobile 📊 analytics 🐛 debug 📋 spec 🚀 ship 🤝 client 💰 pricing
-- Under 8 words, concrete nouns
-- End with MM-DD from provided date
+Rules:
+1. Titles must follow this structure:
+[emoji][emoji] | short descriptive title – MM-DD
 
-Return ONLY the title in a code block.`,
-            },
+2. Use 2 emojis that visually represent the topic.
+First emoji: 🕸 (always Graph Explorer primary)
+Secondary emoji from this taxonomy:
+🧩 node & edge logic / 🎨 UI & canvas / 📐 layout & algorithm / ⚙️ config & settings
+📊 data & schema / 🔌 API integration / 🧪 experiment / 🐛 debug & fix
+📋 planning & spec / 🚀 deploy & ship / 🌐 architecture
 
-            'home-auto': {
-                label: 'Home Auto',
-                emoji: '🏠',
-                badge: 'HA',
-                taxonomy: [
-                    { e: '🏠', l: 'Primary' },
-                    { e: '🔌', l: 'Devices / Hardware' },
-                    { e: '🌐', l: 'Network / Hubs' },
-                    { e: '⚙️', l: 'Config / Setup' },
-                    { e: '🧩', l: 'Integration' },
-                    { e: '📊', l: 'Dashboard / Data' },
-                    { e: '🤖', l: 'Automation / Logic' },
-                    { e: '🛡', l: 'Security' },
-                    { e: '🗺', l: 'Map / Layout' },
-                    { e: '🐛', l: 'Debug / Fix' },
-                    { e: '📋', l: 'Planning / Spec' },
-                    { e: '📚', l: 'Documentation' },
-                    { e: '💡', l: 'Lighting / Scene' },
-                    { e: '📡', l: 'Z-Wave / Zigbee' },
-                ],
-                systemPrompt: `You rename chat threads for Home Automation work — Home Assistant, Z-Wave, Zigbee, Lovelace, ESPHome, MQTT, Frigate.
+3. Title must be under 8 words, concrete, not vague.
+4. Always end with the date in MM-DD format as provided.
+5. Prefer nouns and system language.
 
-Format: [emoji][emoji] | short descriptive title – MM-DD
-- First emoji always 🏠
-- Second from taxonomy: 🔌 devices 🌐 network ⚙️ config 🧩 integration 📊 dashboard 🤖 automation 🛡 security 🗺 map 🐛 debug 📋 spec 📚 docs 💡 lighting 📡 zwave
-- Under 8 words, concrete nouns
-- End with MM-DD from provided date
+Return ONLY a single title in a markdown code block. No explanation, no alternatives.`,
+  },
 
-Return ONLY the title in a code block.`,
-            },
+  'curling-sim': {
+    label: 'Curling Sim',
+    emoji: '🥌',
+    badge: 'CURLING-SIM',
+    taxonomy: [
+      { e: '🥌', l: 'Curling Sim (primary)' },
+      { e: '🎮', l: 'Game Logic' },
+      { e: '🧊', l: 'Physics/Ice' },
+      { e: '🎨', l: 'UI/Visuals' },
+      { e: '📐', l: 'Geometry/Scoring' },
+      { e: '⚙️', l: 'Config/Rules' },
+      { e: '🧪', l: 'Experiment' },
+      { e: '🐛', l: 'Debug/Fix' },
+      { e: '📋', l: 'Planning/Spec' },
+      { e: '🚀', l: 'Deploy/Ship' },
+      { e: '🧩', l: 'Architecture' },
+      { e: '📊', l: 'Stats/Data' },
+    ],
+    systemPrompt: `You are a documentation organizer for the Curling Simulator project.
+The Curling Simulator is a browser-based physics simulation game of the sport of curling — featuring stone delivery, sweeping, scoring, and match logic.
 
-            'notion-ops': {
-                label: 'Notion / Ops',
-                emoji: '📓',
-                badge: 'NTN',
-                taxonomy: [
-                    { e: '📓', l: 'Primary' },
-                    { e: '🗂', l: 'Database / Schema' },
-                    { e: '🤖', l: 'Agent / Automation' },
-                    { e: '📋', l: 'Template / Spec' },
-                    { e: '🧩', l: 'Integration' },
-                    { e: '📊', l: 'Dashboard / View' },
-                    { e: '🧭', l: 'Planning / Sprint' },
-                    { e: '🔌', l: 'API / Sync' },
-                    { e: '📝', l: 'Docs / Pages' },
-                    { e: '🧹', l: 'Cleanup / Triage' },
-                    { e: '💼', l: 'Business / Freelance' },
-                    { e: '🏠', l: 'Personal / Home' },
-                    { e: '🎛', l: 'IATSE / Union Hub' },
-                ],
-                systemPrompt: `You rename chat threads for Notion workspace and operations work — Sprint Tracker, Prompt Keeper, Union Hub, personal OS, automations.
+Your job is to rename chat threads so they are short, clear, and visually scannable.
 
-Format: [emoji][emoji] | short descriptive title – MM-DD
-- First emoji always 📓
-- Second from taxonomy: 🗂 database 🤖 agent 📋 template 🧩 integration 📊 dashboard 🧭 sprint 🔌 api 📝 docs 🧹 cleanup 💼 business 🏠 personal 🎛 iatse
-- Under 8 words, concrete nouns
-- End with MM-DD from provided date
+Rules:
+1. Titles must follow this structure:
+[emoji][emoji] | short descriptive title – MM-DD
 
-Return ONLY the title in a code block.`,
-            },
+2. Use 2 emojis that visually represent the topic.
+First emoji: 🥌 (always Curling Sim primary)
+Secondary emoji from this taxonomy:
+🎮 game logic / 🧊 physics & ice / 🎨 UI & visuals / 📐 geometry & scoring
+⚙️ config & rules / 🧪 experiment / 🐛 debug & fix / 📋 planning & spec
+🚀 deploy & ship / 🧩 architecture / 📊 stats & data
 
-            'av-production': {
-                label: 'AV / Production',
-                emoji: '🎬',
-                badge: 'AV',
-                taxonomy: [
-                    { e: '🎬', l: 'Primary' },
-                    { e: '🎛', l: 'Audio Console' },
-                    { e: '💡', l: 'Lighting / GrandMA' },
-                    { e: '📺', l: 'Video / Switcher' },
-                    { e: '🎭', l: 'Show / Event' },
-                    { e: '🔌', l: 'Signal / Cabling' },
-                    { e: '🛠', l: 'Gear / Troubleshoot' },
-                    { e: '📋', l: 'Spec / Rider' },
-                    { e: '🗺', l: 'Venue / Layout' },
-                    { e: '🧭', l: 'Planning / Prep' },
-                    { e: '🤝', l: 'Client / Union' },
-                    { e: '📡', l: 'Wireless / RF' },
-                    { e: '🎥', l: 'Camera / IMAG' },
-                ],
-                systemPrompt: `You rename chat threads for AV and live production work — IATSE Local 8, GrandMA3, Roland V-series, Yamaha consoles, event production.
+3. Title must be under 8 words, concrete, not vague.
+4. Always end with the date in MM-DD format as provided.
+5. Prefer nouns and system language.
 
-Format: [emoji][emoji] | short descriptive title – MM-DD
-- First emoji always 🎬
-- Second from taxonomy: 🎛 audio 💡 lighting 📺 video 🎭 show 🔌 signal 🛠 gear 📋 spec 🗺 venue 🧭 planning 🤝 client 📡 wireless 🎥 camera
-- Under 8 words, concrete nouns
-- End with MM-DD from provided date
+Return ONLY a single title in a markdown code block. No explanation, no alternatives.`,
+  },
 
-Return ONLY the title in a code block.`,
-            },
-        };
+  'phosphene': {
+    label: 'Phosphene',
+    emoji: '💡',
+    badge: 'PHOSPHENE',
+    taxonomy: [
+      { e: '💡', l: 'Phosphene (primary)' },
+      { e: '✨', l: 'Animation/Motion' },
+      { e: '🎨', l: 'Visual Design' },
+      { e: '🎛', l: 'Audio/Console' },
+      { e: '📺', l: 'Video/Broadcast' },
+      { e: '🎭', l: 'Live Production' },
+      { e: '🖥', l: 'Canvas/Rendering' },
+      { e: '🧩', l: 'Architecture' },
+      { e: '🧪', l: 'Experiment' },
+      { e: '📐', l: 'Layout/Geometry' },
+      { e: '🚀', l: 'Deploy/Ship' },
+      { e: '📋', l: 'Planning/Spec' },
+    ],
+    systemPrompt: `You are a documentation organizer for the Phosphene project.
+Phosphene is a React-based interactive animation collection — nine brand animation concepts rendered via Canvas 2D. It includes a live production trifecta: Ghost Light (GrandMA2, amber lighting console), Phantom Power (Yamaha DM7, cyan audio console), and Signal Path (Roland V-160HD, red/green video switcher tally). The project lives at the intersection of AV/live production and generative motion design.
 
-        // ─── STATE ────────────────────────────────────────────────────────────────────
-        let activeProject = 'prompt-lab';
-        let sessionHistory = [];
+Your job is to rename chat threads so they are short, clear, and visually scannable.
 
-        // ─── INIT ─────────────────────────────────────────────────────────────────────
-        function init() {
-            initProviderUI();
-            const today = new Date();
-            const mm = String(today.getMonth() + 1).padStart(2, '0');
-            const dd = String(today.getDate()).padStart(2, '0');
-            document.getElementById('dateInput').value = `${today.getFullYear()}-${mm}-${dd}`;
+Rules:
+1. Titles must follow this structure:
+[emoji][emoji] | short descriptive title – MM-DD
 
-            const tabsEl = document.getElementById('projectTabs');
-            Object.entries(PROJECTS).forEach(([key, proj]) => {
-                const btn = document.createElement('button');
-                btn.className = 'project-tab' + (key === activeProject ? ' active' : '');
-                btn.dataset.key = key;
-                btn.innerHTML = `${proj.emoji} ${proj.label}`;
-                btn.onclick = () => selectProject(key);
-                tabsEl.appendChild(btn);
-            });
+2. Use 2 emojis that visually represent the topic.
+First emoji: 💡 (always Phosphene primary)
+Secondary emoji from this taxonomy:
+✨ animation & motion / 🎨 visual design / 🎛 audio & console / 📺 video & broadcast
+🎭 live production / 🖥 canvas & rendering / 🧩 architecture / 🧪 experiment
+📐 layout & geometry / 🚀 deploy & ship / 📋 planning & spec
 
-            renderTaxonomy();
-            setupTextarea();
-        }
+3. Title must be under 8 words, concrete, not vague.
+4. Always end with the date in MM-DD format as provided.
+5. Prefer nouns and system language.
 
-        function selectProject(key) {
-            activeProject = key;
-            document.querySelectorAll('.project-tab').forEach(t => t.classList.toggle('active', t.dataset.key === key));
-            renderTaxonomy();
-            document.getElementById('outputCard').classList.remove('visible');
-            document.getElementById('errorMsg').classList.remove('visible');
-        }
+Return ONLY a single title in a markdown code block. No explanation, no alternatives.`,
+  },
 
-        function renderTaxonomy() {
-            const proj = PROJECTS[activeProject];
-            document.getElementById('activeBadge').textContent = proj.badge;
-            const grid = document.getElementById('taxonomyGrid');
-            grid.innerHTML = '';
-            proj.taxonomy.forEach(item => {
-                const el = document.createElement('div');
-                el.className = 'tax-item';
-                el.innerHTML = `<span class="tax-emoji">${item.e}</span><span class="tax-label">${item.l}</span>`;
-                grid.appendChild(el);
-            });
-        }
+  'home-automation': {
+    label: 'Home Automation',
+    emoji: '🏠',
+    badge: 'HOME-AUTO',
+    taxonomy: [
+      { e: '🏠', l: 'Home Auto (primary)' },
+      { e: '🔌', l: 'Devices/Hardware' },
+      { e: '🌐', l: 'Network/Hubs' },
+      { e: '⚙️', l: 'Config/Setup' },
+      { e: '🧩', l: 'Integration' },
+      { e: '📊', l: 'Dashboard/Data' },
+      { e: '🤖', l: 'Automation/Logic' },
+      { e: '🛡', l: 'Security' },
+      { e: '🗺', l: 'Map/Layout' },
+      { e: '🐛', l: 'Debug/Fix' },
+      { e: '📋', l: 'Planning/Spec' },
+      { e: '📚', l: 'Documentation' },
+    ],
+    systemPrompt: `You are a documentation organizer for the Home Automation project.
+This project covers Home Assistant vs Hubitat platform comparisons, Z-Wave and Zigbee device integration, Lovelace dashboards, ESPHome, MQTT, Frigate NVR, presence detection, energy monitoring, and related homelab infrastructure.
 
-        function setupTextarea() {
-            const ta = document.getElementById('summaryInput');
-            const btn = document.getElementById('generateBtn');
-            ta.addEventListener('input', () => { btn.disabled = ta.value.trim().length < 10; });
-            ta.addEventListener('keydown', e => { if ((e.metaKey || e.ctrlKey) && e.key === 'Enter') generate(); });
-        }
+Your job is to rename chat threads so they are short, clear, and visually scannable.
 
-        // ─── GENERATE ─────────────────────────────────────────────────────────────────
-        async function generate() {
-            const summary = document.getElementById('summaryInput').value.trim();
-            const dateVal = document.getElementById('dateInput').value;
-            if (!summary || summary.length < 10) return;
+Rules:
+1. Titles must follow this structure:
+[emoji][emoji] | short descriptive title – MM-DD
 
-            const s = loadProviderSettings();
-            if (!s.apiKey) {
-                const el = document.getElementById('errorMsg');
-                el.textContent = '⚠ Enter your API key in the Provider settings above.';
-                el.classList.add('visible');
-                return;
-            }
+2. Use 2 emojis that visually represent the topic.
+First emoji: 🏠 (always Home Automation primary)
+Secondary emoji from this taxonomy:
+🔌 devices & hardware / 🌐 network & hubs / ⚙️ config & setup / 🧩 integration
+📊 dashboard & data / 🤖 automation & logic / 🛡 security / 🗺 map & layout
+🐛 debug & fix / 📋 planning & spec / 📚 documentation
 
-            const d = new Date(dateVal + 'T00:00:00');
-            const mmdd = String(d.getMonth() + 1).padStart(2, '0') + '-' + String(d.getDate()).padStart(2, '0');
-            const proj = PROJECTS[activeProject];
+3. Title must be under 8 words, concrete, not vague.
+4. Always end with the date in MM-DD format as provided.
+5. Prefer nouns and system language.
 
-            document.getElementById('outputCard').classList.remove('visible');
-            document.getElementById('errorMsg').classList.remove('visible');
-            document.getElementById('loadingCard').classList.add('visible');
-            document.getElementById('generateBtn').disabled = true;
-            document.getElementById('btnLabel').textContent = 'Generating…';
+Return ONLY a single title in a markdown code block. No explanation, no alternatives.`,
+  },
 
-            try {
-                const result = await window.LocalOpenAIPrototype.requestText({
-                    provider: s.provider || 'openai',
-                    apiKey: s.apiKey,
-                    model: s.model || PROVIDER_DEFAULTS[s.provider]?.model || 'gpt-4.1-mini',
-                    systemPrompt: proj.systemPrompt,
-                    userPrompt: `Thread summary:\n${summary}\n\nDate: ${mmdd}\n\nReturn only ONE title in a code block.`,
-                    maxOutputTokens: 80,
-                });
-                const raw = result.text || '';
-                const title = raw.replace(/```[^\n]*\n?/g, '').replace(/```/g, '').trim();
-                if (!title) throw new Error('Empty response');
-                showOutput(title);
-                addToHistory(title, proj.badge);
-            } catch (err) {
-                const el = document.getElementById('errorMsg');
-                el.textContent = '⚠ ' + err.message;
-                el.classList.add('visible');
-            } finally {
-                document.getElementById('loadingCard').classList.remove('visible');
-                document.getElementById('generateBtn').disabled = document.getElementById('summaryInput').value.trim().length < 10;
-                document.getElementById('btnLabel').textContent = 'Generate';
-            }
-        }
+  'freelance': {
+    label: 'Freelance Landing',
+    emoji: '💼',
+    badge: 'FREELANCE',
+    taxonomy: [
+      { e: '💼', l: 'Freelance (primary)' },
+      { e: '🎨', l: 'UI/Design' },
+      { e: '📝', l: 'Copy/Content' },
+      { e: '🔍', l: 'SEO/Discovery' },
+      { e: '📦', l: 'Build/Deploy' },
+      { e: '🧩', l: 'Components' },
+      { e: '📱', l: 'Responsive/Mobile' },
+      { e: '📊', l: 'Analytics' },
+      { e: '🐛', l: 'Debug/Fix' },
+      { e: '📋', l: 'Planning/Spec' },
+      { e: '🚀', l: 'Launch/Ship' },
+      { e: '🤝', l: 'Client/Contact' },
+    ],
+    systemPrompt: `You are a documentation organizer for the Freelance Landing project.
+This is a freelance AV/live production technician landing page — a GitHub Pages site covering services in lighting, audio, and video for professional live events. Includes SEO strategy, contact flow, and service copy.
 
-        function showOutput(title) {
-            document.getElementById('outputTitle').textContent = title;
-            document.getElementById('outputCard').classList.add('visible');
-            document.getElementById('copyBtn').textContent = 'Copy';
-            document.getElementById('copyBtn').classList.remove('copied');
-        }
+Your job is to rename chat threads so they are short, clear, and visually scannable.
 
-        function copyTitle() {
-            copyText(document.getElementById('outputTitle').textContent);
-            const btn = document.getElementById('copyBtn');
-            btn.textContent = 'Copied ✓';
-            btn.classList.add('copied');
-            setTimeout(() => { btn.textContent = 'Copy'; btn.classList.remove('copied'); }, 1800);
-        }
+Rules:
+1. Titles must follow this structure:
+[emoji][emoji] | short descriptive title – MM-DD
 
-        function copyText(text) {
-            try { navigator.clipboard.writeText(text); } catch {
-                const ta = document.createElement('textarea');
-                ta.value = text; ta.style.cssText = 'position:fixed;opacity:0';
-                document.body.appendChild(ta); ta.select(); document.execCommand('copy'); ta.remove();
-            }
-        }
+2. Use 2 emojis that visually represent the topic.
+First emoji: 💼 (always Freelance primary)
+Secondary emoji from this taxonomy:
+🎨 UI & design / 📝 copy & content / 🔍 SEO & discovery / 📦 build & deploy
+🧩 components / 📱 responsive & mobile / 📊 analytics / 🐛 debug & fix
+📋 planning & spec / 🚀 launch & ship / 🤝 client & contact
 
-        function addToHistory(title, badge) {
-            sessionHistory.unshift({ title, badge });
-            renderHistory();
-        }
+3. Title must be under 8 words, concrete, not vague.
+4. Always end with the date in MM-DD format as provided.
+5. Prefer nouns and system language.
 
-        function renderHistory() {
-            const sec = document.getElementById('historySection');
-            if (!sessionHistory.length) { sec.style.display = 'none'; return; }
-            sec.style.display = 'block';
-            const list = document.getElementById('historyList');
-            list.innerHTML = '';
-            sessionHistory.forEach((item, i) => {
-                const el = document.createElement('div');
-                el.className = 'history-item';
-                el.innerHTML = `<span class="h-project">${item.badge}</span><span class="h-title">${item.title}</span><button class="h-copy" onclick="copyHistoryItem(${i},this)">copy</button>`;
-                list.appendChild(el);
-            });
-        }
+Return ONLY a single title in a markdown code block. No explanation, no alternatives.`,
+  },
+};
 
-        function copyHistoryItem(i, btn) {
-            copyText(sessionHistory[i].title);
-            btn.textContent = '✓';
-            setTimeout(() => { btn.textContent = 'copy'; }, 1400);
-        }
+// ─── STATE ───────────────────────────────────────────────────────────────────
 
-        function clearHistory() { sessionHistory = []; renderHistory(); }
+let activeProject = 'garden-os';
+let sessionHistory = [];
+let lastTitle = '';
+const SETTINGS_KEY = 'thread-namer.openai.settings.v1';
+const HISTORY_STORAGE_KEY = 'thread-namer.history.v1';
+const DEFAULT_SETTINGS = {
+  provider: 'openai',
+  apiKey: '',
+  textModel: 'gpt-4.1-mini',
+};
+let settings = LocalOpenAIPrototype.loadSettings(SETTINGS_KEY, DEFAULT_SETTINGS);
+const PROVIDER_DEFAULTS = {
+  openai: { textModel: 'gpt-4.1-mini', apiKeyPlaceholder: 'sk-...' },
+  gemini: { textModel: 'gemini-2.5-flash', apiKeyPlaceholder: 'AIza...' },
+};
 
-        init();
-    </script>
+// ─── INIT ────────────────────────────────────────────────────────────────────
+
+function init() {
+  // Set today's date
+  const today = new Date();
+  const yyyy = today.getFullYear();
+  const mm = String(today.getMonth() + 1).padStart(2, '0');
+  const dd = String(today.getDate()).padStart(2, '0');
+  document.getElementById('dateInput').value = `${yyyy}-${mm}-${dd}`;
+
+  // Build project tabs
+  const tabsEl = document.getElementById('projectTabs');
+  Object.entries(PROJECTS).forEach(([key, proj]) => {
+    const btn = document.createElement('button');
+    btn.className = 'project-tab' + (key === activeProject ? ' active' : '');
+    btn.dataset.key = key;
+    btn.innerHTML = `<span class="tab-emoji">${proj.emoji}</span>${proj.label}`;
+    btn.onclick = () => selectProject(key);
+    tabsEl.appendChild(btn);
+  });
+
+  renderTaxonomy();
+  setupTextarea();
+  syncSettingsUI();
+  updateSettingsSummary();
+  sessionHistory = loadHistory();
+  renderHistory();
+  document.getElementById('providerInput').addEventListener('change', () => {
+    document.getElementById('textModelInput').value = '';
+    updateProviderLabels();
+  });
+}
+
+function loadHistory() {
+  try {
+    const raw = localStorage.getItem(HISTORY_STORAGE_KEY);
+    return raw ? JSON.parse(raw) : [];
+  } catch {
+    return [];
+  }
+}
+
+function syncSettingsUI() {
+  document.getElementById('providerInput').value = settings.provider || DEFAULT_SETTINGS.provider;
+  document.getElementById('apiKeyInput').value = settings.apiKey || '';
+  const provider = settings.provider || DEFAULT_SETTINGS.provider;
+  document.getElementById('textModelInput').value = settings.textModel || PROVIDER_DEFAULTS[provider].textModel;
+  updateProviderLabels();
+}
+
+function updateSettingsSummary() {
+  const keyState = settings.apiKey ? 'API key saved' : 'No API key saved';
+  const provider = settings.provider || DEFAULT_SETTINGS.provider;
+  const modelState = settings.textModel || PROVIDER_DEFAULTS[provider].textModel;
+  document.getElementById('settingsSummary').textContent = `${provider} · ${keyState} · ${modelState}`;
+}
+
+function updateProviderLabels() {
+  const provider = document.getElementById('providerInput').value || DEFAULT_SETTINGS.provider;
+  const apiKeyInput = document.getElementById('apiKeyInput');
+  document.getElementById('apiKeyLabel').textContent = provider === 'gemini' ? 'Gemini API Key' : 'OpenAI API Key';
+  apiKeyInput.placeholder = PROVIDER_DEFAULTS[provider].apiKeyPlaceholder;
+  if (!document.getElementById('textModelInput').value.trim()) {
+    document.getElementById('textModelInput').value = PROVIDER_DEFAULTS[provider].textModel;
+  }
+}
+
+function saveSettings() {
+  const provider = document.getElementById('providerInput').value || DEFAULT_SETTINGS.provider;
+  settings = {
+    provider,
+    apiKey: document.getElementById('apiKeyInput').value.trim(),
+    textModel: document.getElementById('textModelInput').value.trim() || PROVIDER_DEFAULTS[provider].textModel,
+  };
+  LocalOpenAIPrototype.saveSettings(SETTINGS_KEY, settings);
+  updateSettingsSummary();
+  document.getElementById('errorMsg').classList.remove('visible');
+}
+
+function clearSettings() {
+  settings = { ...DEFAULT_SETTINGS, textModel: PROVIDER_DEFAULTS[DEFAULT_SETTINGS.provider].textModel };
+  LocalOpenAIPrototype.clearSettings(SETTINGS_KEY);
+  syncSettingsUI();
+  updateSettingsSummary();
+}
+
+function selectProject(key) {
+  activeProject = key;
+  document.querySelectorAll('.project-tab').forEach(t => {
+    t.classList.toggle('active', t.dataset.key === key);
+  });
+  renderTaxonomy();
+  // reset output
+  document.getElementById('outputCard').classList.remove('visible');
+  document.getElementById('errorMsg').classList.remove('visible');
+}
+
+function renderTaxonomy() {
+  const proj = PROJECTS[activeProject];
+  document.getElementById('activeBadge').textContent = proj.badge;
+  const grid = document.getElementById('taxonomyGrid');
+  grid.innerHTML = '';
+  proj.taxonomy.forEach(item => {
+    const el = document.createElement('div');
+    el.className = 'tax-item';
+    el.innerHTML = `<span class="tax-emoji">${item.e}</span><span class="tax-label">${item.l}</span>`;
+    grid.appendChild(el);
+  });
+}
+
+function setupTextarea() {
+  const ta = document.getElementById('summaryInput');
+  const btn = document.getElementById('generateBtn');
+  ta.addEventListener('input', () => {
+    btn.disabled = ta.value.trim().length < 10;
+  });
+  ta.addEventListener('keydown', e => {
+    if ((e.metaKey || e.ctrlKey) && e.key === 'Enter') generate();
+  });
+}
+
+// ─── GENERATE ────────────────────────────────────────────────────────────────
+
+async function generate() {
+  const summary = document.getElementById('summaryInput').value.trim();
+  const dateVal = document.getElementById('dateInput').value;
+  if (!summary || summary.length < 10) return;
+
+  // Parse MM-DD from date input
+  const dateObj = new Date(dateVal + 'T00:00:00');
+  const mmdd = String(dateObj.getMonth() + 1).padStart(2, '0') + '-' + String(dateObj.getDate()).padStart(2, '0');
+
+  const proj = PROJECTS[activeProject];
+
+  // Show loading
+  document.getElementById('outputCard').classList.remove('visible');
+  document.getElementById('errorMsg').classList.remove('visible');
+  document.getElementById('loadingCard').style.display = 'block';
+  document.getElementById('generateBtn').disabled = true;
+  document.getElementById('btnLabel').textContent = 'GENERATING…';
+
+  try {
+    const raw = await generateTitleText({
+      systemPrompt: proj.systemPrompt,
+      userPrompt: `Thread summary:\n${summary}\n\nDate: ${mmdd}\n\nReturn only ONE recommended title in a code block.`
+    });
+    // Strip code fences
+    const title = raw.replace(/```[^\n]*\n?/g, '').replace(/```/g, '').trim();
+
+    if (!title) throw new Error('Empty response from model');
+
+    lastTitle = title;
+    showOutput(title);
+    addToHistory(title, proj.badge);
+
+  } catch (err) {
+    showError(err.message);
+  } finally {
+    document.getElementById('loadingCard').style.display = 'none';
+    document.getElementById('generateBtn').disabled = false;
+    document.getElementById('btnLabel').textContent = 'GENERATE';
+  }
+}
+
+async function generateTitleText({ systemPrompt, userPrompt }) {
+  if (!settings.apiKey) {
+    document.getElementById('settingsCard').open = true;
+    throw new Error(`Add a ${settings.provider === 'gemini' ? 'Gemini' : 'OpenAI'} API key in Model Settings first.`);
+  }
+
+  const { text } = await LocalOpenAIPrototype.requestText({
+    provider: settings.provider || DEFAULT_SETTINGS.provider,
+    apiKey: settings.apiKey,
+    model: settings.textModel || PROVIDER_DEFAULTS[settings.provider || DEFAULT_SETTINGS.provider].textModel,
+    systemPrompt,
+    userPrompt,
+    maxOutputTokens: 120,
+  });
+  if (!text) {
+    throw new Error('Empty response from model');
+  }
+  return text;
+}
+
+function showOutput(title) {
+  document.getElementById('outputTitle').textContent = title;
+  document.getElementById('outputCard').classList.add('visible');
+  document.getElementById('copyBtn').textContent = 'COPY';
+  document.getElementById('copyBtn').classList.remove('copied');
+}
+
+function showError(msg) {
+  const el = document.getElementById('errorMsg');
+  el.textContent = '⚠ ' + msg;
+  el.classList.add('visible');
+}
+
+// ─── COPY ────────────────────────────────────────────────────────────────────
+
+function copyTitle() {
+  const title = document.getElementById('outputTitle').textContent;
+  copyText(title);
+  const btn = document.getElementById('copyBtn');
+  btn.textContent = 'COPIED ✓';
+  btn.classList.add('copied');
+  setTimeout(() => { btn.textContent = 'COPY'; btn.classList.remove('copied'); }, 1800);
+}
+
+function copyText(text) {
+  try {
+    navigator.clipboard.writeText(text);
+  } catch {
+    const ta = document.createElement('textarea');
+    ta.value = text;
+    ta.style.position = 'fixed';
+    ta.style.opacity = '0';
+    document.body.appendChild(ta);
+    ta.select();
+    document.execCommand('copy');
+    document.body.removeChild(ta);
+  }
+}
+
+// ─── HISTORY ─────────────────────────────────────────────────────────────────
+
+function addToHistory(title, badge) {
+  sessionHistory.unshift({
+    title,
+    badge,
+    project: activeProject,
+    createdAt: Date.now(),
+  });
+  sessionHistory = sessionHistory.slice(0, 24);
+  persistHistory();
+  renderHistory();
+}
+
+function persistHistory() {
+  localStorage.setItem(HISTORY_STORAGE_KEY, JSON.stringify(sessionHistory));
+}
+
+function renderHistory() {
+  if (!sessionHistory.length) {
+    document.getElementById('historySection').style.display = 'none';
+    return;
+  }
+  document.getElementById('historySection').style.display = 'block';
+  const list = document.getElementById('historyList');
+  list.innerHTML = '';
+  sessionHistory.forEach((item, i) => {
+    const el = document.createElement('div');
+    el.className = 'history-item';
+    el.innerHTML = `
+      <span class="h-project">${item.badge}</span>
+      <span class="h-title">${item.title}</span>
+      <button class="h-copy" onclick="copyHistoryItem(${i}, this)">COPY</button>
+    `;
+    list.appendChild(el);
+  });
+}
+
+function copyHistoryItem(i, btn) {
+  copyText(sessionHistory[i].title);
+  btn.textContent = '✓';
+  setTimeout(() => { btn.textContent = 'COPY'; }, 1400);
+}
+
+function clearHistory() {
+  sessionHistory = [];
+  persistHistory();
+  renderHistory();
+}
+
+init();
+</script>
 </body>
-
 </html>

@@ -73,7 +73,7 @@ const LibraryPanel = memo(function LibraryPanel({
   }, [lib.search, lib.setSearch, searchDraft]);
 
   return (
-    <div className={`w-full min-w-0 flex flex-col ${containedPane ? 'overflow-hidden' : ''}`}>
+    <div className={`w-full min-w-0 flex flex-col ${containedPane ? 'min-h-0' : ''}`}>
       <div className={`p-3 border-b ${m.border} flex flex-col gap-2 shrink-0`}>
         <div className={`flex gap-2 ${compact ? 'flex-col' : ''}`}>
           <div className="relative flex-1">

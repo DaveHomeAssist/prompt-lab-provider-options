@@ -3,1078 +3,284 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<meta name="description" content="Prompt Lab is a prompt engineering workbench for web, Chrome, and desktop. Engineer, test, and iterate across Anthropic, OpenAI, Gemini, OpenRouter, and Ollama.">
-<meta name="robots" content="index,follow">
-<meta name="theme-color" content="#090512">
-<meta property="og:title" content="Prompt Lab — Engineer. Test. Iterate.">
-<meta property="og:description" content="A prompt engineering workbench for web, Chrome, and desktop. Write, compare, and refine prompts across five providers from one workspace.">
-<meta property="og:type" content="website">
-<meta property="og:url" content="https://promptlab.tools/">
-<meta property="og:image" content="https://promptlab.tools/og-image.png">
-<meta name="twitter:card" content="summary_large_image">
-<meta name="twitter:title" content="Prompt Lab — Engineer. Test. Iterate.">
-<meta name="twitter:description" content="Write, compare, and refine prompts across Anthropic, OpenAI, Gemini, OpenRouter, and Ollama from one workspace.">
-<meta name="twitter:image" content="https://promptlab.tools/og-image.png">
-<title>Prompt Lab | Engineer. Test. Iterate.</title>
+<meta name="description" content="Prompt Lab is a prompt engineering workbench for web, Chrome, and desktop. Improve, compare, and reuse prompts in a calmer workspace.">
+<meta name="theme-color" content="#0f0f0d">
+<meta property="og:title" content="Prompt Lab - Sharpen every prompt">
+<meta property="og:description" content="A prompt engineering workbench for web, extension, and desktop. Improve prompts, compare variants, and save what works.">
+<title>Prompt Lab | Sharpen Every Prompt</title>
 <link rel="icon" type="image/png" href="./hero-logo.png">
 <link rel="canonical" href="https://promptlab.tools/">
-<link rel="preload" href="./fonts/outfit.woff2" as="font" type="font/woff2" crossorigin>
-<link rel="preload" href="./fonts/jetbrains-mono.woff2" as="font" type="font/woff2" crossorigin>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=DM+Mono:wght@400;500&family=DM+Sans:wght@300;400;500&family=Fraunces:wght@400;500&display=swap" rel="stylesheet">
 <style>
-@font-face {
-  font-family: 'Outfit';
-  src: url('./fonts/outfit.woff2') format('woff2');
-  font-weight: 300 700;
-  font-style: normal;
-  font-display: swap;
-}
-
-@font-face {
-  font-family: 'JetBrains Mono';
-  src: url('./fonts/jetbrains-mono.woff2') format('woff2');
-  font-weight: 400;
-  font-style: normal;
-  font-display: swap;
-}
-
-:root {
-  --bg: #090512;
-  --bg-soft: #120b1f;
-  --panel: rgba(18, 11, 31, 0.82);
-  --panel-strong: rgba(22, 14, 40, 0.94);
-  --panel-line: rgba(255, 255, 255, 0.08);
-  --panel-line-strong: rgba(255, 255, 255, 0.16);
-  --text: #fbf8ff;
-  --text-soft: #cbc2e8;
-  --text-muted: #8f80bb;
-  --violet: #8b5cf6;
-  --violet-bright: #a855f7;
-  --violet-soft: rgba(139, 92, 246, 0.18);
-  --shadow: 0 28px 80px rgba(5, 3, 12, 0.45);
-  --radius: 28px;
-  --radius-sm: 16px;
-  --max: 1180px;
-  --font-display: 'Outfit', system-ui, sans-serif;
-  --font-mono: 'JetBrains Mono', monospace;
-}
-
-*,
-*::before,
-*::after {
-  box-sizing: border-box;
-}
-
-html {
-  scroll-behavior: smooth;
-}
-
-body {
-  margin: 0;
-  min-height: 100vh;
-  background:
-    radial-gradient(circle at 20% 18%, rgba(168, 85, 247, 0.18), transparent 28%),
-    radial-gradient(circle at 82% 12%, rgba(139, 92, 246, 0.12), transparent 24%),
-    linear-gradient(180deg, #0b0715 0%, #090512 54%, #07040f 100%);
-  color: var(--text);
-  font-family: var(--font-display);
-  line-height: 1.65;
-  overflow-x: hidden;
-}
-
-body::before {
-  content: '';
-  position: fixed;
-  inset: 0 auto 0 0;
-  width: 8px;
-  background: linear-gradient(180deg, #7c3aed 0%, #5b21b6 100%);
-  box-shadow: 0 0 24px rgba(124, 58, 237, 0.55);
-  z-index: 5;
-}
-
-a {
-  color: inherit;
-}
-
-a:focus-visible,
-button:focus-visible {
-  outline: 2px solid #c4b5fd;
-  outline-offset: 4px;
-}
-
-.site-nav {
-  position: sticky;
-  top: 0;
-  z-index: 20;
-  backdrop-filter: blur(18px);
-  background: rgba(7, 4, 15, 0.72);
-  border-bottom: 1px solid var(--panel-line);
-}
-
-.site-nav-inner {
-  width: min(var(--max), calc(100vw - 2.5rem));
-  margin: 0 auto;
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: 1.25rem;
-  padding: 1rem 0;
-}
-
-.site-nav-brand {
-  display: inline-flex;
-  align-items: center;
-  gap: 0.75rem;
-  text-decoration: none;
-  min-height: 44px;
-}
-
-.site-nav-brand img {
-  width: 34px;
-  height: 34px;
-  border-radius: 10px;
-  box-shadow: 0 0 24px rgba(139, 92, 246, 0.28);
-}
-
-.site-nav-brand-text {
-  display: flex;
-  flex-direction: column;
-  gap: 0.15rem;
-}
-
-.site-nav-brand-text strong {
-  font-size: 0.95rem;
-  font-weight: 650;
-  letter-spacing: 0.02em;
-}
-
-.site-nav-brand-text span {
-  font-family: var(--font-mono);
-  font-size: 0.66rem;
-  color: var(--text-muted);
-  letter-spacing: 0.12em;
-  text-transform: uppercase;
-}
-
-.site-nav-links {
-  display: flex;
-  align-items: center;
-  justify-content: flex-end;
-  flex-wrap: wrap;
-  gap: 0.45rem;
-}
-
-.site-nav-links a {
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  min-height: 44px;
-  padding: 0.75rem 0.95rem;
-  border-radius: 999px;
-  text-decoration: none;
-  font-family: var(--font-mono);
-  font-size: 0.7rem;
-  letter-spacing: 0.08em;
-  text-transform: uppercase;
-  color: var(--text-soft);
-  border: 1px solid transparent;
-  transition: border-color 0.18s ease, color 0.18s ease, background 0.18s ease, transform 0.18s ease;
-}
-
-.site-nav-links a:hover {
-  color: var(--text);
-  border-color: var(--panel-line);
-  background: rgba(255, 255, 255, 0.04);
-  transform: translateY(-1px);
-}
-
-.site-nav-links .nav-cta {
-  background: linear-gradient(135deg, var(--violet), var(--violet-bright));
-  color: #fff;
-  box-shadow: 0 16px 32px rgba(91, 33, 182, 0.28);
-}
-
-.site-nav-links .nav-cta:hover {
-  border-color: transparent;
-  background: linear-gradient(135deg, #9f67ff, #be63ff);
-}
-
-.hero {
-  padding: clamp(3.5rem, 6vw, 5rem) 0 clamp(2.5rem, 6vw, 4rem);
-}
-
-.hero-shell {
-  width: min(var(--max), calc(100vw - 2.5rem));
-  margin: 0 auto;
-}
-
-.eyebrow {
-  display: inline-flex;
-  align-items: center;
-  gap: 0.75rem;
-  margin-bottom: 1.5rem;
-  font-family: var(--font-mono);
-  font-size: 0.72rem;
-  letter-spacing: 0.16em;
-  text-transform: uppercase;
-  color: #bcaef4;
-}
-
-.eyebrow::before {
-  content: '';
-  width: 28px;
-  height: 1px;
-  background: rgba(168, 85, 247, 0.85);
-}
-
-.hero-lockup {
-  display: grid;
-  grid-template-columns: minmax(240px, 312px) 2px minmax(0, 1fr);
-  align-items: center;
-  gap: clamp(1.25rem, 3vw, 2.5rem);
-}
-
-.brand-panel {
-  position: relative;
-  padding: clamp(1.25rem, 3vw, 1.8rem);
-  background:
-    linear-gradient(180deg, rgba(255, 255, 255, 0.03), rgba(255, 255, 255, 0.01)),
-    rgba(10, 7, 20, 0.92);
-  border-radius: 2px;
-  box-shadow: var(--shadow);
-  aspect-ratio: 1 / 1;
-  display: grid;
-  place-items: center;
-}
-
-.brand-panel::before {
-  content: '';
-  position: absolute;
-  inset: 0;
-  border-right: 9px solid rgba(255, 255, 255, 0.98);
-  border-bottom: 9px solid rgba(255, 255, 255, 0.98);
-  pointer-events: none;
-}
-
-.brand-panel img {
-  width: min(100%, 240px);
-  height: auto;
-  filter: drop-shadow(0 0 48px rgba(139, 92, 246, 0.34));
-}
-
-.lock-divider {
-  width: 2px;
-  height: min(300px, 48vw);
-  background: linear-gradient(180deg, rgba(255, 255, 255, 0.98), rgba(255, 255, 255, 0.72));
-  box-shadow: 0 0 18px rgba(255, 255, 255, 0.08);
-}
-
-.word-panel {
-  display: grid;
-  gap: 1.15rem;
-}
-
-.hero-title {
-  margin: 0;
-  font-size: clamp(3.8rem, 10vw, 7.25rem);
-  line-height: 0.9;
-  letter-spacing: -0.07em;
-  text-transform: uppercase;
-}
-
-.hero-title .tight {
-  display: block;
-}
-
-.hero-title .lab {
-  color: #ede8ff;
-}
-
-.hero-tagline {
-  display: inline-flex;
-  align-items: center;
-  flex-wrap: wrap;
-  gap: 0.9rem;
-  margin: 0;
-  font-family: var(--font-mono);
-  font-size: clamp(0.78rem, 1.5vw, 0.94rem);
-  letter-spacing: 0.1em;
-  text-transform: uppercase;
-  color: var(--text-soft);
-}
-
-.hero-tagline::before {
-  content: '';
-  width: 20px;
-  height: 2px;
-  background: var(--violet);
-}
-
-.hero-grid {
-  margin-top: clamp(2rem, 5vw, 3.4rem);
-  display: grid;
-  grid-template-columns: minmax(0, 1.2fr) minmax(280px, 0.8fr);
-  gap: 1.4rem;
-  align-items: start;
-}
-
-.hero-copy {
-  display: grid;
-  gap: 1.25rem;
-}
-
-.hero-lede {
-  margin: 0;
-  font-size: clamp(1.2rem, 2.2vw, 1.68rem);
-  color: var(--text);
-  max-width: 16ch;
-}
-
-.hero-sub {
-  margin: 0;
-  max-width: 62ch;
-  font-size: 1rem;
-  color: var(--text-soft);
-}
-
-.hero-actions {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 0.85rem;
-}
-
-.button {
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  min-height: 48px;
-  padding: 0.9rem 1.25rem;
-  border-radius: 999px;
-  text-decoration: none;
-  font-family: var(--font-mono);
-  font-size: 0.76rem;
-  letter-spacing: 0.08em;
-  text-transform: uppercase;
-  transition: transform 0.18s ease, border-color 0.18s ease, background 0.18s ease;
-}
-
-.button:hover {
-  transform: translateY(-1px);
-}
-
-.button-primary {
-  background: linear-gradient(135deg, var(--violet), var(--violet-bright));
-  color: #fff;
-  box-shadow: 0 18px 36px rgba(91, 33, 182, 0.3);
-}
-
-.button-secondary {
-  color: var(--text);
-  background: rgba(255, 255, 255, 0.03);
-  border: 1px solid var(--panel-line-strong);
-}
-
-.hero-meta {
-  display: grid;
-  gap: 0.9rem;
-  padding: 1.2rem;
-  border-radius: var(--radius-sm);
-  background: var(--panel);
-  border: 1px solid var(--panel-line);
-  box-shadow: var(--shadow);
-}
-
-.hero-meta-label {
-  margin: 0;
-  font-family: var(--font-mono);
-  font-size: 0.68rem;
-  letter-spacing: 0.14em;
-  text-transform: uppercase;
-  color: #b8a7ec;
-}
-
-.hero-meta h2 {
-  margin: 0;
-  font-size: 1.3rem;
-  line-height: 1.1;
-}
-
-.hero-meta p {
-  margin: 0;
-  color: var(--text-soft);
-  font-size: 0.95rem;
-}
-
-.hero-stats {
-  display: grid;
-  grid-template-columns: repeat(2, minmax(0, 1fr));
-  gap: 0.75rem;
-}
-
-.hero-stat {
-  padding: 0.85rem 0.9rem;
-  border-radius: 14px;
-  background: rgba(255, 255, 255, 0.03);
-  border: 1px solid rgba(255, 255, 255, 0.06);
-}
-
-.hero-stat strong {
-  display: block;
-  font-size: 1.05rem;
-}
-
-.hero-stat span {
-  display: block;
-  margin-top: 0.2rem;
-  color: var(--text-muted);
-  font-size: 0.82rem;
-}
-
-.provider-band {
-  margin-top: 1.6rem;
-  display: flex;
-  flex-wrap: wrap;
-  gap: 0.7rem;
-}
-
-.provider-chip {
-  display: inline-flex;
-  align-items: center;
-  gap: 0.55rem;
-  min-height: 44px;
-  padding: 0.7rem 0.95rem;
-  border-radius: 999px;
-  background: rgba(255, 255, 255, 0.03);
-  border: 1px solid rgba(255, 255, 255, 0.08);
-  font-family: var(--font-mono);
-  font-size: 0.74rem;
-  letter-spacing: 0.05em;
-  color: var(--text-soft);
-}
-
-.provider-chip .dot {
-  width: 7px;
-  height: 7px;
-  border-radius: 50%;
-  background: linear-gradient(135deg, var(--violet), #d946ef);
-  box-shadow: 0 0 12px rgba(168, 85, 247, 0.55);
-}
-
-.domain-note {
-  margin-top: 1.25rem;
-  font-family: var(--font-mono);
-  font-size: 0.72rem;
-  letter-spacing: 0.06em;
-  color: rgba(143, 128, 187, 0.9);
-}
-
-main {
-  position: relative;
-  z-index: 1;
-}
-
-.section {
-  width: min(var(--max), calc(100vw - 2.5rem));
-  margin: 0 auto;
-  padding: 1.5rem 0 2.5rem;
-}
-
-.section-head {
-  display: grid;
-  gap: 0.55rem;
-  margin-bottom: 1.35rem;
-}
-
-.section-kicker {
-  margin: 0;
-  font-family: var(--font-mono);
-  font-size: 0.69rem;
-  letter-spacing: 0.16em;
-  text-transform: uppercase;
-  color: #b8a7ec;
-}
-
-.section-head h2 {
-  margin: 0;
-  font-size: clamp(1.8rem, 4vw, 3rem);
-  line-height: 0.98;
-  letter-spacing: -0.04em;
-}
-
-.section-head p {
-  margin: 0;
-  max-width: 62ch;
-  color: var(--text-soft);
-}
-
-.principle-grid,
-.capability-grid,
-.surface-grid,
-.doc-grid {
-  display: grid;
-  gap: 1rem;
-}
-
-.principle-grid {
-  grid-template-columns: repeat(3, minmax(0, 1fr));
-}
-
-.capability-grid {
-  grid-template-columns: repeat(3, minmax(0, 1fr));
-}
-
-.surface-grid {
-  grid-template-columns: repeat(3, minmax(0, 1fr));
-}
-
-.doc-grid {
-  grid-template-columns: repeat(4, minmax(0, 1fr));
-}
-
-.panel-card {
-  position: relative;
-  padding: 1.25rem;
-  border-radius: var(--radius-sm);
-  background: var(--panel);
-  border: 1px solid var(--panel-line);
-  box-shadow: var(--shadow);
-  overflow: hidden;
-}
-
-.panel-card::after {
-  content: '';
-  position: absolute;
-  inset: auto -10% -38% auto;
-  width: 180px;
-  height: 180px;
-  background: radial-gradient(circle, rgba(139, 92, 246, 0.16), transparent 70%);
-  pointer-events: none;
-}
-
-.panel-card .label {
-  display: inline-block;
-  margin-bottom: 0.9rem;
-  font-family: var(--font-mono);
-  font-size: 0.68rem;
-  letter-spacing: 0.14em;
-  text-transform: uppercase;
-  color: #cfbffc;
-}
-
-.panel-card h3 {
-  margin: 0 0 0.55rem;
-  font-size: 1.3rem;
-  line-height: 1.02;
-}
-
-.panel-card p,
-.panel-card li {
-  position: relative;
-  z-index: 1;
-  color: var(--text-soft);
-}
-
-.panel-card ul,
-.panel-card ol {
-  margin: 0.9rem 0 0;
-  padding-left: 1.15rem;
-}
-
-.panel-card li + li {
-  margin-top: 0.4rem;
-}
-
-.surface-card .surface-meta {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 0.45rem;
-  margin-top: 1rem;
-}
-
-.surface-card .surface-meta span {
-  display: inline-flex;
-  align-items: center;
-  min-height: 32px;
-  padding: 0.35rem 0.55rem;
-  border-radius: 999px;
-  font-family: var(--font-mono);
-  font-size: 0.66rem;
-  letter-spacing: 0.06em;
-  text-transform: uppercase;
-  color: #d7cbf8;
-  background: rgba(255, 255, 255, 0.04);
-  border: 1px solid rgba(255, 255, 255, 0.08);
-}
-
-.workflow-list {
-  display: grid;
-  gap: 0.95rem;
-}
-
-.workflow-step {
-  display: grid;
-  grid-template-columns: 46px minmax(0, 1fr);
-  gap: 0.9rem;
-  align-items: start;
-}
-
-.workflow-step .num {
-  display: grid;
-  place-items: center;
-  width: 46px;
-  height: 46px;
-  border-radius: 14px;
-  background: linear-gradient(135deg, rgba(139, 92, 246, 0.24), rgba(168, 85, 247, 0.24));
-  border: 1px solid rgba(168, 85, 247, 0.28);
-  font-family: var(--font-mono);
-  font-size: 0.92rem;
-  color: #f5f0ff;
-}
-
-.workflow-step h3 {
-  margin: 0 0 0.25rem;
-  font-size: 1rem;
-}
-
-.workflow-step p {
-  margin: 0;
-  color: var(--text-soft);
-}
-
-.doc-card {
-  text-decoration: none;
-  transition: transform 0.18s ease, border-color 0.18s ease, background 0.18s ease;
-}
-
-.doc-card:hover {
-  transform: translateY(-2px);
-  border-color: rgba(168, 85, 247, 0.42);
-  background: rgba(20, 13, 35, 0.95);
-}
-
-.doc-card strong {
-  display: block;
-  margin-bottom: 0.45rem;
-  font-size: 1rem;
-}
-
-.doc-card span {
-  color: var(--text-soft);
-  font-size: 0.92rem;
-}
-
-.cta-shell {
-  width: min(var(--max), calc(100vw - 2.5rem));
-  margin: 0 auto;
-  padding: 1rem 0 4.25rem;
-}
-
-.cta-card {
-  padding: clamp(1.35rem, 4vw, 2.2rem);
-  border-radius: var(--radius);
-  background:
-    linear-gradient(135deg, rgba(139, 92, 246, 0.16), rgba(21, 14, 38, 0.92)),
-    rgba(10, 7, 20, 0.92);
-  border: 1px solid rgba(255, 255, 255, 0.08);
-  box-shadow: var(--shadow);
-}
-
-.cta-card h2 {
-  margin: 0;
-  font-size: clamp(2rem, 4.8vw, 4rem);
-  line-height: 0.95;
-  letter-spacing: -0.05em;
-}
-
-.cta-card p {
-  margin: 0.9rem 0 1.35rem;
-  max-width: 48ch;
-  color: var(--text-soft);
-}
-
-footer {
-  width: min(var(--max), calc(100vw - 2.5rem));
-  margin: 0 auto;
-  padding: 0 0 2.25rem;
-  font-family: var(--font-mono);
-  font-size: 0.72rem;
-  letter-spacing: 0.05em;
-  color: var(--text-muted);
-}
-
-footer a {
-  color: #c5b6f5;
-  text-decoration: none;
-}
-
-footer a:hover {
-  color: #efe8ff;
-}
-
-@media (max-width: 980px) {
-  .hero-lockup {
-    grid-template-columns: 1fr;
-  }
-
-  .lock-divider {
-    display: none;
-  }
-
-  .hero-grid,
-  .principle-grid,
-  .capability-grid,
-  .surface-grid,
-  .doc-grid {
-    grid-template-columns: 1fr;
-  }
-
-  .hero-lede {
-    max-width: none;
-  }
-}
-
-@media (max-width: 760px) {
-  .site-nav-inner {
-    align-items: flex-start;
-    flex-direction: column;
-  }
-
-  .site-nav-links {
-    justify-content: flex-start;
-  }
-
-  .hero {
-    padding-top: 2rem;
-  }
-
-  .hero-title {
-    font-size: clamp(3rem, 17vw, 4.8rem);
-  }
-}
-
-@media (max-width: 560px) {
-  body::before {
-    width: 6px;
-  }
-
-  .site-nav-inner,
-  .hero-shell,
-  .section,
-  .cta-shell,
-  footer {
-    width: min(var(--max), calc(100vw - 1.4rem));
-  }
-
-  .site-nav-links a,
-  .button {
-    width: 100%;
-  }
-
-  .hero-stats {
-    grid-template-columns: 1fr;
-  }
-
-  .workflow-step {
-    grid-template-columns: 38px minmax(0, 1fr);
-  }
-
-  .workflow-step .num {
-    width: 38px;
-    height: 38px;
-    border-radius: 12px;
-  }
-}
+*{box-sizing:border-box}html{scroll-behavior:smooth}body{margin:0;background:radial-gradient(circle at top center,rgba(201,168,76,.1),transparent 26%),radial-gradient(circle at 18% 18%,rgba(61,191,160,.08),transparent 18%),linear-gradient(180deg,#11110f 0%,#0f0f0d 50%,#0b0b0a 100%);color:#edeae0;font:16px/1.6 'DM Sans',system-ui,sans-serif;overflow-x:hidden}body:before{content:'';position:fixed;inset:0;background-image:linear-gradient(rgba(237,234,224,.03) 1px,transparent 1px),linear-gradient(90deg,rgba(237,234,224,.03) 1px,transparent 1px);background-size:44px 44px;mask-image:radial-gradient(circle at top center,black 24%,transparent 74%);-webkit-mask-image:radial-gradient(circle at top center,black 24%,transparent 74%);pointer-events:none}a{color:inherit}a:focus-visible,button:focus-visible,textarea:focus-visible{outline:2px solid rgba(61,191,160,.8);outline-offset:3px}
+:root{--panel:rgba(24,24,22,.9);--panel2:rgba(31,31,27,.98);--line:rgba(237,234,224,.09);--line2:rgba(237,234,224,.18);--text2:#cdc8bd;--text3:#a8a49a;--text4:#6a6660;--gold:#c9a84c;--teal:#3dbfa0;--shadow:0 30px 90px rgba(0,0,0,.42)}
+.wrap{width:min(1160px,calc(100vw - 32px));margin:0 auto}.mono{font-family:'DM Mono',monospace}.serif{font-family:'Fraunces',Georgia,serif}
+nav{position:sticky;top:0;z-index:30;background:rgba(15,15,13,.78);backdrop-filter:blur(18px);border-bottom:1px solid var(--line)}.nav{display:flex;align-items:center;justify-content:space-between;gap:16px;padding:14px 0}.brand{display:flex;align-items:center;gap:12px;text-decoration:none}.mark{width:38px;height:38px;display:grid;place-items:center;border:1px solid var(--line2);border-radius:12px;background:rgba(255,255,255,.04);color:var(--gold)}.brand small{display:block;color:var(--text4);font-size:11px;letter-spacing:.12em;text-transform:uppercase}.brand span{display:block;color:var(--text3);font-size:12px}.navlinks,.navactions,.row{display:flex;align-items:center;gap:10px;flex-wrap:wrap}.pill,.cta,.ghost,.tab{display:inline-flex;align-items:center;justify-content:center;min-height:42px;padding:0 16px;border-radius:999px;text-decoration:none;border:1px solid transparent;transition:.18s}.navlinks a{font:12px 'DM Mono',monospace;color:var(--text3);text-transform:uppercase;letter-spacing:.08em}.navlinks a:hover,.ghost:hover,.tab:hover{border-color:var(--line);background:rgba(255,255,255,.04);color:#fff}.ghost{border-color:var(--line);background:rgba(255,255,255,.03);color:var(--text2)}.cta{background:linear-gradient(135deg,var(--teal),#86dfca);color:#062018;box-shadow:0 18px 40px rgba(61,191,160,.18)}.cta:hover{transform:translateY(-1px)}
+.hero{padding:78px 0 44px}.hero-grid{display:grid;grid-template-columns:minmax(0,1.04fr) minmax(340px,.96fr);gap:28px;align-items:center}.badge{display:inline-flex;align-items:center;gap:10px;padding:6px 12px;border:1px solid rgba(201,168,76,.26);border-radius:999px;background:rgba(201,168,76,.08);color:var(--gold);font:11px 'DM Mono',monospace;letter-spacing:.08em;text-transform:uppercase}.badge b{width:7px;height:7px;border-radius:50%;background:var(--gold);display:inline-block}.hero h1{margin:18px 0;font:400 clamp(46px,8vw,82px)/.98 'Fraunces',Georgia,serif;letter-spacing:-.04em}.hero h1 em{font-style:italic;color:var(--gold)}.hero p{max-width:560px;margin:0 0 28px;color:var(--text2);font-size:18px;font-weight:300}.meta{display:flex;gap:10px;flex-wrap:wrap;margin-top:14px}.meta span,.mini{display:inline-flex;align-items:center;min-height:34px;padding:0 12px;border-radius:999px;border:1px solid var(--line);background:rgba(255,255,255,.03);color:var(--text3);font-size:13px}
+.card{border:1px solid var(--line);border-radius:24px;background:linear-gradient(180deg,rgba(255,255,255,.03),rgba(255,255,255,.01)),var(--panel2);box-shadow:var(--shadow)}.stage{overflow:hidden}.head{display:flex;align-items:center;justify-content:space-between;gap:12px;padding:14px 16px;border-bottom:1px solid var(--line);background:rgba(255,255,255,.02)}.dots{display:flex;gap:6px}.dots i{width:10px;height:10px;border-radius:50%;display:block}.dots i:nth-child(1){background:#ff5f57}.dots i:nth-child(2){background:#febc2e}.dots i:nth-child(3){background:#28c840}.head strong{font:11px 'DM Mono',monospace;color:var(--text4);letter-spacing:.08em;text-transform:uppercase}.demo{display:grid;grid-template-columns:1fr 1fr}.pane{padding:16px}.pane+.pane{border-left:1px solid var(--line)}.pane label{display:inline-block;margin-bottom:10px;font:11px 'DM Mono',monospace;color:var(--text4);letter-spacing:.08em;text-transform:uppercase}.input,.output,.box{min-height:126px;border:1px solid var(--line);border-radius:16px;background:rgba(255,255,255,.03);padding:14px;color:#edeae0}.input{width:100%;resize:none;font:inherit}.output{color:var(--text2)}.foot{display:flex;align-items:center;justify-content:space-between;gap:14px;padding:14px 16px 16px;border-top:1px solid var(--line);background:rgba(255,255,255,.02)}.tabs{display:flex;gap:8px;flex-wrap:wrap}.tab{min-height:34px;padding:0 12px;background:transparent;border-color:var(--line);color:var(--text4);font:11px 'DM Mono',monospace;letter-spacing:.07em;text-transform:uppercase;cursor:pointer}.tab.active{border-color:rgba(61,191,160,.3);background:rgba(61,191,160,.12);color:#fff}.hint{margin-top:8px;font-size:12px;color:var(--text3)}.run{min-height:44px;padding:0 16px;border:none;border-radius:999px;background:linear-gradient(135deg,var(--gold),#e3c77f);color:#1c170d;font:12px 'DM Mono',monospace;letter-spacing:.08em;text-transform:uppercase;cursor:pointer}.run:disabled{opacity:.45}
+.stack{display:grid;gap:16px}.pad{padding:18px}.pad h2,.feat h3,.surf h3,.docs strong{margin:0 0 8px;font-size:18px;font-weight:500}.pad p,.feat p,.surf p,.docs span,.section p,.step p{margin:0;color:var(--text2);font-size:14px}.pad ul{margin:16px 0 0;padding:0;list-style:none;display:grid;gap:10px}.pad li{display:flex;gap:10px}.pad li:before{content:'->';font-family:'DM Mono',monospace;color:var(--teal)}
+.proof{margin-top:24px;padding:18px 20px;border:1px solid var(--line);border-radius:999px;background:rgba(255,255,255,.03);display:flex;align-items:center;justify-content:center;gap:26px;flex-wrap:wrap}.proof div{display:flex;flex-direction:column;align-items:center;gap:2px}.proof strong{font:400 24px 'Fraunces',Georgia,serif}.proof span{font:11px 'DM Mono',monospace;color:var(--text4);letter-spacing:.08em;text-transform:uppercase}
+.section{padding:94px 0 0}.section .kick{margin:0 0 14px;color:var(--gold);font:12px 'DM Mono',monospace;letter-spacing:.1em;text-transform:uppercase}.section h2{margin:0 0 14px;font:400 clamp(34px,4.5vw,56px)/1.02 'Fraunces',Georgia,serif;letter-spacing:-.04em}.section h2 em{color:var(--gold);font-style:italic}.section p{max-width:680px;color:var(--text2);font-size:17px;font-weight:300}.grid3,.grid2{display:grid;gap:16px;margin-top:30px}.grid3{grid-template-columns:repeat(3,minmax(0,1fr))}.grid2{grid-template-columns:repeat(2,minmax(0,1fr))}.feat,.surf,.docs{padding:24px}.icon{width:42px;height:42px;border:1px solid var(--line2);border-radius:12px;display:grid;place-items:center;margin-bottom:16px;color:var(--gold);background:rgba(255,255,255,.03);font-size:18px}
+.flow{display:grid;grid-template-columns:minmax(0,.94fr) minmax(320px,1.06fr);gap:24px;align-items:start;margin-top:30px}.steps{display:grid;gap:12px}.step{border:1px solid var(--line);border-radius:18px;background:rgba(255,255,255,.03);transition:.2s}.step.active{border-color:rgba(201,168,76,.28);background:rgba(201,168,76,.08)}.step button{width:100%;display:flex;gap:16px;padding:18px;background:transparent;border:none;color:inherit;text-align:left;cursor:pointer}.num{width:38px;height:38px;border-radius:50%;display:grid;place-items:center;flex:0 0 auto;border:1px solid var(--line2);color:var(--gold);font:12px 'DM Mono',monospace}.visual{padding:22px}.label{margin-bottom:10px;font:11px 'DM Mono',monospace;color:var(--text4);letter-spacing:.08em;text-transform:uppercase}.arrow{padding:12px 0;text-align:center;color:var(--teal);font:11px 'DM Mono',monospace;letter-spacing:.08em;text-transform:uppercase}.surfmeta{display:flex;gap:8px;flex-wrap:wrap;margin-top:16px}.surfmeta span{min-height:30px;display:inline-flex;align-items:center;padding:0 10px;border-radius:999px;border:1px solid var(--line);color:var(--text3);font-size:12px}.docs{text-decoration:none}.docs:hover{border-color:var(--line2);transform:translateY(-2px)}
+.cta-wrap{padding:110px 0 46px}.cta-card{padding:42px;border:1px solid var(--line);border-radius:28px;background:radial-gradient(circle at top center,rgba(61,191,160,.08),transparent 36%),var(--panel2);box-shadow:var(--shadow);text-align:center}.cta-card h2{margin:0 0 16px;font:400 clamp(34px,4.5vw,54px)/1.02 'Fraunces',Georgia,serif;letter-spacing:-.04em}.cta-card p{max-width:720px;margin:0 auto 24px;color:var(--text2);font-size:17px}.footer{padding:0 0 38px;color:var(--text4);font:12px 'DM Mono',monospace;text-transform:uppercase;letter-spacing:.08em;text-align:center}.footer a{text-decoration:none;color:var(--text3)}.footer a:hover{color:#fff}
+.reveal{opacity:0;transform:translateY(22px);transition:opacity .55s ease,transform .55s ease}.reveal.visible{opacity:1;transform:translateY(0)}
+@media (max-width:980px){.hero-grid,.flow,.grid3,.grid2,.demo{grid-template-columns:1fr}.pane+.pane{border-left:none;border-top:1px solid var(--line)}}
+@media (max-width:720px){.wrap{width:min(1160px,calc(100vw - 20px))}.navlinks{display:none}.hero{padding-top:48px}.proof{border-radius:26px}.cta-card{padding:28px 20px}}
 </style>
-<script type="application/ld+json">
-{
-  "@context": "https://schema.org",
-  "@type": "SoftwareApplication",
-  "name": "Prompt Lab",
-  "description": "Prompt engineering workbench for web, Chrome, and desktop. Engineer, test, and iterate across Anthropic, OpenAI, Gemini, OpenRouter, and Ollama.",
-  "applicationCategory": "DeveloperApplication",
-  "operatingSystem": "Web, Chrome, Windows, macOS, Linux",
-  "offers": {
-    "@type": "Offer",
-    "price": "0",
-    "priceCurrency": "USD"
-  },
-  "author": {
-    "@type": "Person",
-    "name": "Dave Robertson"
-  }
-}
-</script>
 </head>
 <body>
-<nav class="site-nav" aria-label="Site navigation">
-  <div class="site-nav-inner">
-    <a href="./" class="site-nav-brand">
-      <img src="hero-logo.png" alt="" width="34" height="34">
-      <span class="site-nav-brand-text">
-        <strong>Prompt Lab</strong>
-        <span>Engineer. Test. Iterate.</span>
-      </span>
-    </a>
-    <div class="site-nav-links">
-      <a href="#features">Features</a>
-      <a href="#surfaces">Surfaces</a>
-      <a href="./guide.html">Guide</a>
-      <a href="./tools/">Tools</a>
-      <a href="./setup.html">Setup</a>
-      <a href="./privacy.html">Privacy</a>
-      <a href="https://github.com/DaveHomeAssist/prompt-lab" target="_blank" rel="noopener">GitHub</a>
-      <a href="./app/" class="nav-cta">Open App</a>
-    </div>
-  </div>
-</nav>
-
-<main>
-  <section class="hero" id="top">
-    <div class="hero-shell">
-      <p class="eyebrow">Prompt engineering workbench</p>
-
-      <div class="hero-lockup">
-        <div class="brand-panel">
-          <img src="hero-logo.png" alt="Prompt Lab logo" width="560" height="560" loading="eager" fetchpriority="high">
-        </div>
-        <div class="lock-divider" aria-hidden="true"></div>
-        <div class="word-panel">
-          <h1 class="hero-title"><span class="tight">Prompt</span><span class="tight lab">Lab</span></h1>
-          <p class="hero-tagline">Engineer <span>&middot;</span> Test <span>&middot;</span> Iterate</p>
-        </div>
+<nav><div class="wrap nav"><a class="brand" href="/"><span class="mark" aria-hidden="true"><svg width="20" height="20" viewBox="0 0 20 20" fill="none"><path d="M8 3v6.5L3.5 16h13L12 9.5V3" stroke="currentColor" stroke-width="1.3" stroke-linecap="round" stroke-linejoin="round"></path><circle cx="7" cy="14.5" r="1.2" fill="currentColor" opacity="0.5"></circle><circle cx="12" cy="13.5" r="0.8" fill="currentColor" opacity="0.35"></circle></svg></span><span><small class="mono">Prompt Lab</small><span>Web, extension, and desktop workbench</span></span></a><div class="navlinks"><a href="#features">Features</a><a href="#workflow">Workflow</a><a href="#surfaces">Surfaces</a><a href="./guide.html">Docs</a></div><div class="navactions"><a class="ghost" href="./guide.html">Read guide</a><a class="cta" href="./app/">Open app</a></div></div></nav>
+<main class="wrap">
+  <section class="hero">
+    <span class="badge reveal"><b></b>v1.7 - calmer shell, sharper workflow</span>
+    <div class="hero-grid">
+      <div class="reveal">
+        <h1>Prompt engineering,<br><em>with a sharper surface.</em></h1>
+        <p>Prompt Lab gives you a real loop around prompt quality: write, improve, compare, save, and reuse prompts across the hosted app, the side panel, and the desktop shell.</p>
+        <div class="row"><a class="cta" href="./app/">Open the app</a><a class="ghost" href="./setup.html">Provider setup</a></div>
+        <div class="meta"><span>Improve + compare</span><span>Prompt library</span><span>Reusable blocks</span></div>
       </div>
-
-      <div class="hero-grid">
-        <div class="hero-copy">
-          <p class="hero-lede">Write, compare, and refine prompts across Anthropic, OpenAI, Gemini, OpenRouter, and Ollama from one workspace.</p>
-          <p class="hero-sub">Prompt Lab gives you a practical system for prompt work: engineer the draft, test alternatives side by side, then iterate with history, structure, and reusable assets instead of guesswork.</p>
-          <div class="hero-actions">
-            <a href="./app/" target="_blank" rel="noopener" class="button button-primary">Open Web App</a>
-            <a href="https://github.com/DaveHomeAssist/prompt-lab/releases/latest" target="_blank" rel="noopener" class="button button-secondary">Install Extension</a>
+      <div class="stack reveal">
+        <section class="card stage">
+          <div class="head"><div class="dots" aria-hidden="true"><i></i><i></i><i></i></div><strong>promptlab.tools / workspace</strong></div>
+          <div class="demo">
+            <div class="pane"><label for="demo-in">Input</label><textarea id="demo-in" class="input">Write a product description for noise-canceling headphones.</textarea></div>
+            <div class="pane"><div class="label">Output</div><div id="demo-panel" class="output" role="tabpanel" aria-live="polite" aria-atomic="true"><div id="demo-out">Run the demo to see the prompt get sharper.</div></div></div>
           </div>
-          <div class="provider-band" aria-label="Supported providers">
-            <span class="provider-chip"><span class="dot"></span>Anthropic</span>
-            <span class="provider-chip"><span class="dot"></span>OpenAI</span>
-            <span class="provider-chip"><span class="dot"></span>Gemini</span>
-            <span class="provider-chip"><span class="dot"></span>OpenRouter</span>
-            <span class="provider-chip"><span class="dot"></span>Ollama</span>
+          <div class="foot">
+            <div>
+              <div class="tabs" role="tablist" aria-label="Demo mode">
+                <button id="demo-tab-improve" class="tab active" type="button" role="tab" data-mode="improve" aria-controls="demo-panel" aria-selected="true" tabindex="0">Improve</button>
+                <button id="demo-tab-expand" class="tab" type="button" role="tab" data-mode="expand" aria-controls="demo-panel" aria-selected="false" tabindex="-1">Expand</button>
+                <button id="demo-tab-clean" class="tab" type="button" role="tab" data-mode="clean" aria-controls="demo-panel" aria-selected="false" tabindex="-1">Clean</button>
+              </div>
+              <div id="demo-hint" class="hint">Sharpen clarity without changing the user's intent.</div>
+            </div>
+            <button id="demo-run" class="run" type="button">See it improve</button>
           </div>
-          <div class="domain-note">promptlab.tools</div>
-        </div>
-
-        <aside class="hero-meta">
-          <p class="hero-meta-label">// operating model</p>
-          <h2>One product. Three shells.</h2>
-          <p>Use the hosted app immediately, dock the extension beside any page, or run the desktop shell when you want the same workflow installed locally.</p>
-          <div class="hero-stats">
-            <div class="hero-stat">
-              <strong>5</strong>
-              <span>Provider adapters</span>
-            </div>
-            <div class="hero-stat">
-              <strong>3</strong>
-              <span>Runtime surfaces</span>
-            </div>
-            <div class="hero-stat">
-              <strong>0</strong>
-              <span>Required accounts</span>
-            </div>
-            <div class="hero-stat">
-              <strong>1</strong>
-              <span>Shared frontend</span>
-            </div>
-          </div>
-        </aside>
+        </section>
+        <article class="card pad"><h2>One frontend, three surfaces.</h2><p>The current rollout keeps the same product model aligned whether you launch Prompt Lab in the browser, dock it beside the page, or run it in the desktop shell.</p><ul><li>Hosted web app for the fastest zero-install start.</li><li>Chrome side panel when prompt work needs to stay attached to the page.</li><li>Desktop shell when the browser is not the right home.</li></ul></article>
       </div>
     </div>
+    <div class="proof reveal"><div><strong>Write</strong><span>draft in one pane</span></div><div><strong>Compare</strong><span>see what changed</span></div><div><strong>Save</strong><span>reuse the winners</span></div><div><strong>Ship</strong><span>with less guesswork</span></div></div>
   </section>
 
-  <section class="section" id="features">
-    <div class="section-head">
-      <p class="section-kicker">// core loop</p>
-      <h2>Built around the way serious prompt work actually happens.</h2>
-      <p>Prompt Lab is organized around a simple cycle: engineer a strong draft, test the result across models or variants, then iterate with saved structure instead of rewriting from scratch every time.</p>
-    </div>
-
-    <div class="principle-grid">
-      <article class="panel-card">
-        <span class="label">Engineer</span>
-        <h3>Build prompts with structure.</h3>
-        <p>Draft in the editor, assemble reusable blocks in the composer, fill variables at run time, and keep your high-value prompts in a searchable library.</p>
-      </article>
-      <article class="panel-card">
-        <span class="label">Test</span>
-        <h3>Compare output instead of trusting vibes.</h3>
-        <p>Run A/B experiments, inspect differences across providers, and use history to see what changed instead of relying on memory.</p>
-      </article>
-      <article class="panel-card">
-        <span class="label">Iterate</span>
-        <h3>Keep the wins and refine the rest.</h3>
-        <p>Version saved prompts, restore old drafts, and keep a local-first workflow that lets you iterate quickly without turning the tool into overhead.</p>
-      </article>
+  <section id="features" class="section reveal"><p class="kick">Features</p><h2>Built for people who take prompts <em>seriously.</em></h2><p>Prompt Lab is not just a prettier text box. It is a workspace for prompt iteration, structured comparison, and long-term reuse.</p>
+    <div class="grid3">
+      <article class="card feat"><div class="icon">01</div><h3>Improve with intent preserved</h3><p>Sharpen clarity and structure without rewriting the core job you meant to ask for.</p></article>
+      <article class="card feat"><div class="icon">02</div><h3>Compare variants side by side</h3><p>Review prompt deltas and output differences instead of trusting vague impressions.</p></article>
+      <article class="card feat"><div class="icon">03</div><h3>Keep a reusable library</h3><p>Save prompts that worked, version them, reopen them later, and stop rebuilding from memory.</p></article>
+      <article class="card feat"><div class="icon">04</div><h3>Compose reusable blocks</h3><p>Assemble role, task, format, and constraint sections before sending the final draft into the editor.</p></article>
+      <article class="card feat"><div class="icon">05</div><h3>Run on web, extension, or desktop</h3><p>Use the same workflow in the surface that fits the task instead of adapting yourself to the container.</p></article>
+      <article class="card feat"><div class="icon">06</div><h3>Docs that unblock the job</h3><p>Guide, setup, import, and privacy pages stay directly linked from the product.</p></article>
     </div>
   </section>
 
-  <section class="section">
-    <div class="section-head">
-      <p class="section-kicker">// capabilities</p>
-      <h2>The working set for prompt teams and solo operators.</h2>
-      <p>Prompt Lab is not trying to be a general AI dashboard. It focuses on the real workflow around prompts: writing, enhancing, comparing, saving, and reusing them across providers.</p>
-    </div>
-
-    <div class="capability-grid">
-      <article class="panel-card">
-        <span class="label">Enhance</span>
-        <h3>Refine the draft fast.</h3>
-        <p>Use provider-backed enhancement to tighten role clarity, constraints, format, and intent without rebuilding the prompt by hand.</p>
-      </article>
-      <article class="panel-card">
-        <span class="label">Compare</span>
-        <h3>A/B test prompt variants.</h3>
-        <p>Run two approaches side by side and inspect where they diverge in tone, completeness, and usefulness.</p>
-      </article>
-      <article class="panel-card">
-        <span class="label">Library</span>
-        <h3>Keep reusable prompts organized.</h3>
-        <p>Save prompts with metadata, restore older versions, and move proven blocks into future drafts instead of repeating work.</p>
-      </article>
-      <article class="panel-card">
-        <span class="label">Compose</span>
-        <h3>Assemble prompts from modules.</h3>
-        <p>Chain instructions, personas, and constraints into structured outputs that are easier to reuse and easier to test.</p>
-      </article>
-      <article class="panel-card">
-        <span class="label">Variables</span>
-        <h3>Reuse one prompt across many contexts.</h3>
-        <p>Fill values at run time with variable placeholders so the same template can adapt to different tasks, projects, or inputs.</p>
-      </article>
-      <article class="panel-card">
-        <span class="label">Local-first</span>
-        <h3>Keep settings in your control.</h3>
-        <p>Prompt state lives locally, with direct provider calls in extension and desktop mode and a narrow proxy path only for the hosted web shell.</p>
-      </article>
-    </div>
-  </section>
-
-  <section class="section" id="surfaces">
-    <div class="section-head">
-      <p class="section-kicker">// surfaces</p>
-      <h2>Choose the shell that fits the job.</h2>
-      <p>The same Prompt Lab workflow is available three ways. Start in the browser. Dock it beside your real work. Install it locally when that fits the environment better.</p>
-    </div>
-
-    <div class="surface-grid">
-      <article class="panel-card surface-card">
-        <span class="label">Web app</span>
-        <h3>Immediate access.</h3>
-        <p>Open the hosted app and start working without install friction. Best when you want the fastest path into the product.</p>
-        <div class="surface-meta">
-          <span>No install</span>
-          <span>Fastest start</span>
-        </div>
-      </article>
-      <article class="panel-card surface-card">
-        <span class="label">Chrome extension</span>
-        <h3>Dock Prompt Lab beside the page.</h3>
-        <p>Use the MV3 side panel when prompt work needs to stay attached to the browser context you are already using.</p>
-        <div class="surface-meta">
-          <span>Side panel</span>
-          <span>Direct provider calls</span>
-        </div>
-      </article>
-      <article class="panel-card surface-card">
-        <span class="label">Desktop</span>
-        <h3>Same workflow, installed locally.</h3>
-        <p>Run the Tauri shell when you want Prompt Lab outside the browser while keeping the same shared frontend model.</p>
-        <div class="surface-meta">
-          <span>Tauri 2</span>
-          <span>Local shell</span>
-        </div>
-      </article>
-    </div>
-  </section>
-
-  <section class="section">
-    <div class="section-head">
-      <p class="section-kicker">// get started</p>
-      <h2>Up and running in minutes.</h2>
-      <p>Prompt Lab is designed so the tool gets out of the way quickly. Pick a surface, connect a provider, and start testing prompt quality immediately.</p>
-    </div>
-
-    <div class="panel-card">
-      <div class="workflow-list">
-        <div class="workflow-step">
-          <div class="num">01</div>
-          <div>
-            <h3>Choose the path.</h3>
-            <p>Start with the hosted web app for zero friction, or install the extension if you want Prompt Lab docked beside your browsing workflow.</p>
-          </div>
-        </div>
-        <div class="workflow-step">
-          <div class="num">02</div>
-          <div>
-            <h3>Connect a provider.</h3>
-            <p>Enter your API key, choose a model, and keep the configuration local to your environment.</p>
-          </div>
-        </div>
-        <div class="workflow-step">
-          <div class="num">03</div>
-          <div>
-            <h3>Engineer and test.</h3>
-            <p>Write the prompt, run enhancement, compare alternatives, and inspect the result instead of hoping the first draft is good enough.</p>
-          </div>
-        </div>
-        <div class="workflow-step">
-          <div class="num">04</div>
-          <div>
-            <h3>Save what works.</h3>
-            <p>Store useful prompts in the library, reuse them in the composer, and iterate with version history instead of starting over.</p>
-          </div>
-        </div>
+  <section id="workflow" class="section reveal"><p class="kick">Workflow</p><h2>Idea to usable output in <em>one loop.</em></h2><p>The new direction keeps the workflow calmer: clearer shell, stronger panel framing, and less distance between draft, result, and saved prompt.</p>
+    <div class="flow">
+      <div class="steps" id="steps">
+        <article class="step active" data-step="0"><button type="button"><span class="num">01</span><span><h3>Start with the raw prompt</h3><p>Paste the rough note, the working draft, or the prompt that keeps underperforming.</p></span></button></article>
+        <article class="step" data-step="1"><button type="button"><span class="num">02</span><span><h3>Pick the right mode</h3><p>Improve for clarity, expand for more structure, or clean the draft without over-authoring it.</p></span></button></article>
+        <article class="step" data-step="2"><button type="button"><span class="num">03</span><span><h3>Review the change, not just the result</h3><p>Diff-aware review turns the tool into a teachable workflow instead of a black box.</p></span></button></article>
+        <article class="step" data-step="3"><button type="button"><span class="num">04</span><span><h3>Keep what proves itself</h3><p>Save the prompt, tag it, and bring it back later when the same job shows up again.</p></span></button></article>
       </div>
+      <aside class="card visual"><div class="label">Before</div><div id="wf-before" class="box">Write a product description for noise-canceling headphones.</div><div class="arrow">Prompt Lab</div><div class="label">After</div><div id="wf-after" class="box"><strong>Craft a compelling product description for premium noise-canceling headphones</strong> aimed at remote workers. Highlight comfort for long sessions, microphone quality for calls, and battery life.</div></aside>
     </div>
   </section>
 
-  <section class="section">
-    <div class="section-head">
-      <p class="section-kicker">// docs</p>
-      <h2>Use the tool, then go deeper where you need it.</h2>
-      <p>Public docs are split by task, not by marketing funnel. Jump straight to setup, usage, privacy, or import details depending on what is actually blocking you.</p>
-    </div>
-
-    <div class="doc-grid">
-      <a href="./guide.html" class="panel-card doc-card">
-        <strong>How-To Guide</strong>
-        <span>Editor, library, A/B testing, composer, variables, and shortcuts.</span>
-      </a>
-      <a href="./setup.html" class="panel-card doc-card">
-        <strong>Setup</strong>
-        <span>Provider configuration for Anthropic, OpenAI, Gemini, OpenRouter, and Ollama.</span>
-      </a>
-      <a href="./guide-preset-import.html" class="panel-card doc-card">
-        <strong>Preset Import</strong>
-        <span>Import prompt packs cleanly and understand the accepted file format.</span>
-      </a>
-      <a href="./privacy.html" class="panel-card doc-card">
-        <strong>Privacy</strong>
-        <span>Local-first data handling, storage model, and proxy behavior for hosted web mode.</span>
-      </a>
+  <section id="surfaces" class="section reveal"><p class="kick">Surfaces</p><h2>The same product model, in the surface that <em>fits the task.</em></h2><p>We are keeping the implementation practical: web stays the fastest start, the extension keeps context beside the page, and desktop stays available when the browser is not the right home.</p>
+    <div class="grid3">
+      <article class="card surf"><h3>Web app</h3><p>Fastest path into Prompt Lab. Best when you want zero setup friction and the full workbench immediately.</p><div class="surfmeta"><span>No install</span><span>Hosted app</span></div></article>
+      <article class="card surf"><h3>Chrome extension</h3><p>Dock Prompt Lab next to the page when prompt work should stay coupled to the browser context.</p><div class="surfmeta"><span>MV3 side panel</span><span>Browser-native flow</span></div></article>
+      <article class="card surf"><h3>Desktop shell</h3><p>Keep the same UI logic in a local shell when you want Prompt Lab open without also living in a tab.</p><div class="surfmeta"><span>Tauri shell</span><span>Local install</span></div></article>
     </div>
   </section>
 
-  <section class="cta-shell">
-    <div class="cta-card">
-      <h2>Stop guessing at prompts.</h2>
-      <p>Prompt Lab is for people who want a real loop around prompt quality: engineer the draft, test the result, and iterate with structure instead of loose notes and memory.</p>
-      <div class="hero-actions">
-        <a href="./app/" target="_blank" rel="noopener" class="button button-primary">Open Web App</a>
-        <a href="./guide.html" class="button button-secondary">Read the Guide</a>
-      </div>
+  <section class="section reveal"><p class="kick">Docs</p><h2>Jump straight to the page that unblocks you.</h2><p>Setup, guide, privacy, and import docs stay first-class links. The landing page should help you start, not trap you in marketing copy.</p>
+    <div class="grid2">
+      <a class="card docs" href="./guide.html"><strong>How-To Guide</strong><span>Editor, library, compare mode, composer, variables, and shortcuts.</span></a>
+      <a class="card docs" href="./setup.html"><strong>Provider Setup</strong><span>Connect Anthropic, OpenAI, Gemini, OpenRouter, Ollama, and other supported routes.</span></a>
+      <a class="card docs" href="./guide-preset-import.html"><strong>Preset Import</strong><span>Bring prompt packs into the library without manual cleanup or guesswork.</span></a>
+      <a class="card docs" href="./privacy.html"><strong>Privacy</strong><span>Understand the local-first data model and hosted web behavior.</span></a>
     </div>
   </section>
+
+  <section class="cta-wrap reveal"><div class="cta-card"><h2>Stop guessing at prompts.</h2><p>Open the current build, use the cleaner shell, and keep the prompts that actually prove themselves under real work.</p><div class="row" style="justify-content:center"><a class="cta" href="./app/">Open web app</a><a class="ghost" href="./guide.html">Read the guide</a></div></div></section>
 </main>
+<footer class="wrap footer">Prompt Lab v1.7.0 &middot; <a href="./guide.html">Guide</a> &middot; <a href="./setup.html">Setup</a> &middot; <a href="./privacy.html">Privacy</a> &middot; <a href="https://github.com/DaveHomeAssist/prompt-lab" target="_blank" rel="noopener">Source</a></footer>
+<script>
+const DEMO_OUTPUTS = {
+  improve: 'Craft a compelling product description for premium noise-canceling headphones aimed at remote workers. Highlight comfort for all-day wear, battery life, and call-ready microphone quality.',
+  expand: 'Write a product description for premium noise-canceling headphones designed for remote workers and frequent travelers. Include use cases, battery life, comfort, microphone performance, and a clear value proposition.',
+  clean: 'Write a product description for premium noise-canceling headphones for remote workers.',
+};
 
-<footer>
-  Prompt Lab v1.7.0 &middot; <a href="./guide.html">Guide</a> &middot; <a href="./setup.html">Setup</a> &middot; <a href="./privacy.html">Privacy</a> &middot; <a href="https://github.com/DaveHomeAssist/prompt-lab" target="_blank" rel="noopener">Source</a>
-</footer>
+const DEMO_HINTS = {
+  improve: "Sharpen clarity without changing the user's intent.",
+  expand: 'Add structure, detail, and useful constraints.',
+  clean: 'Tighten the draft down to the essentials.',
+};
+
+const WORKFLOW_STATES = [
+  [
+    'Write a product description for noise-canceling headphones.',
+    '<strong>Craft a compelling product description for premium noise-canceling headphones</strong> aimed at remote workers. Highlight comfort for long sessions, microphone quality for calls, and battery life.',
+  ],
+  [
+    'Explain quantum entanglement to a 10-year-old.',
+    '<strong>Explain quantum entanglement to a 10-year-old using one vivid analogy</strong>, simple language, and a short recap that repeats the core idea plainly.',
+  ],
+  [
+    'Summarize this article and give me action items.',
+    '<strong>Summarize the article in five bullets</strong>, then extract three concrete next steps with owners, dependencies, and decision risk where relevant.',
+  ],
+  [
+    'Make this prompt better and save it if it works.',
+    '<strong>Improve the prompt while preserving the original goal</strong>, show the meaningful edits, and save the final version into the library with a reusable title.',
+  ],
+];
+
+const prefersReducedMotion = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+const demoTabs = [...document.querySelectorAll('.tab')];
+const demoOutput = document.getElementById('demo-out');
+const demoPanel = document.getElementById('demo-panel');
+const demoHint = document.getElementById('demo-hint');
+const demoRun = document.getElementById('demo-run');
+const workflowSteps = [...document.querySelectorAll('.step')];
+const workflowBefore = document.getElementById('wf-before');
+const workflowAfter = document.getElementById('wf-after');
+const revealObserver = 'IntersectionObserver' in window
+  ? new IntersectionObserver(handleReveal, { threshold: 0.14 })
+  : null;
+
+let currentDemoMode = 'improve';
+let demoRunning = false;
+let workflowIndex = 0;
+let manualWorkflowPauseUntil = 0;
+
+function setActiveTab(tab) {
+  demoTabs.forEach((item) => {
+    item.classList.remove('active');
+    item.setAttribute('aria-selected', 'false');
+    item.setAttribute('tabindex', '-1');
+  });
+
+  tab.classList.add('active');
+  tab.setAttribute('aria-selected', 'true');
+  tab.setAttribute('tabindex', '0');
+  currentDemoMode = tab.dataset.mode;
+  demoHint.textContent = DEMO_HINTS[currentDemoMode];
+  demoRun.textContent = `See it ${currentDemoMode}`;
+  demoPanel.setAttribute('aria-labelledby', tab.id);
+}
+
+function focusDemoTab(index) {
+  const tab = demoTabs[index];
+  if (!tab) return;
+  setActiveTab(tab);
+  tab.focus();
+}
+
+function handleDemoTabKeydown(event) {
+  const currentIndex = demoTabs.indexOf(event.currentTarget);
+  if (currentIndex < 0) return;
+
+  if (event.key === 'ArrowRight') {
+    event.preventDefault();
+    focusDemoTab((currentIndex + 1) % demoTabs.length);
+    return;
+  }
+
+  if (event.key === 'ArrowLeft') {
+    event.preventDefault();
+    focusDemoTab((currentIndex - 1 + demoTabs.length) % demoTabs.length);
+    return;
+  }
+
+  if (event.key === 'Home') {
+    event.preventDefault();
+    focusDemoTab(0);
+    return;
+  }
+
+  if (event.key === 'End') {
+    event.preventDefault();
+    focusDemoTab(demoTabs.length - 1);
+  }
+}
+
+function runDemo() {
+  if (demoRunning) return;
+  demoRunning = true;
+  demoRun.disabled = true;
+  demoOutput.textContent = '';
+
+  const text = DEMO_OUTPUTS[currentDemoMode];
+  if (prefersReducedMotion) {
+    demoOutput.textContent = text;
+    demoRun.disabled = false;
+    demoRunning = false;
+    return;
+  }
+
+  let index = 0;
+  const timer = window.setInterval(() => {
+    index += Math.floor(Math.random() * 3) + 1;
+    demoOutput.textContent = text.slice(0, index);
+
+    if (index >= text.length) {
+      window.clearInterval(timer);
+      demoRun.disabled = false;
+      demoRunning = false;
+    }
+  }, 20);
+}
+
+function setWorkflowStep(nextIndex) {
+  workflowIndex = nextIndex;
+  workflowSteps.forEach((step, index) => step.classList.toggle('active', index === workflowIndex));
+  workflowBefore.textContent = WORKFLOW_STATES[workflowIndex][0];
+  workflowAfter.innerHTML = WORKFLOW_STATES[workflowIndex][1];
+}
+
+function pauseWorkflowRotation(durationMs = 9000) {
+  manualWorkflowPauseUntil = Date.now() + durationMs;
+}
+
+function cycleWorkflowStep() {
+  if (Date.now() < manualWorkflowPauseUntil) return;
+  setWorkflowStep((workflowIndex + 1) % WORKFLOW_STATES.length);
+}
+
+function handleReveal(entries, observer) {
+  entries.forEach((entry) => {
+    if (!entry.isIntersecting) return;
+    entry.target.classList.add('visible');
+    observer.unobserve(entry.target);
+  });
+}
+
+demoTabs.forEach((tab) => {
+  tab.addEventListener('click', () => setActiveTab(tab));
+  tab.addEventListener('keydown', handleDemoTabKeydown);
+});
+demoRun.addEventListener('click', runDemo);
+workflowSteps.forEach((step, index) => step.querySelector('button').addEventListener('click', () => {
+  pauseWorkflowRotation();
+  setWorkflowStep(index);
+}));
+if (revealObserver) {
+  document.querySelectorAll('.reveal').forEach((item) => revealObserver.observe(item));
+} else {
+  document.querySelectorAll('.reveal').forEach((item) => item.classList.add('visible'));
+}
+setActiveTab(demoTabs[0]);
+
+if (!prefersReducedMotion) {
+  window.setInterval(cycleWorkflowStep, 3200);
+}
+</script>
 </body>
 </html>
