@@ -1,33 +1,14 @@
 import Ic from './icons';
-import { ALL_TAGS } from './constants';
 import TagChip from './TagChip';
+import { ALL_TAGS } from './constants';
 
 export default function SavePanel({
-  m,
-  compact,
-  showSave,
-  closeSavePanel,
-  saveTargetId,
-  saveTitle,
-  setSaveTitle,
-  saveCollection,
-  setSaveCollection,
-  saveTags,
-  setSaveTags,
-  changeNote,
-  setChangeNote,
-  newCollName,
-  setNewCollName,
-  showNewColl,
-  setShowNewColl,
-  collections,
-  commitNewCollection,
-  doSave,
-  canSavePanel,
-  primaryModKey,
+  m, primaryModKey, saveTargetId, saveTitle, setSaveTitle,
+  saveCollection, setSaveCollection, saveTags, setSaveTags,
+  changeNote, setChangeNote, collections,
+  showNewColl, setShowNewColl, newCollName, setNewCollName,
+  commitNewCollection, doSave, closeSavePanel, canSavePanel,
 }) {
-  if (!showSave) return null;
-
   return (
     <aside
       className={`pl-modal-panel fixed inset-y-0 right-0 z-40 flex w-full max-w-md flex-col border-l ${m.border} ${m.modal} shadow-2xl`}

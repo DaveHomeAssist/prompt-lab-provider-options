@@ -2,17 +2,17 @@ import { useEffect, useRef, useState } from 'react';
 import Ic from './icons';
 import {
   wordDiff, scorePrompt,
-  isGhostVar, ngramSimilarity,
+  ngramSimilarity,
 } from './promptUtils';
-import { ALL_TAGS, T, APP_VERSION } from './constants';
+import { T } from './constants';
 import useLibrary from './hooks/usePromptLibrary.js';
 import useUiState from './hooks/useUiState.js';
+import useNavigation from './hooks/useNavigation.js';
 import useEditorState from './hooks/useEditorState.js';
 import useExecutionFlow from './hooks/useExecutionFlow.js';
 import usePersistenceFlow from './hooks/usePersistenceFlow.js';
 import useABTest from './hooks/useABTest.js';
 import Toast from './Toast';
-import TagChip from './TagChip';
 import PadTab from './PadTab';
 import ComposerTab from './ComposerTab';
 import ABTestTab from './ABTestTab';
@@ -22,7 +22,6 @@ import VersionDiffModal from './VersionDiffModal';
 import RunTimelinePanel from './RunTimelinePanel';
 import { isExtension } from './lib/platform.js';
 import {
-  SUBVIEWS,
   matchShortcut,
   buildCommandActions,
   filterCommands,
@@ -31,6 +30,13 @@ import MainWorkspace from './MainWorkspace';
 import EditorActions from './EditorActions';
 import { ThemeProvider } from './theme/ThemeProvider.jsx';
 import MarkdownPreview from './MarkdownPreview';
+import AppHeader from './AppHeader';
+import SavePanel from './SavePanel';
+import TemplateVariablesModal from './modals/TemplateVariablesModal';
+import SettingsModal from './modals/SettingsModal';
+import CommandPaletteModal from './modals/CommandPaletteModal';
+import ShortcutsModal from './modals/ShortcutsModal';
+import PiiWarningModal from './modals/PiiWarningModal';
 
 // ── Main App ──────────────────────────────────────────────────────────────────
 export default function App() {
@@ -156,9 +162,7 @@ export default function App() {
   const goldenVerdict = goldenResponse?.text && comparisonText
     ? (goldenSimilarity >= goldenThreshold ? 'pass' : 'fail')
     : null;
-  const activeSection = primaryView === 'runs'
-    ? 'experiments'
-    : (workspaceView === 'library' ? 'library' : 'create');
+  // activeSection is now provided by useNavigation
   const libraryOnlyMode = tab === 'editor' && workspaceView === 'library';
   const studioCreateMode = tab === 'editor' && activeSection === 'create';
   const showEditorPane = tab !== 'editor' || (!libraryOnlyMode && effectiveEditorLayout !== 'library');
@@ -204,32 +208,13 @@ export default function App() {
     setEnhMdPreview(false);
   }, [enhanced, setEnhMdPreview]);
 
-  const openCreateView = (nextView) => {
-    setPrimaryView('create');
-    setWorkspaceView(nextView);
-  };
-
-  const openSection = (nextSection) => {
-    if (nextSection === 'create') {
-      setPrimaryView('create');
-      setWorkspaceView('editor');
-      return;
-    }
-    if (nextSection === 'library') {
-      setPrimaryView('create');
-      setWorkspaceView('library');
-      return;
-    }
-    if (nextSection === 'experiments') {
-      setPrimaryView('runs');
-      setRunsView('compare');
-    }
-  };
-
-  const openRunsView = (nextView) => {
-    setPrimaryView('runs');
-    setRunsView(nextView);
-  };
+  const nav = useNavigation({
+    primaryView, setPrimaryView,
+    workspaceView, setWorkspaceView,
+    runsView, setRunsView,
+    tab, setTab,
+  });
+  const { activeSection, openCreateView, openSection, openRunsView } = nav;
 
   const commitNewCollection = () => {
     const name = newCollName.trim();
@@ -307,87 +292,18 @@ export default function App() {
       <div data-theme={colorMode} className={`min-h-screen ${m.bg} ${m.text} flex flex-col pl-density-${density}`} style={{ fontFamily: 'system-ui,sans-serif' }}>
       <h1 className="sr-only">Prompt Lab</h1>
 
-      {/* Header */}
-      <header className={`px-4 py-2 ${m.header} border-b shrink-0`}>
-        <div className={`flex ${compact ? 'flex-col gap-2' : 'items-center justify-between gap-3'}`}>
-          <div className="flex items-center justify-between gap-3">
-            <div className="flex items-center gap-2">
-              <div className="flex items-center gap-1.5">
-                <Ic n="Wand2" size={15} className="text-violet-500" />
-                <span className="font-bold text-sm">Prompt Lab</span>
-                <span className={`text-[10px] font-mono ${m.textMuted}`}>v{APP_VERSION}</span>
-              </div>
-              <span className={`text-[11px] ${m.textMuted}`}>{lib.library.length} saved</span>
-            </div>
-            <div className="flex items-center gap-1">
-              <button type="button" onClick={() => { setShowCmdPalette(true); setCmdQuery(''); }} className={`ui-control px-2 py-1 rounded-lg ${m.btn} ${m.textAlt} text-[11px] font-mono hover:text-violet-400 transition-colors`}>⌘K</button>
-              <button type="button" aria-label={colorMode === 'dark' ? 'Switch to light mode' : 'Switch to dark mode'} onClick={() => setColorMode(p => p === 'dark' ? 'light' : 'dark')} className={`ui-control p-1.5 rounded-lg ${m.btn} ${m.textAlt} hover:text-violet-400 transition-colors`}>
-                {colorMode === 'dark' ? <Ic n="Sun" size={13} /> : <Ic n="Moon" size={13} />}
-              </button>
-              <button type="button" aria-label="Keyboard shortcuts" onClick={() => setShowShortcuts(true)} className={`ui-control p-1.5 rounded-lg ${m.btn} ${m.textAlt} hover:text-violet-400 transition-colors`}><Ic n="Keyboard" size={13} /></button>
-              <button type="button" aria-label="Settings" onClick={() => setShowSettings(true)} className={`ui-control p-1.5 rounded-lg ${m.btn} ${m.textAlt} hover:text-violet-400 transition-colors`}><Ic n="Settings" size={13} /></button>
-            </div>
-          </div>
-        </div>
-        <div className={`flex items-center justify-between gap-2 mt-2 ${compact ? 'flex-col items-stretch' : ''}`}>
-          <div className={`${compact ? 'overflow-x-auto pb-1 pl-subtle-scroll' : ''}`} role="tablist" aria-label="Primary workspaces">
-            <div className="pl-scroll-row">
-            {[
-              ['create', 'Create'],
-              ['library', 'Library'],
-              ['experiments', 'Experiments'],
-            ].map(([id, label]) => (
-              <button key={id} type="button" onClick={() => openSection(id)} role="tab" aria-selected={activeSection === id}
-                className={`pl-tab-btn ui-control px-3 py-1.5 text-xs font-semibold rounded-lg transition-colors whitespace-nowrap ${activeSection === id ? 'bg-violet-600 text-white' : `${m.btn} ${m.textAlt}`}`}>
-                {label}
-              </button>
-            ))}
-            </div>
-          </div>
-          <div className={`${compact ? 'overflow-x-auto pb-1 pl-subtle-scroll' : ''}`} aria-label="Prompt Lab utilities">
-            <div className="pl-scroll-row">
-            <button type="button" onClick={() => openCreateView('composer')}
-              className={`pl-tab-btn ui-control px-2.5 py-1 text-[11px] font-semibold rounded-lg transition-colors whitespace-nowrap ${workspaceView === 'composer' ? 'bg-violet-600 text-white' : `${m.btn} ${m.textAlt}`}`}>
-              Build
-            </button>
-            <button type="button" onClick={() => setPrimaryView('notebook')}
-              className={`pl-tab-btn ui-control px-2.5 py-1 text-[11px] font-semibold rounded-lg transition-colors whitespace-nowrap ${primaryView === 'notebook' ? 'bg-violet-600 text-white' : `${m.btn} ${m.textAlt}`}`}>
-              Notebook
-            </button>
-            </div>
-          </div>
-        </div>
-        <div className={`mt-2 ${compact ? 'overflow-x-auto pb-1 pl-subtle-scroll' : ''}`} role="tablist" aria-label={activeSection === 'experiments' ? 'Experiment views' : primaryView === 'notebook' ? 'Notebook status' : 'Create workspace controls'}>
-          <div className="pl-scroll-row">
-          {activeSection === 'experiments' && (
-            <>
-              {SUBVIEWS.runs.map(({ id, label }) => (
-                <button key={id} type="button" onClick={() => openRunsView(id)} role="tab" aria-selected={runsView === id}
-                  className={`pl-tab-btn ui-control px-2.5 py-1 text-[11px] font-semibold rounded-lg transition-colors whitespace-nowrap ${runsView === id ? 'bg-violet-600 text-white' : `${m.btn} ${m.textAlt}`}`}>
-                  {label}
-                </button>
-              ))}
-            </>
-          )}
-          {primaryView === 'notebook' && (
-            <span className={`text-[11px] ${m.textMuted}`}>Multi-pad notes with library handoff</span>
-          )}
-          {activeSection === 'create' && createLayoutOptions.length > 0 && (
-            <>
-              {createLayoutOptions.map(([id, label]) => (
-                <button key={id} type="button" onClick={() => setEditorLayout(id)}
-                  className={`pl-tab-btn ui-control px-2.5 py-1 text-[11px] font-semibold rounded-lg transition-colors whitespace-nowrap ${effectiveEditorLayout === id ? 'bg-violet-600 text-white' : `${m.btn} ${m.textAlt}`}`}>
-                  {label}
-                </button>
-              ))}
-            </>
-          )}
-          {activeSection === 'library' && (
-            <span className={`text-[11px] ${m.textMuted}`}>Browse, filter, and reuse saved prompts</span>
-          )}
-          </div>
-        </div>
-      </header>
+      <AppHeader
+        m={m} compact={compact} libraryCount={lib.library.length}
+        colorMode={colorMode} setColorMode={setColorMode}
+        activeSection={activeSection} openSection={openSection}
+        openCreateView={openCreateView} openRunsView={openRunsView}
+        primaryView={primaryView} setPrimaryView={setPrimaryView}
+        workspaceView={workspaceView} runsView={runsView}
+        effectiveEditorLayout={effectiveEditorLayout} setEditorLayout={setEditorLayout}
+        createLayoutOptions={createLayoutOptions}
+        setShowCmdPalette={setShowCmdPalette} setCmdQuery={setCmdQuery}
+        setShowShortcuts={setShowShortcuts} setShowSettings={setShowSettings}
+      />
 
       <main role="tabpanel" aria-label={tab} className="pl-tab-panel flex-1 flex flex-col overflow-hidden">
       {/* ══ EDITOR TAB ══ */}
@@ -962,308 +878,49 @@ export default function App() {
       </main>
 
       {showSave && (
-        <aside
-          className={`pl-modal-panel fixed inset-y-0 right-0 z-40 flex w-full max-w-md flex-col border-l ${m.border} ${m.modal} shadow-2xl`}
-          role="dialog"
-          aria-modal="false"
-          aria-labelledby="save-panel-title"
-        >
-          <div className={`flex items-start justify-between gap-3 border-b ${m.border} px-4 py-4`}>
-            <div>
-              <p id="save-panel-title" className={`text-sm font-semibold ${m.text}`}>
-                {saveTargetId ? 'Update Prompt' : 'Save to Library'}
-              </p>
-              <p className={`mt-1 text-xs ${m.textMuted}`}>
-                Keep editing in the background while you set title, collection, and tags.
-              </p>
-            </div>
-            <button
-              type="button"
-              onClick={closeSavePanel}
-              className={`ui-control rounded-lg p-2 ${m.btn} ${m.textAlt} transition-colors hover:text-violet-400`}
-              aria-label="Close save panel"
-            >
-              <Ic n="X" size={14} />
-            </button>
-          </div>
-
-          <div className="flex-1 overflow-y-auto px-4 py-4">
-            <div className="flex flex-col gap-4">
-              <div>
-                <label className={`mb-1.5 block text-xs font-semibold uppercase tracking-wider ${m.textSub}`}>Title</label>
-                <input
-                  autoFocus
-                  className={`${m.input} w-full border rounded-lg px-3 py-2 text-sm focus:outline-none focus:border-violet-500 ${m.text}`}
-                  placeholder="Prompt title…"
-                  value={saveTitle}
-                  onChange={(e) => setSaveTitle(e.target.value)}
-                />
-              </div>
-
-              <div>
-                <div className="mb-1.5 flex items-center justify-between gap-2">
-                  <label className={`block text-xs font-semibold uppercase tracking-wider ${m.textSub}`}>Collection</label>
-                  {!showNewColl && (
-                    <button
-                      type="button"
-                      onClick={() => setShowNewColl(true)}
-                      className={`ui-control inline-flex items-center gap-1 rounded-lg px-2 py-1 text-[11px] font-semibold transition-colors ${m.btn} ${m.textAlt}`}
-                    >
-                      <Ic n="Plus" size={11} />
-                      New
-                    </button>
-                  )}
-                </div>
-                <div className="flex flex-col gap-2">
-                  <select
-                    value={saveCollection}
-                    onChange={(e) => setSaveCollection(e.target.value)}
-                    className={`${m.input} w-full border rounded-lg px-3 py-2 text-sm ${m.text} focus:outline-none focus:border-violet-500`}
-                  >
-                    <option value="">No Collection</option>
-                    {lib.collections.map((c) => <option key={c} value={c}>{c}</option>)}
-                  </select>
-                  {showNewColl && (
-                    <div className="flex gap-2">
-                      <input
-                        autoFocus
-                        className={`flex-1 ${m.input} border rounded-lg px-3 py-2 text-sm ${m.text} focus:outline-none focus:border-violet-500`}
-                        placeholder="New collection name…"
-                        value={newCollName}
-                        onChange={(e) => setNewCollName(e.target.value)}
-                        onKeyDown={(e) => {
-                          if (e.key === 'Enter') commitNewCollection();
-                          if (e.key === 'Escape') {
-                            setNewCollName('');
-                            setShowNewColl(false);
-                          }
-                        }}
-                      />
-                      <button
-                        type="button"
-                        onClick={commitNewCollection}
-                        className="ui-control rounded-lg bg-violet-600 px-3 py-2 text-sm font-semibold text-white transition-colors hover:bg-violet-500"
-                      >
-                        Add
-                      </button>
-                    </div>
-                  )}
-                </div>
-              </div>
-
-              <div>
-                <p className={`mb-2 text-xs font-semibold uppercase tracking-wider ${m.textSub}`}>Tags</p>
-                <div className="flex flex-wrap gap-1.5">
-                  {ALL_TAGS.map((t) => (
-                    <TagChip
-                      key={t}
-                      tag={t}
-                      selected={saveTags.includes(t)}
-                      onClick={() => setSaveTags((prev) => (prev.includes(t) ? prev.filter((x) => x !== t) : [...prev, t]))}
-                    />
-                  ))}
-                </div>
-              </div>
-
-              {saveTargetId && (
-                <div>
-                  <label className={`mb-1.5 block text-xs font-semibold uppercase tracking-wider ${m.textSub}`}>Change Note</label>
-                  <input
-                    className={`${m.input} w-full border rounded-lg px-3 py-2 text-sm focus:outline-none focus:border-blue-500 ${m.text}`}
-                    placeholder="What changed? (optional)"
-                    value={changeNote}
-                    onChange={(e) => setChangeNote(e.target.value)}
-                  />
-                </div>
-              )}
-            </div>
-          </div>
-
-          <div className={`border-t ${m.border} px-4 py-4`}>
-            <div className="flex gap-2">
-              <button
-                type="button"
-                onClick={() => doSave()}
-                disabled={!canSavePanel}
-                className="flex-1 flex items-center justify-center gap-1.5 rounded-lg bg-green-600 py-2 text-sm font-semibold text-white transition-colors hover:bg-green-500 disabled:opacity-40"
-              >
-                <Ic n="Save" size={12} />
-                Save {primaryModKey}+S
-              </button>
-              <button
-                type="button"
-                onClick={closeSavePanel}
-                className={`ui-control rounded-lg px-4 text-sm transition-colors ${m.btn} ${m.textBody}`}
-              >
-                Close
-              </button>
-            </div>
-          </div>
-        </aside>
+        <SavePanel
+          m={m} primaryModKey={primaryModKey} saveTargetId={saveTargetId}
+          saveTitle={saveTitle} setSaveTitle={setSaveTitle}
+          saveCollection={saveCollection} setSaveCollection={setSaveCollection}
+          saveTags={saveTags} setSaveTags={setSaveTags}
+          changeNote={changeNote} setChangeNote={setChangeNote}
+          collections={lib.collections}
+          showNewColl={showNewColl} setShowNewColl={setShowNewColl}
+          newCollName={newCollName} setNewCollName={setNewCollName}
+          commitNewCollection={commitNewCollection}
+          doSave={doSave} closeSavePanel={closeSavePanel} canSavePanel={canSavePanel}
+        />
       )}
 
       {/* ══ MODALS ══ */}
       {showVarForm && pendingTemplate && (
-        <div className={`fixed inset-0 ${m.modalBg} flex items-center justify-center z-40 p-4`}>
-          <div className={`pl-modal-panel ${m.modal} border rounded-xl p-5 w-full max-w-md flex flex-col gap-4`} role="dialog" aria-modal="true" aria-labelledby="modal-vars">
-            <div className="flex justify-between items-center">
-              <h2 id="modal-vars" className={`font-bold text-sm ${m.text}`}>Fill Template Variables</h2>
-              <button type="button" onClick={() => setShowVarForm(false)} className={`${m.textSub} hover:text-white`}><Ic n="X" size={15} /></button>
-            </div>
-            <p className={`text-xs ${m.textAlt}`}>"{pendingTemplate.title}" contains template variables:</p>
-            <div className="flex flex-col gap-2">
-              {Object.keys(varVals).map(k => {
-                const inputDef = pendingTemplateInputMap[k];
-                const isSelect = inputDef?.type === 'select' && Array.isArray(inputDef.options) && inputDef.options.length > 0;
-                return (
-                <div key={k}>
-                  <label className="text-xs font-mono font-semibold text-violet-400 block mb-1">
-                    {inputDef?.label || `{{${k}}}`}
-                    {isGhostVar(k) && (
-                      <span className="ml-2 inline-flex items-center rounded-full border border-emerald-500/30 bg-emerald-500/15 px-1.5 py-0.5 text-[10px] font-sans font-semibold uppercase tracking-wide text-emerald-300">
-                        auto
-                      </span>
-                    )}
-                  </label>
-                  {isSelect ? (
-                    <select
-                      className={`w-full ${m.input} border rounded-lg px-3 py-1.5 text-sm focus:outline-none focus:border-violet-500 ${m.text}`}
-                      value={varVals[k]}
-                      onChange={e => setVarVals(p => ({ ...p, [k]: e.target.value }))}
-                      aria-label={inputDef.label || k}
-                    >
-                      <option value="">{inputDef.placeholder || `Select ${inputDef.label || k}…`}</option>
-                      {inputDef.options.map((opt) => (
-                        <option key={typeof opt === 'string' ? opt : opt.value} value={typeof opt === 'string' ? opt : opt.value}>
-                          {typeof opt === 'string' ? opt : (opt.label || opt.value)}
-                        </option>
-                      ))}
-                    </select>
-                  ) : (
-                    <input className={`w-full ${m.input} border rounded-lg px-3 py-1.5 text-sm focus:outline-none focus:border-violet-500 ${m.text}`}
-                      placeholder={inputDef?.placeholder || (isGhostVar(k) ? 'Auto-filled · editable' : `Value for ${k}…`)}
-                      value={varVals[k]} onChange={e => setVarVals(p => ({ ...p, [k]: e.target.value }))} />
-                  )}
-                </div>
-                );
-              })}
-            </div>
-            <div className="flex gap-2">
-              <button onClick={applyTemplate} className="flex-1 bg-violet-600 hover:bg-violet-500 text-white rounded-lg py-2 text-sm font-semibold transition-colors">Apply Template</button>
-              <button onClick={skipTemplate} className={`px-4 ${m.btn} rounded-lg text-sm ${m.textBody} transition-colors`}>Skip</button>
-            </div>
-          </div>
-        </div>
+        <TemplateVariablesModal
+          m={m} varVals={varVals} setVarVals={setVarVals}
+          pendingTemplate={pendingTemplate} pendingTemplateInputMap={pendingTemplateInputMap}
+          applyTemplate={applyTemplate} skipTemplate={skipTemplate}
+          onClose={() => setShowVarForm(false)}
+        />
       )}
 
       {showSettings && (
-        <div className={`fixed inset-0 ${m.modalBg} flex items-center justify-center z-40 p-4`}>
-          <div className={`pl-modal-panel ${m.modal} border rounded-xl p-5 w-full max-w-sm flex flex-col gap-4`} role="dialog" aria-modal="true" aria-labelledby="modal-settings">
-            <div className="flex justify-between items-center">
-              <h2 id="modal-settings" className={`font-bold text-base ${m.text}`}>Settings</h2>
-              <button type="button" onClick={() => setShowSettings(false)} className={`${m.textSub} hover:text-white`}><Ic n="X" size={15} /></button>
-            </div>
-            <label className={`flex items-center justify-between text-sm ${m.textBody} cursor-pointer`}>
-              <span>Show enhancement notes</span>
-              <input type="checkbox" checked={showNotes} onChange={e => setShowNotes(e.target.checked)} className="accent-violet-500" />
-            </label>
-            <div>
-              <p className={`text-xs font-semibold ${m.textSub} uppercase tracking-wider mb-2`}>Density</p>
-              <div className="flex gap-1">
-                {[['compact', 'Compact'], ['comfortable', 'Comfortable'], ['spacious', 'Spacious']].map(([id, label]) => (
-                  <button key={id} type="button" onClick={() => setDensity(id)}
-                    className={`flex-1 text-xs px-2 py-1.5 rounded-lg transition-colors font-medium ${density === id ? 'bg-violet-600 text-white' : `${m.btn} ${m.textAlt}`}`}>
-                    {label}
-                  </button>
-                ))}
-              </div>
-            </div>
-            {lib.collections.length > 0 && (
-              <div>
-                <p className={`text-xs font-semibold ${m.textSub} uppercase tracking-wider mb-2`}>Collections</p>
-                <div className="flex flex-col gap-1 max-h-36 overflow-y-auto">
-                  {lib.collections.map(c => (
-                    <div key={c} className="flex items-center justify-between">
-                      <span className={`text-xs ${m.textAlt} flex items-center gap-1`}><Ic n="FolderOpen" size={9} />{c}</span>
-                      <button type="button" onClick={() => lib.deleteCollection(c)} className={`text-xs ${m.textMuted} hover:text-red-400 transition-colors`}><Ic n="Trash2" size={11} /></button>
-                    </div>
-                  ))}
-                </div>
-              </div>
-            )}
-            <button onClick={openOptions} className={`flex items-center gap-2 text-sm ${m.btn} rounded-lg px-3 py-2 text-violet-400 font-semibold transition-colors`}>
-              🔑 Manage API Key (Options)
-            </button>
-            <div className={`border-t ${m.border} pt-3 flex flex-col gap-2`}>
-              <button onClick={lib.exportLib} className={`flex items-center gap-2 text-sm ${m.btn} rounded-lg px-3 py-2 ${m.textBody} transition-colors`}><Ic n="Download" size={12} />Export Library</button>
-              <label className={`flex items-center gap-2 text-sm ${m.btn} rounded-lg px-3 py-2 ${m.textBody} cursor-pointer transition-colors`}><Ic n="Upload" size={12} />Import Library<input type="file" accept=".json" onChange={lib.importLib} className="hidden" /></label>
-              <button type="button" onClick={() => { if (window.confirm('Clear all prompts from the library?')) lib.clearLibrary(); }} className="flex items-center gap-2 text-sm bg-red-600 hover:bg-red-500 text-white rounded-lg px-3 py-2 transition-colors"><Ic n="Trash2" size={12} />Clear All Prompts</button>
-            </div>
-          </div>
-        </div>
+        <SettingsModal
+          m={m} showNotes={showNotes} setShowNotes={setShowNotes}
+          density={density} setDensity={setDensity}
+          collections={lib.collections} deleteCollection={lib.deleteCollection}
+          exportLib={lib.exportLib} importLib={lib.importLib} clearLibrary={lib.clearLibrary}
+          openOptions={openOptions} onClose={() => setShowSettings(false)}
+        />
       )}
 
       {showCmdPalette && (
-        <div className={`fixed inset-0 ${m.modalBg} flex items-start justify-center z-50 pt-20 p-4`} onClick={() => setShowCmdPalette(false)}>
-          <div className={`pl-modal-panel ${m.modal} border rounded-xl w-full max-w-md overflow-hidden shadow-2xl`} onClick={e => e.stopPropagation()}>
-            <div className={`flex items-center gap-2 px-4 py-3 border-b ${m.border}`}>
-              <Ic n="Search" size={13} className={m.textSub} />
-              <input autoFocus className={`flex-1 bg-transparent text-sm ${m.text} focus:outline-none placeholder-gray-500`}
-                placeholder="Search commands…" value={cmdQuery} onChange={e => setCmdQuery(e.target.value)} />
-              <span className={`text-xs ${m.textSub} font-mono`}>ESC</span>
-            </div>
-            <div className="max-h-72 overflow-y-auto">
-              {filteredCmds.map((a, i) => (
-                <button key={i} onClick={a.action}
-                  className={`w-full flex items-center justify-between px-4 py-2.5 text-sm ${m.textBody} hover:bg-violet-600 hover:text-white transition-colors text-left`}>
-                  <span>{a.label}</span>
-                  {a.hint && <kbd className={`text-xs font-mono px-1.5 py-0.5 ${m.pill} rounded`}>{a.hint}</kbd>}
-                </button>
-              ))}
-              {filteredCmds.length === 0 && <div className={`ui-empty-state text-xs ${m.textMuted}`}>No commands found</div>}
-            </div>
-          </div>
-        </div>
+        <CommandPaletteModal
+          m={m} cmdQuery={cmdQuery} setCmdQuery={setCmdQuery}
+          filteredCmds={filteredCmds} onClose={() => setShowCmdPalette(false)}
+        />
       )}
 
       {showShortcuts && (
-        <div className={`fixed inset-0 ${m.modalBg} flex items-center justify-center z-50 p-4`} onClick={() => setShowShortcuts(false)}>
-          <div className={`pl-modal-panel ${m.modal} border rounded-xl p-5 w-full max-w-sm`} role="dialog" aria-modal="true" aria-labelledby="modal-shortcuts" onClick={e => e.stopPropagation()}>
-            <div className="flex justify-between items-center mb-4">
-              <h2 id="modal-shortcuts" className={`font-bold text-sm ${m.text}`}>Keyboard Shortcuts</h2>
-              <button type="button" onClick={() => setShowShortcuts(false)} className={`${m.textSub} rounded-lg p-2 hover:bg-white/10 transition-colors`}><Ic n="X" size={14} /></button>
-            </div>
-            <div className="flex flex-col gap-4">
-              <div>
-                <p className={`text-xs font-semibold ${m.textSub} uppercase tracking-wider mb-2`}>Global</p>
-                <div className="flex flex-col gap-2.5">
-                  {[[`${primaryModKey} ↵`, 'Enhance prompt'], [`${primaryModKey} S`, 'Save prompt'], [`${primaryModKey} K`, 'Command palette'], ['?', 'Show shortcuts'], ['Esc', 'Close modals']].map(([key, label]) => (
-                    <div key={key} className="flex items-center justify-between">
-                      <span className={`text-sm ${m.textBody}`}>{label}</span>
-                      <kbd className={`text-xs font-mono px-2 py-1 ${m.pill} rounded-md`}>{key}</kbd>
-                    </div>
-                  ))}
-                </div>
-              </div>
-              <div>
-                <p className={`text-xs font-semibold ${m.textSub} uppercase tracking-wider mb-2`}>Scratchpad (PadTab)</p>
-                <div className="flex flex-col gap-2.5">
-                  {[
-                    [`${primaryModKey} E`, 'Export / download pad'],
-                    [`${primaryModKey} ⇧ D`, 'Insert date separator'],
-                    [`${primaryModKey} ⇧ C`, 'Copy all content'],
-                    [`${primaryModKey} ⇧ X`, 'Clear pad'],
-                  ].map(([key, label]) => (
-                    <div key={key} className="flex items-center justify-between">
-                      <span className={`text-sm ${m.textBody}`}>{label}</span>
-                      <kbd className={`text-xs font-mono px-2 py-1 ${m.pill} rounded-md`}>{key}</kbd>
-                    </div>
-                  ))}
-                </div>
-              </div>
-            </div>
-          </div>
-        </div>
+        <ShortcutsModal m={m} primaryModKey={primaryModKey} onClose={() => setShowShortcuts(false)} />
       )}
 
       <VersionDiffModal
@@ -1275,42 +932,7 @@ export default function App() {
         m={m}
       />
 
-      {/* ══ PII WARNING MODAL ══ */}
-      {piiWarning && (
-        <div className={`fixed inset-0 ${m.modalBg} flex items-center justify-center z-50 p-4`}>
-          <div className={`pl-modal-panel ${m.modal} border rounded-xl p-5 w-full max-w-md flex flex-col gap-4`} role="dialog" aria-modal="true" aria-labelledby="modal-pii">
-            <div className="flex justify-between items-center">
-              <h2 id="modal-pii" className={`font-bold text-sm ${m.text}`}>Sensitive Data Detected</h2>
-              <button type="button" onClick={piiCancel} className={`${m.textSub} hover:text-white`}><Ic n="X" size={15} /></button>
-            </div>
-            <p className={`text-xs ${m.textAlt}`}>The following potentially sensitive items were found in your prompt:</p>
-            <div className="flex flex-col gap-1 max-h-40 overflow-y-auto">
-              {piiWarning.matches.map(match => (
-                <div key={match.id} className={`text-xs ${m.textBody} flex items-center gap-2`}>
-                  <span className="text-yellow-400 font-semibold uppercase text-[10px]">{match.type}</span>
-                  <span className="font-mono truncate">{match.snippet.length > 32
-                    ? `${match.snippet.slice(0, 8)}...${match.snippet.slice(-6)}`
-                    : match.snippet}</span>
-                </div>
-              ))}
-            </div>
-            <div className="flex gap-2">
-              <button onClick={piiRedactAndSend}
-                className="flex-1 bg-violet-600 hover:bg-violet-500 text-white rounded-lg py-2 text-xs font-semibold transition-colors">
-                Redact & Send
-              </button>
-              <button onClick={piiSendAnyway}
-                className="flex-1 bg-amber-500 hover:bg-amber-400 text-gray-950 rounded-lg py-2 text-xs font-semibold transition-colors">
-                Send Anyway
-              </button>
-              <button onClick={piiCancel}
-                className={`px-3 ${m.btn} ${m.textBody} rounded-lg py-2 text-xs font-semibold transition-colors`}>
-                Cancel
-              </button>
-            </div>
-          </div>
-        </div>
-      )}
+      <PiiWarningModal m={m} piiWarning={piiWarning} piiRedactAndSend={piiRedactAndSend} piiSendAnyway={piiSendAnyway} piiCancel={piiCancel} />
 
       {toast && <Toast message={toast} onDone={() => setToast(null)} />}
       {!isExtension && (
