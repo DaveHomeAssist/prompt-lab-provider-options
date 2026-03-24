@@ -162,7 +162,15 @@ export default function App() {
   const goldenVerdict = goldenResponse?.text && comparisonText
     ? (goldenSimilarity >= goldenThreshold ? 'pass' : 'fail')
     : null;
-  // activeSection is now provided by useNavigation
+  // ── Navigation hook ──
+  const nav = useNavigation({
+    primaryView, setPrimaryView,
+    workspaceView, setWorkspaceView,
+    runsView, setRunsView,
+    tab, setTab,
+  });
+  const { activeSection, openCreateView, openSection, openRunsView } = nav;
+
   const libraryOnlyMode = tab === 'editor' && workspaceView === 'library';
   const studioCreateMode = tab === 'editor' && activeSection === 'create';
   const showEditorPane = tab !== 'editor' || (!libraryOnlyMode && effectiveEditorLayout !== 'library');
@@ -207,14 +215,6 @@ export default function App() {
     setResultTab('improved');
     setEnhMdPreview(false);
   }, [enhanced, setEnhMdPreview]);
-
-  const nav = useNavigation({
-    primaryView, setPrimaryView,
-    workspaceView, setWorkspaceView,
-    runsView, setRunsView,
-    tab, setTab,
-  });
-  const { activeSection, openCreateView, openSection, openRunsView } = nav;
 
   const commitNewCollection = () => {
     const name = newCollName.trim();
