@@ -25,7 +25,7 @@ const nowMs = () =>
 /**
  * Execution controller for enhance + evaluate flows.
  */
-export default function useExecutionFlow({ ui, lib, editor, persistence, onEnhanceSuccess }) {
+export default function useExecutionFlow({ ui, lib, editor, persistence }) {
   const { notify, setTab, tab } = ui;
   const {
     raw, enhanced, variants, notes, enhMode,
@@ -87,7 +87,7 @@ export default function useExecutionFlow({ ui, lib, editor, persistence, onEnhan
     const { matches } = scanSensitiveData({ payload });
 
     if (matches.length > 0) {
-      const message = `PII gate blocked check: ${testCase.title}`;
+      const message = `PII gate blocked test case: ${testCase.title}`;
       await saveEvalRun({
         promptId: testCase.promptId,
         promptTitle,
@@ -230,11 +230,6 @@ export default function useExecutionFlow({ ui, lib, editor, persistence, onEnhan
       setOptimisticSaveVisible(false);
       setStreamPreview('');
       setStreaming(false);
-      try {
-        await Promise.resolve(onEnhanceSuccess?.());
-      } catch (callbackError) {
-        logWarn('enhance success callback', callbackError);
-      }
     } catch (caught) {
       if (caught?.name === 'AbortError' || abortController?.signal?.aborted) {
         if (reqId === enhanceReqRef.current) {
@@ -287,7 +282,7 @@ export default function useExecutionFlow({ ui, lib, editor, persistence, onEnhan
   const loadCaseIntoEditor = (testCase) => {
     setRaw(testCase.input || '');
     setTab('editor');
-    notify(`Loaded sample input: ${testCase.title}`);
+    notify(`Loaded test case: ${testCase.title}`);
   };
 
   const runSingleCase = async (testCase, promptTitle) => {
@@ -302,10 +297,10 @@ export default function useExecutionFlow({ ui, lib, editor, persistence, onEnhan
       await runTestCaseJob(testCase, promptTitle);
       await evalRunsHook.refreshEvalRuns(testCase.promptId);
       evalRunsHook.setShowEvalHistory(true);
-      notify(`Ran check: ${testCase.title}`);
+      notify(`Ran test case: ${testCase.title}`);
     } catch (caught) {
       const appError = normalizeError(caught, 'execution');
-      notify(appError.userMessage || `Check failed: ${testCase.title}`);
+      notify(appError.userMessage || `Failed test case: ${testCase.title}`);
       await evalRunsHook.refreshEvalRuns(testCase.promptId);
     } finally {
       testCasesHook.setRunningCases(false);
@@ -337,7 +332,7 @@ export default function useExecutionFlow({ ui, lib, editor, persistence, onEnhan
           currentLabel: testCase.title,
         });
       } catch (caught) {
-        logWarn(`check batch: ${testCase.title}`, caught);
+        logWarn(`test case batch: ${testCase.title}`, caught);
       }
     }
 
@@ -345,7 +340,7 @@ export default function useExecutionFlow({ ui, lib, editor, persistence, onEnhan
     evalRunsHook.setShowEvalHistory(true);
     testCasesHook.setRunningCases(false);
     setBatchProgress({ active: false, completed, total: cases.length, currentLabel: '' });
-    notify(`Ran ${completed}/${cases.length} checks`);
+    notify(`Ran ${completed}/${cases.length} test cases`);
   };
 
   const clearExecutionState = () => {

@@ -1,233 +1,264 @@
-Prompt Lab — Implementation Plan
-Rebased: 2026-03-20
-Branch: feature/promptlab-ui-notebook-handoff-20260320
-Version: 1.7.1
+Prompt Lab Implementation Plan
+Date: 2026-03-24
+Prepared from: AGENTS.md issue tracker, CURRENT_PROJECT_REPORT.md, and UX_AUDIT_2026-03-17.md
 
-================================================================================
-STATUS BASELINE
-================================================================================
+Plan Scope
+- Primary task: resolve the two active product issues still listed as in progress.
+- Issue 002: Create workflow remains too vertically stacked.
+- Issue 003: Experiments and run history are still split.
+- Constraint: preserve the current multi-provider abstraction, local-first persistence, and shared frontend architecture.
 
-Already present in current code:
-- Version is already visible in the UI header from APP_VERSION
-- Markdown preview toggle already exists in the main editor
-- DiffPane / DiffEngine / ABTestTab already exist
-- Notebook tab and direct Prompt Lab handoff already exist
+Delivery Model
+- Total timeline: 6 weeks
+- Release style: phased rollout behind stable UI states, with targeted Vitest coverage after each phase
+- Assumption: one product owner can hold multiple roles if the team is small
 
-Do not track those as new implementation items.
+Roles and Responsible Parties
+- Product Owner / UX Lead
+  - Owns workflow decisions, acceptance criteria, and release signoff
+- Frontend Engineer
+  - Owns React/Vite implementation in prompt-lab-extension shared frontend
+- QA / Accessibility Reviewer
+  - Owns regression coverage, keyboard flow checks, and responsive verification
+- Release Owner
+  - Owns web, desktop, and extension smoke validation before release
+- AI Support (Codex)
+  - Assists with implementation, refactors, and test creation under human review
 
+Key Success Criteria
+- Create flow requires fewer scroll-heavy steps to enhance, save, and iterate
+- Experiments and run history are reachable from one coherent Evaluate surface
+- No regressions across extension, desktop, and web shells
+- Keyboard and focus behavior remain WCAG-oriented and predictable
+- Existing A/B, library, and persistence flows continue to work
 
-================================================================================
-PHASE 1 — Real Quick Wins
-Target: 1-2 sessions
-================================================================================
+Phase 0 - Discovery and Definition
+Timeline: 2 working days
+Goal: lock scope, define the target interaction model, and identify the minimum safe refactor path
 
-1.1  Notes affordance from the main editor
-     What: Make notes clearly reachable from the editor flow, not only as a
-           result-pane/settings concept
-     Files: App.jsx, ResultPane.jsx, ModalLayer.jsx, useEditorState.js
-     Approach: Add a visible notes entry point near the editor/result controls.
-               Keep showNotes as a visibility toggle, but make authoring access
-               obvious from the main screen.
-     Effort: Small
-     Owner: Solo dev
-     Milestone: User can discover and edit notes without hunting through tabs
+Milestones
+- M0.1 Confirm target IA: Workbench / Library / Evaluate
+- M0.2 Define success metrics for Create compression and Evaluate unification
+- M0.3 Approve component/file touch list
 
-1.2  Font size / zoom controls
-     What: Add font-size controls for editor and result surfaces
-     Files: useUiState.js, index.css, App.jsx, ResultPane.jsx
-     Approach: Store preference in localStorage and apply via CSS custom
-               properties such as --pl-editor-font-size and --pl-result-font-size
-     Effort: Small
-     Owner: Solo dev
-     Milestone: User can adjust reading/writing density and it persists
+Tasks
+- Review current flows in App.jsx, AppHeader.jsx, useNavigation.js, useUiState.js
+- Map the current Create views: editor, composer, pad, save interactions
+- Map the current Experiments views: compare, history, run detail, diff flow
+- Convert UX audit recommendations into concrete acceptance criteria
+- Define which changes are quick wins versus deeper structural edits
 
-1.3  Copy button on code blocks in output
-     What: Add a one-click copy action to rendered code blocks
-     Files: ResultPane.jsx, MarkdownPreview.jsx or markdown renderer helpers
-     Approach: Prefer renderer-level decoration over post-render DOM scanning
-               so streamed output and saved views stay consistent
-     Effort: Small
-     Owner: Solo dev
-     Milestone: All rendered code blocks expose a copy affordance
+Required Resources
+- Product Owner / UX Lead
+- Frontend Engineer
+- AI Support (Codex) for repo analysis and implementation notes
 
-1.4  Runs / Compare labeling polish
-     What: Clarify Runs tab language, especially Compare state and re-run entry
-           points, now that RunTimelinePanel owns Timeline and Compare modes
-     Files: RunTimelinePanel.jsx, ABTestTab.jsx, App.jsx
-     Approach: Tighten labels, empty states, and CTA wording instead of adding
-               new layout concepts
-     Effort: Small
-     Owner: Solo dev
-     Milestone: Runs UI is understandable without prior product context
+Responsible Parties
+- Owner: Product Owner / UX Lead
+- Support: Frontend Engineer, AI Support
 
+Deliverables
+- Approved interaction outline
+- Acceptance criteria list
+- Refactor boundary list by file/component
 
-================================================================================
-PHASE 2 — Core UX Work
-Target: 2-4 sessions
-================================================================================
+Phase 1 - Create Workflow Compression
+Timeline: Week 1
+Goal: reduce vertical stacking and make the enhance-to-save loop feel like one flow
 
-2.1  Split editor workspace in the primary compose flow
-     What: Add a real split view for the main prompt authoring experience
-           so prompt input can sit beside notes or results
-     Files: App.jsx, useUiState.js, index.css, ResultPane.jsx
-     Approach: Implement this in the primary editor layout first.
-               PadTab can adopt similar mechanics later, but it is not the
-               primary surface for this milestone.
-     Dependencies: Phase 1.1
-     Effort: Medium
-     Owner: Solo dev
-     Milestone: Main editor supports a useful side-by-side workspace
+Milestones
+- M1.1 Working-context breadcrumb shipped
+- M1.2 Inline save affordance replaces the hidden/separate save step
+- M1.3 Create header and action layout reduced to fewer stacked sections
 
-2.2  Language / stack selector with persistence
-     What: Add language or stack context for code prompts and persist it across
-           saves, loads, history, and prompt tests
-     Files: useEditorState.js, promptLint.js, usePromptLibrary.js,
-            lib/promptSchema.js, App.jsx, save/load flows, tests
-     Approach: Treat language as prompt metadata, not transient UI state.
-               It must survive library saves, reloads, and test-case workflows.
-     Effort: Medium
-     Owner: Solo dev
-     Milestone: Language selector affects linting and survives persistence
+Tasks
+- Add a persistent "working on" context indicator when editing an existing prompt
+- Introduce an inline save bar after enhancement, using existing title suggestion logic
+- Pull primary actions closer to the generated output so save and re-run are visible without extra scrolling
+- Reduce repeated helper copy and secondary controls in the Create surface
+- Make the active Create sub-mode clearer in compact and full layouts
 
-2.3  Library sidebar mode
-     What: Add a desktop-friendly persistent library sidebar
-     Files: LibraryPanel.jsx, App.jsx, useUiState.js, index.css
-     Approach: Persistent on wide screens, overlay on narrow screens. Reuse
-               existing LibraryPanel behavior rather than creating a second
-               library surface.
-     Dependencies: None
-     Effort: Medium
-     Owner: Solo dev
-     Milestone: Saved prompts are always reachable on desktop widths
+Likely Files
+- prompt-lab-source/prompt-lab-extension/src/App.jsx
+- prompt-lab-source/prompt-lab-extension/src/AppHeader.jsx
+- prompt-lab-source/prompt-lab-extension/src/hooks/useNavigation.js
+- prompt-lab-source/prompt-lab-extension/src/hooks/useUiState.js
 
+Required Resources
+- 1 Frontend Engineer
+- 1 Product Owner / UX Lead for review
+- AI Support (Codex) for UI implementation and test updates
 
-================================================================================
-PHASE 3 — Product Differentiators
-Target: 3-5 sessions
-================================================================================
+Responsible Parties
+- Owner: Frontend Engineer
+- Review: Product Owner / UX Lead
+- Verification: QA / Accessibility Reviewer
 
-3.1  Focus / Zen Mode
-     What: Collapse chrome and expand the authoring surface
-     Files: useUiState.js, App.jsx, index.css
-     Approach: Toggle-based first. Keyboard shortcut only after the layout is
-               stable. Avoid auto-prompting until the mode proves useful.
-     Effort: Medium
-     Owner: Solo dev
-     Milestone: A stable distraction-reduced workspace exists
+Success Metrics
+- Core enhance-to-save flow drops to 3-4 visible interactions
+- Users can tell whether they are updating an existing prompt or creating a new one
+- No overflow or narrow-width regressions in Create
 
-3.2  Smart folders / semantic auto-tagging
-     What: Auto-group saved prompts into useful buckets
-     Files: new lib/promptClassifier.js, usePromptLibrary.js, LibraryPanel.jsx
-     Approach: Rule-based classifier first. Categories: Code, Analysis,
-               Creative, System, General.
-     Effort: Medium-Large
-     Owner: Solo dev
-     Milestone: Library can be browsed by inferred category
+Phase 2 - Create Surface Polish and Discoverability
+Timeline: Week 2
+Goal: improve iteration speed inside Create without changing product scope
 
-3.3  Ghosting diff polish
-     What: Refine existing diff UX to match the intended overlay model
-     Files: DiffPane.jsx, DiffEngine.js, ABTestTab.jsx, index.css
-     Approach: Audit behavior and visuals first. Keep this as refinement work,
-               not a diff-engine rewrite.
-     Effort: Small
-     Owner: Solo dev
-     Milestone: Compare view reads as a true ghosted overlay
+Milestones
+- M2.1 Re-enhance shortcuts shipped
+- M2.2 Empty states and guidance updated
+- M2.3 Create-related regressions covered by targeted tests
 
-3.4  Audio feedback for linting
-     What: Optional sound cues for lint-score changes
-     Files: new lib/audioFeedback.js, promptLint.js, settings UI
-     Approach: Web Audio API only. Off by default.
-     Effort: Small
-     Owner: Solo dev
-     Milestone: Opt-in audio cues work without adding asset files
+Tasks
+- Add quick re-enhance actions near the output area
+- Improve empty-state guidance for Create-adjacent panels
+- Tighten visual hierarchy so output feels distinct from input
+- Review command palette entries that should point into Create sub-modes
+- Add or update smoke tests for Create navigation and rendering safety
 
+Likely Files
+- prompt-lab-source/prompt-lab-extension/src/App.jsx
+- prompt-lab-source/prompt-lab-extension/src/tests/App.test.jsx
+- prompt-lab-source/prompt-lab-extension/src/lib/navigationRegistry.js
 
-================================================================================
-PHASE 4 — Packaging / Release
-Target: 1-3 sessions
-================================================================================
+Required Resources
+- Frontend Engineer
+- QA / Accessibility Reviewer
+- AI Support (Codex)
 
-4.1  Desktop binary release
-     What: Cut macOS and Windows installers from the existing desktop build path
-     Files: .github/workflows/desktop-build.yml, prompt-lab-desktop/src-tauri/
-     Dependencies: Revalidate current desktop workflow and branch state first
-     Effort: Medium
-     Owner: Solo dev
-     Milestone: Downloadable desktop installers published on GitHub Releases
+Responsible Parties
+- Owner: Frontend Engineer
+- Verification: QA / Accessibility Reviewer
 
-4.2  Main-branch release pass
-     What: Merge this branch only after a scoped release checklist passes
-     Dependencies:
-     - Phase 1 and 2 target items complete or explicitly deferred
-     - branch scoped to intended changes only
-     - tests/build verification documented
-     - docs and live-surface messaging updated if behavior changed
-     - no unrelated artifacts bundled into the merge
-     Effort: Medium
-     Owner: Solo dev
-     Milestone: main updated without accidental scope creep
+Success Metrics
+- Common iteration actions stay within the visible work zone
+- First-run users receive actionable guidance instead of empty panels
+- App-level smoke coverage catches structural regressions early
 
+Phase 3 - Evaluate Surface Unification
+Timeline: Weeks 3-4
+Goal: merge A/B testing and run history into a single Evaluate experience
 
-================================================================================
-DEFERRED / BLOCKED
-================================================================================
+Milestones
+- M3.1 Evaluate navigation model approved and implemented
+- M3.2 Shared filter/state model for compare and history shipped
+- M3.3 A/B and run history panels coexist under one surface without feature loss
 
-D1  Public web PWA packaging
-    Status: Deferred
-    Reason: Current roadmap places public web app / PWA behind the extension and
-            desktop surfaces until a backend or stronger architectural need is
-            justified. Do not treat this as a near-term delivery item.
-    Former phase: 4.2
+Tasks
+- Replace the split experiments/history mental model with one Evaluate surface
+- Keep compare/history as sub-views within the same top-level section
+- Persist run filters and selected analysis state across sub-view switches
+- Reconcile A/B history records and eval run records in the UI layer
+- Preserve existing diff viewer and compare behaviors during the restructure
+- Update empty states so users understand how to generate and inspect runs
 
-D2  Token heatmap overlay
-    Status: Deferred
-    Reason: No provider returns attention weights; local tokenizer work is only
-            justified if it unlocks more than cosmetic cost estimation
+Likely Files
+- prompt-lab-source/prompt-lab-extension/src/App.jsx
+- prompt-lab-source/prompt-lab-extension/src/AppHeader.jsx
+- prompt-lab-source/prompt-lab-extension/src/ABTestTab.jsx
+- prompt-lab-source/prompt-lab-extension/src/RunTimelinePanel.jsx
+- prompt-lab-source/prompt-lab-extension/src/hooks/useABTest.js
+- prompt-lab-source/prompt-lab-extension/src/hooks/useEvalRuns.js
+- prompt-lab-source/prompt-lab-extension/src/hooks/useNavigation.js
 
-D3  Prompt Lab Server mode
-    Status: Deferred to v2.x
-    Reason: Large architecture move with separate deployment and trust model
+Required Resources
+- Frontend Engineer
+- Product Owner / UX Lead
+- QA / Accessibility Reviewer
+- AI Support (Codex)
 
+Responsible Parties
+- Owner: Frontend Engineer
+- Design Approval: Product Owner / UX Lead
+- Verification: QA / Accessibility Reviewer
 
-================================================================================
-RELEASE CHECKLIST
-================================================================================
+Success Metrics
+- Users reach comparison and history from one top-level destination
+- Filters and view context persist when switching inside Evaluate
+- Existing A/B tests, run history, and diff review remain intact
 
-Before merging this branch:
-- Verify branch diff matches intended feature scope
-- Run the repo’s current test/build path and note any known gaps
-- Check extension, desktop, and hosted-web messaging for contradictions
-- Confirm no stale generated artifacts or throwaway research files are included
-- Update docs only where behavior actually changed
+Phase 4 - Shared Navigation, Accessibility, and Regression Hardening
+Timeline: Week 5
+Goal: stabilize the new structure across shells and close interaction regressions
 
+Milestones
+- M4.1 Navigation semantics and focus flow updated
+- M4.2 Responsive pass complete for compact and full layouts
+- M4.3 Regression suite updated for key navigation and evaluation flows
 
-================================================================================
-RESOURCES
-================================================================================
+Tasks
+- Update tab/section semantics after the IA changes
+- Verify keyboard navigation, focus landing, and aria relationships
+- Validate mobile/compact breakpoints for Create and Evaluate
+- Add targeted tests for navigation state, Evaluate toggles, and persistence behavior
+- Run manual smoke checks in web shell and extension shell
 
-Required:
-- Node 22 + npm
-- Vite dev server for hot reload
-- Vitest for hook/component coverage
-- Chrome with extensions enabled for side panel testing
+Required Resources
+- QA / Accessibility Reviewer
+- Frontend Engineer
+- Release Owner
+- AI Support (Codex) for targeted test implementation
 
-Optional:
-- Tauri CLI + Rust toolchain for desktop packaging
-- Apple Developer cert for macOS signing
+Responsible Parties
+- Owner: QA / Accessibility Reviewer
+- Fixes: Frontend Engineer
+- Release Check: Release Owner
 
-All planned work is solo-executable.
+Success Metrics
+- No critical accessibility regressions in manual checks
+- No broken navigation across web, desktop-linked, and extension surfaces
+- Core tests pass for App, A/B, library routing, and run persistence paths
 
+Phase 5 - Release Preparation and Rollout
+Timeline: Week 6
+Goal: ship the UX consolidation safely and document the change
 
-================================================================================
-SUMMARY
-================================================================================
+Milestones
+- M5.1 Release notes drafted
+- M5.2 Final smoke pass complete
+- M5.3 Production rollout approved
 
-Phase  | Items | Effort       | Key Milestone
--------|-------|--------------|-------------------------------------------
-1      | 4     | 1-2 sessions | Notes access, font controls, code copy
-2      | 3     | 2-4 sessions | Split workspace, language metadata, sidebar
-3      | 4     | 3-5 sessions | Zen mode, smart folders, diff polish
-4      | 2     | 1-3 sessions | Desktop release, safe merge to main
-Deferred | 3   | TBD          | Web PWA, token heatmap, server mode
+Tasks
+- Prepare release summary for the new Create and Evaluate flows
+- Update docs or in-product guidance if surface names change
+- Run final smoke tests in the hosted web app and extension build
+- Confirm no stale references to the old split navigation remain
+- Roll out and monitor for regressions
 
-Total estimated: 7-14 working sessions for Phases 1-4.
+Required Resources
+- Release Owner
+- Product Owner / UX Lead
+- Frontend Engineer
+
+Responsible Parties
+- Owner: Release Owner
+- Approval: Product Owner / UX Lead
+- Fix Support: Frontend Engineer
+
+Success Metrics
+- Release ships without blocking navigation bugs
+- Documentation matches the shipped IA
+- The two open issues in AGENTS.md can be marked resolved or reduced to minor follow-up items
+
+Cross-Phase Dependencies
+- Phase 1 depends on Phase 0 acceptance criteria
+- Phase 2 depends on Phase 1 layout and save-flow decisions
+- Phase 3 depends on the agreed navigation model from Phase 0 and stable Create changes from Phases 1-2
+- Phase 4 depends on completion of the major UI changes in Phases 1-3
+- Phase 5 depends on successful verification in Phase 4
+
+Risks and Mitigations
+- Risk: shared frontend changes break multiple shells
+  - Mitigation: keep all major changes inside the shared shell entry points and smoke-test web plus extension
+- Risk: IA cleanup hides existing expert workflows
+  - Mitigation: preserve sub-views and command access while reducing top-level choices
+- Risk: Evaluate refactor breaks persisted run data expectations
+  - Mitigation: keep storage schemas stable and limit changes to navigation/state composition first
+- Risk: vertical stacking returns in compact mode
+  - Mitigation: validate narrow widths during each phase, not only at the end
+
+Recommended Checkpoints
+- End of Week 1: demo Create compression before continuing
+- End of Week 2: approve Create polish and test coverage
+- End of Week 4: demo unified Evaluate surface with persisted state
+- End of Week 5: accessibility and regression signoff
+- End of Week 6: release go/no-go review

@@ -1,6 +1,6 @@
 # Prompt Lab Documentation Inventory
 
-Updated: 2026-03-22
+Updated: 2026-03-24
 
 ## Canonical Source Rules
 
@@ -10,7 +10,6 @@ Updated: 2026-03-22
 - `prompt-lab-extension/VERSION_HISTORY.md` is the canonical multi-surface changelog.
 - `prompt-lab-web/index.html` is the authoring source for the public landing page.
 - `prompt-lab-web/public/` is the preferred authoring source for auxiliary public HTML docs where a source copy exists.
-- `prompt-lab-web/public/hero-logo.png` and `prompt-lab-web/public/og-image.png` are the canonical public web-brand assets.
 - `../docs/` is the published public-docs/static-site copy, not the preferred authoring location.
 - Root operational docs like `../CURRENT_PROJECT_REPORT.md` and `../SESSION_HANDOFF_PROMPT.md` are working context artifacts, not canonical product docs.
 
@@ -23,7 +22,6 @@ Updated: 2026-03-22
 | `ARCHITECTURE.md` | Canonical system architecture | Active | Runtime layout across landing, hosted web app, extension, desktop, proxy, and shared frontend. |
 | `ROADMAP.md` | Product and release priorities | Active | Current shipped state and near-term priorities. |
 | `DOCS_INVENTORY.md` | Docs map and source-of-truth rules | Active | Inventory of major docs, public-doc authoring rules, and maintenance notes. |
-| `BRAND_ASSETS.md` | Brand-art source-of-truth guide | Active | Defines canonical web-brand assets, mirrored copies, icon packs, and archived concept art. |
 | `NOTION_DOCS_AGENT.md` | Notion automation setup | Active | Documents the GitHub Actions driven Notion docs sync agent, required secrets, and trigger behavior. |
 
 ## Surface Docs
@@ -61,7 +59,7 @@ Updated: 2026-03-22
 | Path | Scope | Status | Notes |
 |---|---|---|---|
 | `docs/CURRENT_MENU_SYSTEM.md` | Current menu/navigation model | Active | Code-grounded reference for header layers, state mapping, and command palette/menu behavior. |
-| `docs/monetization-auth-execution-packet.md` | Deduplicated auth/Stripe sprint packet with current-state evidence and Claude-ready prompts. | Active | Use this instead of the raw imported Notion task list when executing monetization/auth work. |
+| `docs/create-evaluate-restructure-plan.md` | Create/Evaluate implementation brief | Active | Phase 0 implementation brief for Create compression and Evaluate unification, including acceptance criteria and initial refactor boundaries. |
 | `docs/SCRATCHPAD_SHORTCUTS.md` | Scratchpad shortcut policy | Active | Defines the supported scratchpad shortcuts and explicitly documents browser-reserved combos that are intentionally unsupported. |
 | `docs/RUN_OBJECT_SCHEMA_RESEARCH.md` | Run-object schema analysis | Active | Research/reference material for run data modeling. |
 | `docs/UX_AUDIT_2026-03-17.md` | Product UX audit | Active | Time-bounded audit; verify against current code before treating any finding as live truth. |
@@ -72,19 +70,15 @@ Updated: 2026-03-22
 | Path | Scope | Status | Notes |
 |---|---|---|---|
 | `prompt-lab-web/index.html` | Landing page authoring source | Active | Canonical authoring source for the public landing page. |
-| `../docs/index.html` | Published landing/docs copy | Active | Published copy generated from `prompt-lab-web/index.html` by `scripts/publish-landing.mjs`. |
+| `../docs/index.html` | Published landing/docs copy | Active | Live published copy; currently has local edits in progress. |
 | `prompt-lab-web/public/guide.html` | Guide authoring source | Active | Preferred source for the user guide. |
 | `../docs/guide.html` | Published guide copy | Active | Published copy of the guide. |
-| `prompt-lab-web/public/guide-preset-import.html` | Preset-import guide authoring source | Active | Preferred source for preset-pack import instructions. |
-| `../docs/guide-preset-import.html` | Published preset-import guide copy | Active | Published copy of the preset-pack import guide. |
 | `prompt-lab-web/public/setup.html` | Setup doc authoring source | Active | Preferred source for setup instructions. |
 | `../docs/setup.html` | Published setup copy | Active | Published copy of setup instructions. |
 | `prompt-lab-web/public/prompt-embed.html` | Embed doc authoring source | Active | Preferred source for prompt embedding docs. |
 | `../docs/prompt-embed.html` | Published embed doc copy | Active | Published copy of prompt embed docs. |
 | `prompt-lab-web/public/privacy.html` | Privacy doc authoring source | Active | Preferred source for the public privacy page. |
 | `../docs/privacy.html` | Published privacy doc copy | Active | Published copy of the privacy page. |
-| `prompt-lab-web/public/tools/` | Public tools authoring source | Active | Source for lightweight browser tools published alongside the docs site. |
-| `../docs/tools/` | Published public tools copy | Active | Published copy of the public tools directory. |
 | `../docs/UI_ISSUES_TABLE.html` | UI issue tracker snapshot | Active | Static HTML issue table; confirm whether this should remain public-facing. |
 | `../docs/QA-SMOKE-TEST-v1.md` | QA checklist | Active | QA reference/checklist stored in the published-docs tree. |
 
@@ -114,14 +108,10 @@ Updated: 2026-03-22
 | Path | Scope | Status | Notes |
 |---|---|---|---|
 | `../prompt-lab-extension/README.md` | Older unpacked extension bundle | Legacy | Outside the canonical `prompt-lab-source/` tree. Leave untouched unless that duplicate tree is intentionally revived. |
-| `public/prompt-lab-landing.html` | Legacy landing mirror | Legacy | Retained as a compatibility mirror; `prompt-lab-web/index.html` is the landing-page source of truth. |
-| `../assets/archive/brand/` | Archived Prompt Lab art comps | Historical | Older concept/mockup assets retained for reference; not the source of truth for current brand art. |
 
 ## Maintenance notes
 
 - Prefer updating authoring sources under `prompt-lab-source/` first, then sync the published copy under `../docs/` when relevant.
-- Use `scripts/publish-landing.mjs` to sync public landing/docs files into `../docs/` without deleting unrelated repo-owned content such as `docs/app/` or internal trackers.
-- Treat `prompt-lab-web/public/hero-logo.png` and `prompt-lab-web/public/og-image.png` as the canonical public brand assets; `../docs/` and `public/` copies are mirrored outputs.
 - When shared frontend behavior changes, update extension, web, and desktop docs together.
 - When public URLs, repo slug, or deploy shape change, update:
   - `../README.md`

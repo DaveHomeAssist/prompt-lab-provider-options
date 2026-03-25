@@ -10,7 +10,7 @@
 
 export const PRIMARY_VIEWS = Object.freeze([
   { id: 'create', label: 'Create' },
-  { id: 'runs', label: 'Runs' },
+  { id: 'runs', label: 'Evaluate' },
   { id: 'notebook', label: 'Notebook' },
 ]);
 
@@ -18,9 +18,9 @@ export const PRIMARY_VIEWS = Object.freeze([
 
 export const SUBVIEWS = Object.freeze({
   create: [
-    { id: 'editor', label: 'Create' },
+    { id: 'editor', label: 'Write' },
     { id: 'library', label: 'Library' },
-    { id: 'composer', label: 'Build' },
+    { id: 'composer', label: 'Compose' },
     { id: 'split', label: 'Dual Pane', hideCompact: true },
   ],
   runs: [
@@ -117,9 +117,9 @@ export function buildCommandActions(handlers) {
     { label: 'Clear Editor', hint: '', action: clear },
     { label: 'Go to Create', hint: '', action: goEditor },
     { label: 'Go to Library', hint: '', action: goLibrary },
-    { label: 'Go to Experiments', hint: '', action: goRuns },
-    { label: 'Go to Experiment History', hint: '', action: goCompare },
-    { label: 'Open Build Utility', hint: '', action: goBuild },
+    { label: 'Go to Evaluate', hint: '', action: goRuns },
+    { label: 'Open Compare View', hint: '', action: goCompare },
+    { label: 'Open Compose Mode', hint: '', action: goBuild },
     { label: 'Open Notebook', hint: '', action: goNotebook },
     { label: 'Toggle Light / Dark', hint: '', action: toggleTheme },
     { label: 'Export Library', hint: '', action: exportLib },

@@ -27,13 +27,11 @@ Use these to understand the repo shape, live surfaces, and current issue log.
 
 - `../ARCHITECTURE.md`
 - `../ROADMAP.md`
-- `monetization-auth-execution-packet.md`
+- `create-evaluate-restructure-plan.md`
 - `CURRENT_MENU_SYSTEM.md`
 - `glossary.md`
 
 Use these for runtime shape, platform model, UI/state mapping, and shared terminology.
-
-Use `monetization-auth-execution-packet.md` when the task is auth, billing, entitlements, or the imported Notion monetization sprint.
 
 ### Extension work
 
@@ -48,16 +46,14 @@ Use `monetization-auth-execution-packet.md` when the task is auth, billing, enti
 - `../prompt-lab-web/README.md`
 - `../prompt-lab-web/index.html`
 - `../prompt-lab-web/public/guide.html`
-- `../prompt-lab-web/public/guide-preset-import.html`
 - `../prompt-lab-web/public/setup.html`
 - `../prompt-lab-web/public/prompt-embed.html`
 - `../prompt-lab-web/public/privacy.html`
-- `../prompt-lab-web/public/tools/`
 
 Authoring rule:
 
 - prefer `prompt-lab-web/` and `prompt-lab-web/public/` as the authoring source
-- treat `../docs/` as the published copy
+- treat `../docs/` as the published copy, except current documented exceptions
 
 ### Desktop work
 
@@ -74,6 +70,7 @@ Use `VERSION_HISTORY.md` as the canonical changelog. Treat the others as support
 
 ### Internal audits and technical notes
 
+- `create-evaluate-restructure-plan.md`
 - `UX_AUDIT_2026-03-17.md`
 - `DOCUMENTATION_SYSTEM_AUDIT_2026-03-20.md`
 - `SCRATCHPAD_SHORTCUTS.md`
@@ -114,7 +111,6 @@ These are working-context files, not canonical product documentation.
 
 - `../prompt-lab-web/index.html`
 - `../prompt-lab-web/public/guide.html`
-- `../prompt-lab-web/public/guide-preset-import.html`
 - `../prompt-lab-web/public/setup.html`
 - `../prompt-lab-web/public/privacy.html`
 
@@ -123,13 +119,6 @@ These are working-context files, not canonical product documentation.
 - `../DOCS_INVENTORY.md`
 - `docs-style-guide.md`
 - `glossary.md`
-
-### I need the auth or monetization sprint plan
-
-- `monetization-auth-execution-packet.md`
-- `../ARCHITECTURE.md`
-- `../vercel.json`
-- `../api/`
 
 ## Authoring vs published copies
 
@@ -144,7 +133,6 @@ Current public-doc mapping:
 |---|---|
 | `../prompt-lab-web/index.html` | `../../docs/index.html` |
 | `../prompt-lab-web/public/guide.html` | `../../docs/guide.html` |
-| `../prompt-lab-web/public/guide-preset-import.html` | `../../docs/guide-preset-import.html` |
 | `../prompt-lab-web/public/setup.html` | `../../docs/setup.html` |
 | `../prompt-lab-web/public/prompt-embed.html` | `../../docs/prompt-embed.html` |
 | `../prompt-lab-web/public/privacy.html` | `../../docs/privacy.html` |

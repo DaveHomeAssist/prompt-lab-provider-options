@@ -80,7 +80,7 @@ These look like the main unresolved UX/product structure issues, not basic missi
 There are active uncommitted edits in two landing/docs surfaces:
 
 - `docs/index.html`
-- `prompt-lab-source/prompt-lab-web/index.html`
+- `prompt-lab-source/public/prompt-lab-landing.html`
 
 Diff summary:
 
@@ -109,7 +109,7 @@ These edits look product-correct in direction. They are not random copy churn.
   - current runtime model and deploy shape across extension, desktop, web, and landing
 - `docs/index.html`
   - public docs/marketing site surface, currently dirty
-- `prompt-lab-source/prompt-lab-web/index.html`
+- `prompt-lab-source/public/prompt-lab-landing.html`
   - landing source for the hosted/public presentation layer, currently dirty
 - `prompt-lab-source/package.json`
   - Node 22 contract and scripts for build, test, preflight, and Notion docs agent
@@ -195,7 +195,7 @@ Keep the analysis grounded in the current repo state, not generic SaaS advice.
 
 ```bash
 git -C /Users/daverobertson/Desktop/Code/10-active-projects/prompt-lab status --short --branch
-git -C /Users/daverobertson/Desktop/Code/10-active-projects/prompt-lab diff --stat -- docs/index.html prompt-lab-source/prompt-lab-web/index.html
+git -C /Users/daverobertson/Desktop/Code/10-active-projects/prompt-lab diff --stat -- docs/index.html prompt-lab-source/public/prompt-lab-landing.html
 sed -n '1,220p' /Users/daverobertson/Desktop/Code/10-active-projects/prompt-lab/AGENTS.md
 sed -n '1,220p' /Users/daverobertson/Desktop/Code/10-active-projects/prompt-lab/README.md
 sed -n '1,260p' /Users/daverobertson/Desktop/Code/10-active-projects/prompt-lab/prompt-lab-source/ARCHITECTURE.md

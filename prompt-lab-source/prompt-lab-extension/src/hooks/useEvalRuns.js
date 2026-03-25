@@ -78,7 +78,6 @@ export default function useEvalRuns(optionsOrLegacy) {
     setShowEvalHistory,
     refreshEvalRuns,
     loading,
-    total,
     hasMore: evalRuns.length < total,
     loadMore,
     updateRun,

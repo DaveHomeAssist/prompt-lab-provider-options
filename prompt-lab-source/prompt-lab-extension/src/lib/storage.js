@@ -3,6 +3,7 @@ import { logWarn } from './logger.js';
 export const storageKeys = Object.freeze({
   library: 'pl2-library',
   collections: 'pl2-collections',
+  sortBy: 'pl2-sort-by',
   mode: 'pl2-mode',
   pad: 'pl2-pad',
   experimentHistory: 'pl2-experiment-history',

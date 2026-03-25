@@ -6,7 +6,7 @@ Prompt Lab is currently delivered through three runtime shells that share one fr
 
 - Chrome / Vivaldi extension: MV3 side panel build
 - Desktop app: Tauri 2 wrapper
-- Hosted web app: static Vite build served at `https://promptlab.tools/app/` with a Vercel CORS proxy edge function backing provider requests
+- Hosted web app: Vite build deployed to Vercel with a CORS proxy edge function at `https://prompt-lab-tawny.vercel.app/app/`
 - Public landing page: static marketing entry at `https://promptlab.tools/`
 
 The shared React application lives in `prompt-lab-extension/src/`.
@@ -28,8 +28,7 @@ The shared React application lives in `prompt-lab-extension/src/`.
 - `prompt-lab-web/`
   - Public web deploy package
   - `index.html` is the landing page served at `/`
-  - `app/index.html` is the hosted app shell served at `/app/`
-  - `src/main-web.jsx` wraps the shared app with hosted-web-only providers such as Clerk and entitlements
+  - `app/index.html` is the shared React app shell served at `/app/`
   - `public/` holds static assets copied into the deployed site root
   - Vite config sets `VITE_WEB_MODE=true` to activate proxy fetch injection in the app shell
 - `api/`
@@ -73,15 +72,14 @@ The desktop app uses Tauri plus local browser storage:
 The hosted web deployment is split into a landing route and an app route:
 
 - `prompt-lab-web/index.html` is the public landing page for `https://promptlab.tools/`
-- `prompt-lab-web/app/index.html` imports `../src/main-web.jsx` and is published to `https://promptlab.tools/app/`
+- `prompt-lab-web/app/index.html` imports `../../prompt-lab-extension/src/main.jsx` and is currently served publicly at `https://prompt-lab-tawny.vercel.app/app/`
 - `prompt-lab-web/public/` provides shared static assets such as fonts and social images
 - `src/lib/desktopApi.js` detects web mode via `VITE_WEB_MODE` and injects a proxy-aware fetch wrapper
-- `src/lib/proxyFetch.js` reroutes provider API requests through the Vercel proxy endpoint at `/api/proxy`
+- `src/lib/proxyFetch.js` reroutes provider API requests through `/api/proxy` to bypass CORS
 - `api/proxy.js` is a Vercel Edge Function that validates the target domain against an allowlist and forwards the request
 - `vercel.json` rewrites `/app` and `/app/(.*)` to `/app/index.html`
 - Ollama requests bypass the proxy and go direct to localhost
-- hosted auth shell is wired through `prompt-lab-web/src/main-web.jsx`, `prompt-lab-web/src/AuthGate.jsx`, and `prompt-lab-web/src/useCurrentUser.js`
-- current hosted entitlements client layer is wired through `prompt-lab-web/src/useEntitlements.js`
+- API keys are entered by the user and never stored server-side
 
 ## Platform runtime model
 
@@ -116,46 +114,6 @@ Provider-specific request behavior is routed through shared provider abstraction
 - Experiment and eval data use the experiment store layer
 - Extension provider settings use `chrome.storage.local`
 - Desktop provider settings use localStorage
-
-## Authentication (hosted web only)
-
-**Decision: Clerk** (`@clerk/clerk-react`)
-
-Auth applies only to the hosted web surface at `promptlab.tools/app/`. Extension and desktop shells remain unauthenticated and fully local.
-
-### Rationale
-
-- Clerk provides prebuilt React components (`<SignIn />`, `<SignUp />`, `<UserButton />`) compatible with Vite builds, minimizing custom UI work.
-- Prompts stay in localStorage — auth gates billing entitlements, not data access. This avoids a full-stack migration to a server database.
-- Clerk sessions are cookie-based and survive refresh and cross-device use without custom token management.
-- Stripe integration stays independent: webhook → Vercel KV keyed by Clerk `userId`. Clerk handles identity, Stripe handles billing, Vercel KV stores the mapping.
-- No impact on the shared-core architecture — Clerk is wrapped at the web shell level only (`prompt-lab-web/app/index.html`).
-
-### Auth-related API routes
-
-Current implementation state:
-
-- hosted-web auth shell is implemented
-- Stripe scaffold and entitlement endpoints are present under `api/`
-- the hosted billing path still needs full end-to-end verification and production env validation
-
-| Route | Purpose |
-|-------|---------|
-| `api/create-checkout-session.js` | Creates Stripe Checkout session for authenticated user |
-| `api/create-portal-session.js` | Creates Stripe Customer Portal session |
-| `api/webhook.js` | Handles Stripe webhook events, writes entitlements to Vercel KV |
-| `api/entitlements.js` | Returns feature map for authenticated user from Vercel KV |
-
-### Client hooks
-
-| Hook | Purpose |
-|------|---------|
-| `useCurrentUser()` | Thin wrapper around Clerk's `useUser()`, returns an owned user shape for hosted web auth |
-| `useEntitlements()` | Calls `/api/entitlements`, caches in React context, exposes `can(featureKey)` |
-
-### Entitlement keys (test mode)
-
-`unlimited_library`, `advanced_compare`, `version_history`, `import_export`, `advanced_variables`
 
 ## Safety layers
 

@@ -1,15 +1,9 @@
 {
-  "buildCommand": "npm ci && cd prompt-lab-web && npm ci && npm run build",
-  "installCommand": "echo 'root install handled in buildCommand'",
+  "buildCommand": "cd prompt-lab-web && npm install && npm run build",
+  "installCommand": "echo 'skip'",
   "outputDirectory": "prompt-lab-web/dist",
   "framework": null,
   "rewrites": [
-    { "source": "/billing/success", "destination": "/billing-success.html" },
-    { "source": "/billing/cancel", "destination": "/billing-cancel.html" },
-    { "source": "/embed", "destination": "/prompt-embed.html" },
-    { "source": "/tools/embed", "destination": "/tools/prompt-embed.html" },
-    { "source": "/tools", "destination": "/tools/index.html" },
-    { "source": "/tools/", "destination": "/tools/index.html" },
     { "source": "/app", "destination": "/app/index.html" },
     { "source": "/app/(.*)", "destination": "/app/index.html" },
     { "source": "/api/(.*)", "destination": "/api/$1" }
@@ -19,8 +13,8 @@
       "source": "/api/(.*)",
       "headers": [
         { "key": "Access-Control-Allow-Origin", "value": "*" },
-        { "key": "Access-Control-Allow-Methods", "value": "GET, POST, OPTIONS" },
-        { "key": "Access-Control-Allow-Headers", "value": "Content-Type, Authorization" }
+        { "key": "Access-Control-Allow-Methods", "value": "POST, OPTIONS" },
+        { "key": "Access-Control-Allow-Headers", "value": "Content-Type" }
       ]
     }
   ]

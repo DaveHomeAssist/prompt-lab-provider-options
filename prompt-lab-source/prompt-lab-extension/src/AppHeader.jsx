@@ -9,6 +9,11 @@ export default function AppHeader({
   effectiveEditorLayout, setEditorLayout, createLayoutOptions,
   setShowCmdPalette, setCmdQuery, setShowShortcuts, setShowSettings,
 }) {
+  const createModeButtons = [
+    { id: 'editor', label: 'Write', action: () => openSection('create'), active: primaryView === 'create' && workspaceView !== 'composer' },
+    { id: 'composer', label: 'Compose', action: () => openCreateView('composer'), active: primaryView === 'create' && workspaceView === 'composer' },
+  ];
+
   return (
     <header className={`px-4 py-2 ${m.header} border-b shrink-0`}>
       <div className={`flex ${compact ? 'flex-col gap-2' : 'items-center justify-between gap-3'}`}>
@@ -37,7 +42,7 @@ export default function AppHeader({
           {[
             ['create', 'Create'],
             ['library', 'Library'],
-            ['experiments', 'Experiments'],
+            ['experiments', 'Evaluate'],
           ].map(([id, label]) => (
             <button key={id} type="button" onClick={() => openSection(id)} role="tab" aria-selected={activeSection === id}
               className={`pl-tab-btn ui-control px-3 py-1.5 text-xs font-semibold rounded-lg transition-colors whitespace-nowrap ${activeSection === id ? 'bg-violet-600 text-white' : `${m.btn} ${m.textAlt}`}`}>
@@ -48,10 +53,6 @@ export default function AppHeader({
         </div>
         <div className={`${compact ? 'overflow-x-auto pb-1 pl-subtle-scroll' : ''}`} aria-label="Prompt Lab utilities">
           <div className="pl-scroll-row">
-          <button type="button" onClick={() => openCreateView('composer')}
-            className={`pl-tab-btn ui-control px-2.5 py-1 text-[11px] font-semibold rounded-lg transition-colors whitespace-nowrap ${workspaceView === 'composer' ? 'bg-violet-600 text-white' : `${m.btn} ${m.textAlt}`}`}>
-            Build
-          </button>
           <button type="button" onClick={() => setPrimaryView('notebook')}
             className={`pl-tab-btn ui-control px-2.5 py-1 text-[11px] font-semibold rounded-lg transition-colors whitespace-nowrap ${primaryView === 'notebook' ? 'bg-violet-600 text-white' : `${m.btn} ${m.textAlt}`}`}>
             Notebook
@@ -59,7 +60,7 @@ export default function AppHeader({
           </div>
         </div>
       </div>
-      <div className={`mt-2 ${compact ? 'overflow-x-auto pb-1 pl-subtle-scroll' : ''}`} role="tablist" aria-label={activeSection === 'experiments' ? 'Experiment views' : primaryView === 'notebook' ? 'Notebook status' : 'Create workspace controls'}>
+      <div className={`mt-2 ${compact ? 'overflow-x-auto pb-1 pl-subtle-scroll' : ''}`} role="tablist" aria-label={activeSection === 'experiments' ? 'Evaluate views' : primaryView === 'notebook' ? 'Notebook status' : activeSection === 'create' ? 'Create workspace modes' : 'Library status'}>
         <div className="pl-scroll-row">
         {activeSection === 'experiments' && (
           <>
@@ -74,8 +75,21 @@ export default function AppHeader({
         {primaryView === 'notebook' && (
           <span className={`text-[11px] ${m.textMuted}`}>Multi-pad notes with library handoff</span>
         )}
-        {activeSection === 'create' && createLayoutOptions.length > 0 && (
+        {activeSection === 'create' && (
           <>
+            {createModeButtons.map(({ id, label, action, active }) => (
+              <button key={id} type="button" onClick={action}
+                className={`pl-tab-btn ui-control px-2.5 py-1 text-[11px] font-semibold rounded-lg transition-colors whitespace-nowrap ${active ? 'bg-violet-600 text-white' : `${m.btn} ${m.textAlt}`}`}>
+                {label}
+              </button>
+            ))}
+            {!compact && (
+              <span className={`text-[11px] ${m.textMuted}`}>
+                {workspaceView === 'composer'
+                  ? 'Assemble blocks without leaving Create'
+                  : 'Draft, enhance, and save from one workbench'}
+              </span>
+            )}
             {createLayoutOptions.map(([id, label]) => (
               <button key={id} type="button" onClick={() => setEditorLayout(id)}
                 className={`pl-tab-btn ui-control px-2.5 py-1 text-[11px] font-semibold rounded-lg transition-colors whitespace-nowrap ${effectiveEditorLayout === id ? 'bg-violet-600 text-white' : `${m.btn} ${m.textAlt}`}`}>

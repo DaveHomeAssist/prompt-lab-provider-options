@@ -102,7 +102,6 @@ function renderExecutionFlow({
   editingId = 'entry-1',
   saveTitle = 'Existing Prompt',
   library = [{ id: 'entry-1', goldenResponse: { text: 'Golden baseline' } }],
-  onEnhanceSuccess = vi.fn(),
 } = {}) {
   const notify = vi.fn();
   const setTab = vi.fn();
@@ -140,7 +139,6 @@ function renderExecutionFlow({
         setShowSave,
         setShowDiff,
       },
-      onEnhanceSuccess,
     });
 
     return {
@@ -158,7 +156,7 @@ function renderExecutionFlow({
     };
   });
 
-  return { ...hook, notify, setTab, onEnhanceSuccess };
+  return { ...hook, notify, setTab };
 }
 
 describe('useExecutionFlow', () => {
@@ -211,19 +209,6 @@ describe('useExecutionFlow', () => {
     // Verify schema-level fields survive normalization
     expect(savedRuns[0].id).toEqual(expect.any(String));
     expect(savedRuns[0].createdAt).toEqual(expect.any(String));
-  });
-
-  it('marks first-run completion after a successful enhance', async () => {
-    const onEnhanceSuccess = vi.fn();
-    const { result } = renderExecutionFlow({ onEnhanceSuccess });
-
-    await act(async () => {
-      await result.current.enhance();
-    });
-
-    await waitFor(() => {
-      expect(onEnhanceSuccess).toHaveBeenCalledTimes(1);
-    });
   });
 
   it('enhance_error_does_not_corrupt_editor_state', async () => {

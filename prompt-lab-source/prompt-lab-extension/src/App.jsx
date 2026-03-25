@@ -3,6 +3,7 @@ import Ic from './icons';
 import {
   wordDiff, scorePrompt,
   ngramSimilarity,
+  suggestTitleFromText,
 } from './promptUtils';
 import { T } from './constants';
 import useLibrary from './hooks/usePromptLibrary.js';
@@ -133,6 +134,14 @@ export default function App() {
   const kbFns = useRef({ enhance, doSave, openSavePanel });
   useEffect(() => { kbFns.current = { enhance, doSave, openSavePanel }; });
 
+  const nav = useNavigation({
+    primaryView, setPrimaryView,
+    workspaceView, setWorkspaceView,
+    runsView, setRunsView,
+    tab, setTab,
+  });
+  const { activeSection, openCreateView, openSection, openRunsView } = nav;
+
   // ── Derived (view-only) ──
   const score = scorePrompt(raw);
   const wc = typeof raw === 'string' && raw.trim() ? raw.trim().split(/\s+/).length : 0;
@@ -154,6 +163,8 @@ export default function App() {
   const comparisonText = typeof enhanced === 'string' && enhanced.trim()
     ? enhanced
     : (typeof latestEvalRun?.output === 'string' ? latestEvalRun.output : '');
+  const saveSourceText = comparisonText || raw;
+  const suggestedSaveTitle = (saveTitle || '').trim() || currentEntry?.title || suggestTitleFromText(saveSourceText);
   const comparisonSourceLabel = typeof enhanced === 'string' && enhanced.trim() ? 'Current enhanced output' : 'Latest eval run';
   const goldenSimilarity = goldenResponse?.text && comparisonText
     ? ngramSimilarity(goldenResponse.text, comparisonText)
@@ -176,6 +187,8 @@ export default function App() {
   ];
   const activeResultTab = resultTabs.some((tabItem) => tabItem.id === resultTab) ? resultTab : 'improved';
   const canSavePanel = hasSavablePrompt || hasPanelSaveSource;
+  const showCreateContext = activeSection === 'create' && Boolean((raw || '').trim() || (enhanced || '').trim() || currentEntry);
+  const showInlineSaveBar = activeSection === 'create' && canSavePanel && Boolean((enhanced || '').trim() || currentEntry);
   const pendingTemplateInputs = Array.isArray(pendingTemplate?.inputs) ? pendingTemplate.inputs : [];
   const pendingTemplateInputMap = Object.fromEntries(
     pendingTemplateInputs
@@ -207,14 +220,6 @@ export default function App() {
     setResultTab('improved');
     setEnhMdPreview(false);
   }, [enhanced, setEnhMdPreview]);
-
-  const nav = useNavigation({
-    primaryView, setPrimaryView,
-    workspaceView, setWorkspaceView,
-    runsView, setRunsView,
-    tab, setTab,
-  });
-  const { activeSection, openCreateView, openSection, openRunsView } = nav;
 
   const commitNewCollection = () => {
     const name = newCollName.trim();
@@ -285,6 +290,7 @@ export default function App() {
     showShortcuts: () => { setShowShortcuts(true); closePalette(); },
   });
   const filteredCmds = filterCommands(CMD_ACTIONS, cmdQuery);
+  const quickSave = () => persistenceFlow.doSave(executionFlow.refreshEvalRuns, { titleOverride: suggestedSaveTitle });
 
   // ─────────────────────────────────────────────────────────────────────────
   return (
@@ -317,18 +323,6 @@ export default function App() {
           editorPane={(
             <div className="pl-tab-panel h-full min-h-0 flex flex-col overflow-hidden">
               <div className="p-4 flex flex-col gap-3 h-full min-h-0 overflow-hidden">
-              {activeSection === 'create' && createLayoutOptions.length > 0 && (
-                <div className={`${compact ? 'overflow-x-auto pb-1 pl-subtle-scroll' : ''}`}>
-                  <div className="pl-scroll-row">
-                  {createLayoutOptions.map(([id, label]) => (
-                    <button key={id} type="button" onClick={() => setEditorLayout(id)}
-                      className={`pl-tab-btn ui-control text-xs px-2.5 py-1 rounded-lg transition-colors whitespace-nowrap ${effectiveEditorLayout === id ? 'bg-violet-600 text-white' : `${m.btn} ${m.textAlt}`}`}>
-                      {label}
-                    </button>
-                  ))}
-                  </div>
-                </div>
-              )}
               {lib.quickInject.length > 0 && (
                 <div className={`${m.surface} border ${m.border} rounded-lg`}>
                   <button
@@ -370,6 +364,52 @@ export default function App() {
                       </div>
                     </div>
                   )}
+                </div>
+              )}
+              {showCreateContext && (
+                <div className={`${m.surface} border ${m.border} rounded-xl p-3`}>
+                  <div className={`flex items-start justify-between gap-3 ${compact ? 'flex-col' : ''}`}>
+                    <div className="min-w-0">
+                      <div className="flex items-center gap-2 flex-wrap">
+                        <span className="text-xs text-violet-400 uppercase tracking-widest font-semibold">
+                          {currentEntry ? 'Editing' : 'Draft'}
+                        </span>
+                        {currentEntry?.collection && (
+                          <span className={`inline-flex items-center rounded-full px-2 py-0.5 text-[10px] font-semibold ${m.codeBlock} ${m.textSub}`}>
+                            {currentEntry.collection}
+                          </span>
+                        )}
+                      </div>
+                      <p className={`mt-1 text-sm font-semibold ${m.text}`}>
+                        {currentEntry?.title || suggestedSaveTitle}
+                      </p>
+                      <p className={`mt-1 text-xs ${m.textMuted}`}>
+                        {currentEntry
+                          ? 'Changes stay attached to this library prompt until you save or switch context.'
+                          : 'Your next save creates a new library prompt. Add tags and collection only if you need them.'}
+                      </p>
+                    </div>
+                    <div className={`flex flex-wrap items-center gap-2 ${compact ? 'w-full' : 'justify-end'} shrink-0`}>
+                      {currentEntry && (
+                        <button
+                          type="button"
+                          onClick={() => openSection('library')}
+                          className={`ui-control rounded-lg px-3 py-1.5 text-xs font-semibold transition-colors ${m.btn} ${m.textAlt}`}
+                        >
+                          View in Library
+                        </button>
+                      )}
+                      {canSavePanel && (
+                        <button
+                          type="button"
+                          onClick={() => openSavePanel()}
+                          className="ui-control rounded-lg bg-violet-600 px-3 py-1.5 text-xs font-semibold text-white transition-colors hover:bg-violet-500"
+                        >
+                          {currentEntry ? 'Edit Save Details' : 'Open Save Details'}
+                        </button>
+                      )}
+                    </div>
+                  </div>
                 </div>
               )}
               {/* Input */}
@@ -651,6 +691,50 @@ export default function App() {
                       </button>
                     ))}
                   </div>
+
+                  {showInlineSaveBar && (
+                    <div className={`${m.codeBlock} border ${m.border} rounded-lg p-3 mb-3`}>
+                      <div className={`flex items-start gap-3 ${compact ? 'flex-col' : 'justify-between'}`}>
+                        <div className="min-w-0">
+                          <p className={`text-[11px] font-semibold uppercase tracking-wider ${m.textSub}`}>
+                            {currentEntry ? 'Update library prompt' : 'Save this result'}
+                          </p>
+                          <p className={`mt-1 text-xs ${m.textMuted}`}>
+                            {currentEntry
+                              ? 'Keep the title tight here, or open details for collection, tags, and change notes.'
+                              : 'Use the suggested title for a fast save, or open details for collection and tags.'}
+                          </p>
+                        </div>
+                        <div className={`flex items-center gap-2 ${compact ? 'w-full flex-col items-stretch' : 'flex-1 justify-end'}`}>
+                          <label htmlFor="inline-save-title" className="sr-only">Prompt title</label>
+                          <input
+                            id="inline-save-title"
+                            className={`${m.input} border rounded-lg px-3 py-2 text-sm focus:outline-none focus:border-violet-500 ${m.text} ${compact ? 'w-full' : 'min-w-[14rem] flex-1 max-w-sm'}`}
+                            placeholder={suggestedSaveTitle}
+                            value={saveTitle}
+                            onChange={(e) => setSaveTitle(e.target.value)}
+                          />
+                          <div className={`flex items-center gap-2 ${compact ? 'w-full' : ''}`}>
+                            <button
+                              type="button"
+                              onClick={quickSave}
+                              disabled={!canSavePanel}
+                              className="ui-control rounded-lg bg-green-600 px-3 py-2 text-xs font-semibold text-white transition-colors hover:bg-green-500 disabled:opacity-40"
+                            >
+                              {currentEntry ? 'Update' : 'Save'}
+                            </button>
+                            <button
+                              type="button"
+                              onClick={() => openSavePanel()}
+                              className={`ui-control rounded-lg px-3 py-2 text-xs font-semibold transition-colors ${m.btn} ${m.textAlt}`}
+                            >
+                              Details
+                            </button>
+                          </div>
+                        </div>
+                      </div>
+                    </div>
+                  )}
 
                   {activeResultTab === 'improved' && (
                     enhMdPreview ? (

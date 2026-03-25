@@ -222,24 +222,30 @@ export default function usePersistenceFlow({ ui, lib, editor }) {
     resetTemplateFlow();
   };
 
-  const doSave = (onSaved) => {
+  const doSave = (onSaved, overrides = {}) => {
     const contentSource = saveSourceEntry ? normalizeEntry(saveSourceEntry) : null;
+    const targetId = Object.prototype.hasOwnProperty.call(overrides, 'targetId')
+      ? overrides.targetId
+      : (saveTargetId ?? editingId);
+    const titleValue = Object.prototype.hasOwnProperty.call(overrides, 'titleOverride')
+      ? overrides.titleOverride
+      : saveTitle;
     const saved = lib.doSave({
       raw: contentSource?.original ?? raw,
       enhanced: contentSource?.enhanced ?? enhanced,
       variants: contentSource?.variants ?? variants,
       notes: contentSource?.notes ?? notes,
       tags: saveTags,
-      title: saveTitle,
+      title: titleValue,
       collection: saveCollection,
-      editingId: saveTargetId,
+      editingId: targetId,
       changeNote,
     });
     if (saved?.id) {
       if (!contentSource) {
         setEditingId(saved.id);
       }
-      setSaveTitle(saved.title || saveTitle);
+      setSaveTitle(saved.title || titleValue);
       if (typeof onSaved === 'function') onSaved(saved.id);
     }
     setSaveTargetId(null);

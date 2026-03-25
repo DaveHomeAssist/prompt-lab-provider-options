@@ -36,3 +36,4 @@ Prompt Lab is a multi surface prompt engineering tool with extension, desktop, a
 [2026-03-18] [PLB] [docs] Add AGENTS baseline
 [2026-03-18] [PLB] [fix] Create privacy page and fix dead nav links across all docs pages
 [2026-03-18] [PLB] [fix] Prevent create pane action rows and diff output from overflowing at narrow widths
+[2026-03-24] [PLB] [docs] Add Create and Evaluate Phase 0 implementation brief and docs inventory entries

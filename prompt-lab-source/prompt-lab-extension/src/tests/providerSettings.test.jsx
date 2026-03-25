@@ -1,4 +1,3 @@
-import React from 'react';
 import { fireEvent, render, screen, waitFor } from '@testing-library/react';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
@@ -14,8 +13,6 @@ const {
   testProviderConnection: vi.fn(),
 }));
 
-const baselineChrome = globalThis.chrome;
-
 vi.mock('../lib/platform.js', () => ({
   isExtension: false,
   loadProviderSettings,
@@ -23,6 +20,8 @@ vi.mock('../lib/platform.js', () => ({
   listOllamaModels,
   testProviderConnection,
 }));
+
+import DesktopSettingsModal from '../DesktopSettingsModal.jsx';
 
 const theme = {
   input: 'bg-slate-900',
@@ -34,20 +33,7 @@ const theme = {
   bg: 'bg-slate-950',
 };
 
-async function renderModal(props = {}) {
-  delete globalThis.chrome;
-  vi.doMock('../lib/platform.js', async (importOriginal) => {
-    const actual = await importOriginal();
-    return {
-      ...actual,
-      isExtension: false,
-      loadProviderSettings,
-      saveProviderSettings,
-      listOllamaModels,
-      testProviderConnection,
-    };
-  });
-  const { default: DesktopSettingsModal } = await import('../DesktopSettingsModal.jsx');
+function renderModal(props = {}) {
   const onClose = vi.fn();
   const notify = vi.fn();
   const view = render(
@@ -81,15 +67,14 @@ describe('DesktopSettingsModal', () => {
   });
 
   afterEach(() => {
-    globalThis.chrome = baselineChrome;
     vi.resetModules();
     vi.unstubAllEnvs();
   });
 
   it('provider_selection_persists_and_rehydrates', async () => {
-    const firstView = await renderModal();
+    const firstView = renderModal();
 
-    const providerSelect = await screen.findByLabelText(/^provider$/i, { selector: 'select' });
+    const providerSelect = await screen.findByLabelText(/provider/i);
     fireEvent.change(providerSelect, { target: { value: 'openai' } });
     fireEvent.click(screen.getByRole('button', { name: 'Save' }));
 
@@ -108,9 +93,9 @@ describe('DesktopSettingsModal', () => {
     });
 
     firstView.unmount();
-    await renderModal();
+    renderModal();
 
-    const rehydratedProvider = await screen.findByLabelText(/^provider$/i, { selector: 'select' });
+    const rehydratedProvider = await screen.findByLabelText(/provider/i);
     fireEvent.change(rehydratedProvider, { target: { value: 'openai' } });
 
     await waitFor(() => {
@@ -119,7 +104,7 @@ describe('DesktopSettingsModal', () => {
   });
 
   it('connection_test_sets_success_state', async () => {
-    await renderModal();
+    renderModal();
 
     fireEvent.click(await screen.findByRole('button', { name: 'Test Connection' }));
 
@@ -148,7 +133,7 @@ describe('DesktopSettingsModal', () => {
       { name: 'mistral:7b', paramSize: '7B' },
     ]);
 
-    await renderModal();
+    renderModal();
 
     fireEvent.click(await screen.findByRole('button', { name: 'Refresh Models' }));
 
@@ -156,26 +141,87 @@ describe('DesktopSettingsModal', () => {
     expect(screen.getByLabelText(/base url/i)).toHaveValue('http://localhost:11434');
     expect(saveProviderSettings).not.toHaveBeenCalled();
 
-    fireEvent.change(screen.getByLabelText(/^provider$/i, { selector: 'select' }), { target: { value: 'openai' } });
+    fireEvent.change(screen.getByLabelText(/provider/i), { target: { value: 'openai' } });
 
     await waitFor(() => {
       expect(screen.getByLabelText(/api key/i)).toHaveValue('sk-openai-preserved');
     });
   });
 
-  it('dispatches a provider refresh event after save', async () => {
-    const dispatchSpy = vi.spyOn(window, 'dispatchEvent');
-    await renderModal();
+  it('platform_branch_behavior_matches_contract', async () => {
+    const payload = {
+      model: 'test-model',
+      messages: [{ role: 'user', content: 'hello' }],
+    };
 
-    fireEvent.click(await screen.findByRole('button', { name: 'Save' }));
+    vi.unmock('../lib/platform.js');
+    vi.resetModules();
+    globalThis.chrome = {
+      runtime: {
+        sendMessage: vi.fn((_msg, cb) => cb({ data: { provider: 'anthropic', model: 'ext-model' } })),
+        openOptionsPage: vi.fn(),
+      },
+      storage: {
+        session: {
+          get: vi.fn((_key, cb) => cb({})),
+          set: vi.fn(),
+        },
+      },
+    };
+    const extensionPlatform = await import('../lib/platform.js');
+    const extensionResult = await extensionPlatform.callModel(payload);
+    expect(extensionResult).toEqual({ provider: 'anthropic', model: 'ext-model' });
+    expect(globalThis.chrome.runtime.sendMessage).toHaveBeenCalledWith(
+      { type: 'MODEL_REQUEST', payload },
+      expect.any(Function),
+    );
 
-    await waitFor(() => {
-      expect(saveProviderSettings).toHaveBeenCalledTimes(1);
-    });
+    vi.resetModules();
+    delete globalThis.chrome;
+    const callModelDirect = vi.fn().mockResolvedValue({ provider: 'openai', model: 'desktop-model' });
+    vi.doMock('../lib/desktopApi.js', () => ({
+      callModelDirect,
+      listOllamaModelsDirect: vi.fn(),
+      loadSettings: vi.fn(),
+      saveSettings: vi.fn(),
+    }));
+    const desktopPlatform = await import('../lib/platform.js');
+    const desktopResult = await desktopPlatform.callModel(payload);
+    expect(desktopResult).toEqual({ provider: 'openai', model: 'desktop-model' });
+    expect(callModelDirect).toHaveBeenCalledWith(payload);
 
-    expect(dispatchSpy).toHaveBeenCalledWith(expect.objectContaining({
-      type: 'pl:provider-settings-updated',
+    vi.resetModules();
+    vi.stubEnv('VITE_WEB_MODE', 'true');
+    const callProvider = vi.fn().mockResolvedValue({ provider: 'openai', model: 'web-model' });
+    const listModels = vi.fn();
+    const createProxyFetch = vi.fn(() => 'proxy-fetch');
+    const normalizeProvider = vi.fn((provider) => provider || 'anthropic');
+    vi.doMock('../lib/providers.js', () => ({
+      callProvider,
+      listOllamaModels: listModels,
+    }));
+    vi.doMock('../lib/providerRegistry.js', () => ({
+      normalizeProvider,
+    }));
+    vi.doMock('../lib/proxyFetch.js', () => ({
+      createProxyFetch,
+    }));
+    localStorage.setItem('pl2-provider-settings', JSON.stringify({
+      provider: 'openai',
+      openaiModel: 'gpt-4o',
+    }));
+    const desktopApi = await import('../lib/desktopApi.js');
+    await desktopApi.callModelDirect(payload);
+
+    expect(createProxyFetch).toHaveBeenCalledTimes(1);
+    expect(callProvider).toHaveBeenCalledWith(expect.objectContaining({
+      provider: 'openai',
+      payload,
+      settings: expect.objectContaining({
+        openaiApiKey: 'demo',
+        openaiModel: 'gpt-4o',
+      }),
+      fetchImpl: 'proxy-fetch',
     }));
   });
-
 });

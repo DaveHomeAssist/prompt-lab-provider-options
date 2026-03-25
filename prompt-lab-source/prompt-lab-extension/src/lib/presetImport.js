@@ -1,11 +1,11 @@
 import presetPackSchema from '../../../docs/preset-pack-schema.json';
 import { createPromptEntry, normalizeLibrary } from './promptSchema.js';
+import { getLibraryEntrySignature } from './libraryMatching.js';
 import { ensureString } from './utils.js';
 
 const PACK_REQUIRED_FIELDS = ['version', 'type', 'id', 'title', 'presets'];
 const PRESET_REQUIRED_FIELDS = ['id', 'title', 'prompt'];
 const PRESET_WARNING_FIELDS = ['summary', 'tags', 'category'];
-const TEXT_HASH_SLICE = 200;
 const TITLE_SIMILARITY_THRESHOLD = 0.65;
 
 function isObject(value) {
@@ -67,16 +67,6 @@ function normalizePresetInputs(value) {
       };
     })
     .filter(Boolean);
-}
-
-function stablePromptHash(value) {
-  const text = normalizePromptText(value).slice(0, TEXT_HASH_SLICE);
-  let hash = 5381;
-  for (let index = 0; index < text.length; index += 1) {
-    hash = ((hash << 5) + hash) + text.charCodeAt(index);
-    hash >>>= 0;
-  }
-  return hash.toString(16);
 }
 
 function longestCommonSubsequenceLength(left, right) {
@@ -290,12 +280,12 @@ export function detectDuplicates(incoming, existing) {
 
   asArray(incoming).forEach((candidate) => {
     const incomingTitle = ensureString(candidate?.title);
-    const incomingPromptHash = stablePromptHash(candidate?.prompt ?? candidate?.enhanced ?? candidate?.original);
+    const incomingPromptHash = getLibraryEntrySignature(candidate);
 
     asArray(existing).forEach((entry) => {
       const compareTitle = ensureString(entry?.title);
       const titleSimilarity = similarityRatio(incomingTitle, compareTitle);
-      const comparePromptHash = stablePromptHash(entry?.prompt ?? entry?.enhanced ?? entry?.original);
+      const comparePromptHash = getLibraryEntrySignature(entry);
 
       const reasons = [];
       if (titleSimilarity > TITLE_SIMILARITY_THRESHOLD) {

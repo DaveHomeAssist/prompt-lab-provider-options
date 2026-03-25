@@ -21,7 +21,7 @@
 
 - Most likely active task: finish or validate the landing/docs alignment work already in progress in:
   - `docs/index.html`
-  - `prompt-lab-source/prompt-lab-web/index.html`
+  - `prompt-lab-source/public/prompt-lab-landing.html`
 - Product-level unresolved issues from `AGENTS.md` still point at:
   - Create workflow being too vertically stacked
   - experiments and run history still being split
@@ -34,7 +34,7 @@
 - `/Users/daverobertson/Desktop/Code/10-active-projects/prompt-lab/PROMPT_LAB_AGENT.md`
 - `/Users/daverobertson/Desktop/Code/10-active-projects/prompt-lab/CURRENT_PROJECT_REPORT.md`
 - `/Users/daverobertson/Desktop/Code/10-active-projects/prompt-lab/docs/index.html`
-- `/Users/daverobertson/Desktop/Code/10-active-projects/prompt-lab/prompt-lab-source/prompt-lab-web/index.html`
+- `/Users/daverobertson/Desktop/Code/10-active-projects/prompt-lab/prompt-lab-source/public/prompt-lab-landing.html`
 - `/Users/daverobertson/Desktop/Code/10-active-projects/prompt-lab/prompt-lab-source/ARCHITECTURE.md`
 - `/Users/daverobertson/Desktop/Code/10-active-projects/prompt-lab/prompt-lab-source/package.json`
 - `/Users/daverobertson/Desktop/Code/10-active-projects/prompt-lab/prompt-lab-source/NOTION_DOCS_AGENT.md`
@@ -52,7 +52,7 @@
 - Live hosted app URL is `https://prompt-lab-tawny.vercel.app/app/`.
 - Current git status shows dirty files:
   - modified: `docs/index.html`
-  - modified: `prompt-lab-source/prompt-lab-web/index.html`
+  - modified: `prompt-lab-source/public/prompt-lab-landing.html`
   - untracked: `CURRENT_PROJECT_REPORT.md`
   - untracked: `PROMPT_LAB_AGENT.md`
   - untracked: `SESSION_INIT_PROMPT.md`
@@ -68,7 +68,7 @@
 - Do not overwrite or revert the existing dirty landing/docs edits unless the task explicitly requires changing them.
 - Treat these user-owned or already-in-progress files as protected by default:
   - `docs/index.html`
-  - `prompt-lab-source/prompt-lab-web/index.html`
+  - `prompt-lab-source/public/prompt-lab-landing.html`
 - Do not touch `archives/` unless explicitly asked.
 - Do not rename repo surfaces or collapse extension, desktop, web, and docs into one conceptual app.
 - Keep the following domain nouns true:
@@ -103,7 +103,7 @@
    - extension
    - desktop
 2. Run git status and inspect only the files relevant to the task.
-3. If the task is on landing/docs, inspect `docs/index.html` and `prompt-lab-source/prompt-lab-web/index.html` first.
+3. If the task is on landing/docs, inspect `docs/index.html` and `prompt-lab-source/public/prompt-lab-landing.html` first.
 4. If the task is product/architecture, read `AGENTS.md`, `ARCHITECTURE.md`, and `CURRENT_PROJECT_REPORT.md` first.
 5. Make the smallest correct change.
 6. Run the narrowest relevant verification.
@@ -112,7 +112,7 @@
 ## 8. Verification
 
 - `git -C /Users/daverobertson/Desktop/Code/10-active-projects/prompt-lab status --short --branch`
-- `git -C /Users/daverobertson/Desktop/Code/10-active-projects/prompt-lab diff --stat -- docs/index.html prompt-lab-source/prompt-lab-web/index.html`
+- `git -C /Users/daverobertson/Desktop/Code/10-active-projects/prompt-lab diff --stat -- docs/index.html prompt-lab-source/public/prompt-lab-landing.html`
 - `sed -n '1,220p' /Users/daverobertson/Desktop/Code/10-active-projects/prompt-lab/AGENTS.md`
 - `sed -n '1,260p' /Users/daverobertson/Desktop/Code/10-active-projects/prompt-lab/prompt-lab-source/ARCHITECTURE.md`
 - `sed -n '1,240p' /Users/daverobertson/Desktop/Code/10-active-projects/prompt-lab/CURRENT_PROJECT_REPORT.md`
@@ -145,7 +145,7 @@ Inspect first:
 
 Current dirty files already exist and should be treated as user-owned/in-progress unless the task explicitly targets them:
 - /Users/daverobertson/Desktop/Code/10-active-projects/prompt-lab/docs/index.html
-- /Users/daverobertson/Desktop/Code/10-active-projects/prompt-lab/prompt-lab-source/prompt-lab-web/index.html
+- /Users/daverobertson/Desktop/Code/10-active-projects/prompt-lab/prompt-lab-source/public/prompt-lab-landing.html
 
 Current likely focus:
 - finish or validate landing/docs alignment to promptlab.tools and the current Prompt Lab repo/app URLs
@@ -164,7 +164,7 @@ Guardrails:
 
 First commands to run:
 - git -C /Users/daverobertson/Desktop/Code/10-active-projects/prompt-lab status --short --branch
-- git -C /Users/daverobertson/Desktop/Code/10-active-projects/prompt-lab diff --stat -- docs/index.html prompt-lab-source/prompt-lab-web/index.html
+- git -C /Users/daverobertson/Desktop/Code/10-active-projects/prompt-lab diff --stat -- docs/index.html prompt-lab-source/public/prompt-lab-landing.html
 - sed -n '1,220p' /Users/daverobertson/Desktop/Code/10-active-projects/prompt-lab/AGENTS.md
 - sed -n '1,260p' /Users/daverobertson/Desktop/Code/10-active-projects/prompt-lab/prompt-lab-source/ARCHITECTURE.md
 
