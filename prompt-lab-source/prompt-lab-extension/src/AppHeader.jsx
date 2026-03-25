@@ -42,7 +42,7 @@ export default function AppHeader({
           {[
             ['create', 'Create'],
             ['library', 'Library'],
-            ['experiments', 'Evaluate'],
+            ['evaluate', 'Evaluate'],
           ].map(([id, label]) => (
             <button key={id} type="button" onClick={() => openSection(id)} role="tab" aria-selected={activeSection === id}
               className={`pl-tab-btn ui-control px-3 py-1.5 text-xs font-semibold rounded-lg transition-colors whitespace-nowrap ${activeSection === id ? 'bg-violet-600 text-white' : `${m.btn} ${m.textAlt}`}`}>
@@ -60,9 +60,9 @@ export default function AppHeader({
           </div>
         </div>
       </div>
-      <div className={`mt-2 ${compact ? 'overflow-x-auto pb-1 pl-subtle-scroll' : ''}`} role="tablist" aria-label={activeSection === 'experiments' ? 'Evaluate views' : primaryView === 'notebook' ? 'Notebook status' : activeSection === 'create' ? 'Create workspace modes' : 'Library status'}>
+      <div className={`mt-2 ${compact ? 'overflow-x-auto pb-1 pl-subtle-scroll' : ''}`} role="tablist" aria-label={activeSection === 'evaluate' ? 'Evaluate views' : primaryView === 'notebook' ? 'Notebook status' : activeSection === 'create' ? 'Create workspace modes' : 'Library status'}>
         <div className="pl-scroll-row">
-        {activeSection === 'experiments' && (
+        {activeSection === 'evaluate' && (
           <>
             {SUBVIEWS.runs.map(({ id, label }) => (
               <button key={id} type="button" onClick={() => openRunsView(id)} role="tab" aria-selected={runsView === id}

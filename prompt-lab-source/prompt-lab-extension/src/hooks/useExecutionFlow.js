@@ -67,18 +67,18 @@ export default function useExecutionFlow({ ui, lib, editor, persistence }) {
     throw normalizeError(lastError || new Error('Request failed.'), 'execution');
   };
 
-  const buildEnhancePayloadFor = (inputText) => {
+  const buildEnhancePayloadFor = (inputText, modeId = enhMode) => {
     return {
       model: 'claude-sonnet-4-20250514',
       max_tokens: 4096,
       temperature: 0.4,
-      system: buildSystemPrompt(enhMode, ALL_TAGS),
+      system: buildSystemPrompt(modeId, ALL_TAGS),
       messages: [{ role: 'user', content: inputText }],
       responseFormat: 'json',
     };
   };
 
-  const buildEnhancePayload = () => buildEnhancePayloadFor(raw);
+  const buildEnhancePayload = (modeId = enhMode) => buildEnhancePayloadFor(raw, modeId);
 
   const runTestCaseJob = async (testCase, promptTitle) => {
     const inputText = ensureString(testCase?.input);
@@ -252,6 +252,11 @@ export default function useExecutionFlow({ ui, lib, editor, persistence }) {
     }
   };
 
+  const enhanceWithMode = async (modeId) => {
+    if (!raw.trim()) return;
+    return enhance(buildEnhancePayload(modeId));
+  };
+
   const cancelEnhance = () => {
     enhanceReqRef.current += 1;
     enhanceAbortRef.current?.abort();
@@ -372,6 +377,7 @@ export default function useExecutionFlow({ ui, lib, editor, persistence }) {
     buildEnhancePayloadFor,
     buildEnhancePayload,
     enhance,
+    enhanceWithMode,
     evalRuns: evalRunsHook.evalRuns,
     showEvalHistory: evalRunsHook.showEvalHistory,
     setShowEvalHistory: evalRunsHook.setShowEvalHistory,

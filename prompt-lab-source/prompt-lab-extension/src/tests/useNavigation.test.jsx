@@ -1,0 +1,62 @@
+import { act, renderHook } from '@testing-library/react';
+import { describe, expect, it, vi } from 'vitest';
+import useNavigation from '../hooks/useNavigation.js';
+
+function renderNavigation(overrides = {}) {
+  const setPrimaryView = vi.fn();
+  const setWorkspaceView = vi.fn();
+  const setRunsView = vi.fn();
+  const setTab = vi.fn();
+
+  const hook = renderHook(() => useNavigation({
+    primaryView: 'create',
+    setPrimaryView,
+    workspaceView: 'editor',
+    setWorkspaceView,
+    runsView: 'history',
+    setRunsView,
+    tab: 'editor',
+    setTab,
+    ...overrides,
+  }));
+
+  return {
+    ...hook,
+    setPrimaryView,
+    setWorkspaceView,
+    setRunsView,
+    setTab,
+  };
+}
+
+describe('useNavigation', () => {
+  it('reports Evaluate as the active section for run views', () => {
+    const { result } = renderNavigation({
+      primaryView: 'runs',
+      runsView: 'compare',
+      tab: 'abtest',
+    });
+
+    expect(result.current.activeSection).toBe('evaluate');
+  });
+
+  it('routes evaluate and legacy experiments section ids to compare view', () => {
+    const evaluate = renderNavigation();
+
+    act(() => {
+      evaluate.result.current.openSection('evaluate');
+    });
+
+    expect(evaluate.setPrimaryView).toHaveBeenCalledWith('runs');
+    expect(evaluate.setRunsView).toHaveBeenCalledWith('compare');
+
+    const legacy = renderNavigation();
+
+    act(() => {
+      legacy.result.current.openSection('experiments');
+    });
+
+    expect(legacy.setPrimaryView).toHaveBeenCalledWith('runs');
+    expect(legacy.setRunsView).toHaveBeenCalledWith('compare');
+  });
+});

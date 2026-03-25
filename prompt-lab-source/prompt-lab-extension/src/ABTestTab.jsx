@@ -52,7 +52,7 @@ export default function ABTestTab({
       </div>
       <div className={`px-4 py-2 border-b ${m.border}`}>
         <p className={`text-xs ${m.textAlt}`}>
-          Each side is sent exactly as one isolated user message with no extra context.
+          Compare two prompt variants inside Evaluate. Each side is sent exactly as one isolated user message with no extra context.
         </p>
         <p className={`text-xs ${m.textMuted} mt-1 font-mono`}>
           Payload: <code>{`messages: [{ role: 'user', content: promptVariant }]`}</code>
@@ -136,7 +136,9 @@ export default function ABTestTab({
           </div>
         )}
         {showRuns && evalRuns.length === 0 && (
-          <div className={`ui-empty-state px-4 pb-3 text-xs ${m.textMuted}`}>No A/B runs saved yet.</div>
+          <div className={`ui-empty-state px-4 pb-3 text-xs ${m.textMuted}`}>
+            No compare runs yet. Load prompts from the library or paste two variants, then run both to start the Evaluate log.
+          </div>
         )}
       </div>
       {/* Experiment History */}
@@ -162,7 +164,9 @@ export default function ABTestTab({
           </div>
         )}
         {showHistory && history.length === 0 && (
-          <div className={`ui-empty-state px-4 pb-3 text-xs ${m.textMuted}`}>No experiments saved yet.</div>
+          <div className={`ui-empty-state px-4 pb-3 text-xs ${m.textMuted}`}>
+            No comparison history yet. Pick a winner after running both variants and the decision trail will show up here.
+          </div>
         )}
       </div>
       {showDiff && bothReady && (

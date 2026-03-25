@@ -64,4 +64,11 @@ describe('AppHeader', () => {
     expect(screen.getByRole('button', { name: 'Notebook' })).toBeInTheDocument();
     expect(screen.queryByRole('button', { name: 'Build' })).not.toBeInTheDocument();
   });
+
+  it('shows Compare and History sub-tabs when Evaluate is active', () => {
+    renderHeader({ activeSection: 'evaluate', primaryView: 'runs', runsView: 'compare' });
+
+    expect(screen.getByRole('tab', { name: 'Compare' })).toBeInTheDocument();
+    expect(screen.getByRole('tab', { name: 'History' })).toBeInTheDocument();
+  });
 });

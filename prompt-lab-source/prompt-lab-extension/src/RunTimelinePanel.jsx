@@ -1,6 +1,7 @@
-import { useState, useMemo } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import Ic from './icons';
 import useEvalRuns from './hooks/useEvalRuns.js';
+import usePersistedState from './usePersistedState.js';
 import { wordDiff } from './promptUtils';
 
 const VERDICT_CYCLE = [null, 'pass', 'fail', 'mixed'];
@@ -21,6 +22,32 @@ const MODEL_COMPARE_GRID_CLASS = {
   2: 'grid-cols-2',
   3: 'grid-cols-3',
 };
+const EVALUATE_TIMELINE_FILTERS_KEY = 'pl2-evaluate-timeline-filters';
+const DEFAULT_EVALUATE_TIMELINE_FILTERS = Object.freeze({
+  mode: '',
+  provider: '',
+  model: '',
+  status: '',
+  dateRange: '30d',
+  search: '',
+  showModelCompare: false,
+});
+
+function validateTimelineFilters(value) {
+  if (!value || typeof value !== 'object') {
+    return { ...DEFAULT_EVALUATE_TIMELINE_FILTERS };
+  }
+
+  return {
+    mode: ['', 'enhance', 'ab', 'test-case'].includes(value.mode) ? value.mode : DEFAULT_EVALUATE_TIMELINE_FILTERS.mode,
+    provider: typeof value.provider === 'string' ? value.provider : DEFAULT_EVALUATE_TIMELINE_FILTERS.provider,
+    model: typeof value.model === 'string' ? value.model : DEFAULT_EVALUATE_TIMELINE_FILTERS.model,
+    status: ['', 'success', 'error', 'blocked'].includes(value.status) ? value.status : DEFAULT_EVALUATE_TIMELINE_FILTERS.status,
+    dateRange: ['7d', '30d', '90d', ''].includes(value.dateRange) ? value.dateRange : DEFAULT_EVALUATE_TIMELINE_FILTERS.dateRange,
+    search: typeof value.search === 'string' ? value.search : DEFAULT_EVALUATE_TIMELINE_FILTERS.search,
+    showModelCompare: Boolean(value.showModelCompare),
+  };
+}
 
 function formatLatency(ms) {
   if (!ms) return '—';
@@ -299,14 +326,21 @@ function ComparePanel({ runs, m, compact, copy, onClose }) {
 
 // ── Main Panel ──
 export default function RunTimelinePanel({ m, prompt, copy, compact, pageScroll }) {
-  const [mode, setMode] = useState('');
-  const [provider, setProvider] = useState('');
-  const [model, setModel] = useState('');
-  const [status, setStatus] = useState('');
-  const [dateRange, setDateRange] = useState('30d');
-  const [search, setSearch] = useState('');
-  const [showModelCompare, setShowModelCompare] = useState(false);
-  const [compareSelection, setCompareSelection] = useState([]);
+  const [timelineFilters, setTimelineFilters] = usePersistedState(
+    EVALUATE_TIMELINE_FILTERS_KEY,
+    { ...DEFAULT_EVALUATE_TIMELINE_FILTERS },
+    { validate: validateTimelineFilters }
+  );
+  const {
+    mode,
+    provider,
+    model,
+    status,
+    dateRange,
+    search,
+    showModelCompare,
+  } = timelineFilters;
+  const [compareSelectionIds, setCompareSelectionIds] = useState([]);
 
   const { evalRuns, loading, hasMore, loadMore, updateRun } = useEvalRuns({
     promptId: prompt?.id || null,
@@ -337,21 +371,47 @@ export default function RunTimelinePanel({ m, prompt, copy, compact, pageScroll 
     return [...set].sort();
   }, [evalRuns, provider]);
 
-  const handleSelectCompare = (run) => {
-    setCompareSelection(prev => {
-      if (prev.find(r => r.id === run.id)) return prev.filter(r => r.id !== run.id);
-      if (prev.length >= 2) return [prev[1], run];
-      return [...prev, run];
+  const compareSelection = useMemo(() => (
+    compareSelectionIds
+      .map((id) => evalRuns.find((run) => run.id === id))
+      .filter(Boolean)
+  ), [compareSelectionIds, evalRuns]);
+
+  const hasActiveFilters = Boolean(
+    mode
+    || provider
+    || model
+    || status
+    || search
+    || dateRange !== DEFAULT_EVALUATE_TIMELINE_FILTERS.dateRange
+    || showModelCompare
+  );
+
+  const setTimelineFilter = (key, value) => {
+    setTimelineFilters((prev) => {
+      const next = { ...prev, [key]: value };
+      if (key === 'provider' && value !== prev.provider) {
+        next.model = '';
+      }
+      return next;
     });
   };
 
-  if (!prompt) {
-    return (
-      <div className={`flex-1 flex items-center justify-center p-8 ${pageScroll ? 'min-h-[60vh]' : ''}`}>
-        <p className={`text-sm ${m.textMuted}`}>Select a prompt to see its run history.</p>
-      </div>
-    );
-  }
+  const resetTimelineFilters = () => {
+    setTimelineFilters({ ...DEFAULT_EVALUATE_TIMELINE_FILTERS });
+  };
+
+  useEffect(() => {
+    setCompareSelectionIds((prev) => prev.filter((id) => evalRuns.some((run) => run.id === id)));
+  }, [evalRuns]);
+
+  const handleSelectCompare = (run) => {
+    setCompareSelectionIds((prev) => {
+      if (prev.includes(run.id)) return prev.filter((id) => id !== run.id);
+      if (prev.length >= 2) return [prev[1], run.id];
+      return [...prev, run.id];
+    });
+  };
 
   return (
     <div className={`flex-1 flex flex-col ${pageScroll ? '' : 'overflow-hidden'}`}>
@@ -360,52 +420,63 @@ export default function RunTimelinePanel({ m, prompt, copy, compact, pageScroll 
         {/* Header */}
         <div className="flex items-center justify-between gap-3">
           <div>
-            <h2 className={`text-sm font-bold ${m.text}`}>Run History</h2>
-            <p className={`text-xs ${m.textMuted} truncate`}>{prompt.title || 'Untitled prompt'}</p>
+            <h2 className={`text-sm font-bold ${m.text}`}>{prompt ? 'Run History' : 'Evaluate Timeline'}</h2>
+            <p className={`text-xs ${m.textMuted} truncate`}>
+              {prompt?.title || 'All prompts · select a library entry to narrow this timeline'}
+            </p>
           </div>
           <span className={`text-xs ${m.textMuted}`}>{evalRuns.length} runs</span>
         </div>
 
         {/* Filters */}
         <div className={`flex items-center gap-2 flex-wrap ${m.surface} border ${m.border} rounded-lg p-2`}>
-          <select value={mode} onChange={e => setMode(e.target.value)} aria-label="Filter by mode"
+          <select value={mode} onChange={e => setTimelineFilter('mode', e.target.value)} aria-label="Filter by mode"
             className={`text-xs ${m.input} border rounded px-2 py-1.5 focus:outline-none focus:border-violet-500`}>
             <option value="">All modes</option>
             <option value="enhance">Enhance</option>
             <option value="ab">A/B</option>
             <option value="test-case">Test Case</option>
           </select>
-          <select value={provider} onChange={e => setProvider(e.target.value)} aria-label="Filter by provider"
+          <select value={provider} onChange={e => setTimelineFilter('provider', e.target.value)} aria-label="Filter by provider"
             className={`text-xs ${m.input} border rounded px-2 py-1.5 focus:outline-none focus:border-violet-500`}>
             <option value="">All providers</option>
             {availableProviders.map(p => <option key={p} value={p}>{p}</option>)}
           </select>
-          <select value={model} onChange={e => setModel(e.target.value)} aria-label="Filter by model"
+          <select value={model} onChange={e => setTimelineFilter('model', e.target.value)} aria-label="Filter by model"
             className={`text-xs ${m.input} border rounded px-2 py-1.5 focus:outline-none focus:border-violet-500`}>
             <option value="">All models</option>
             {availableModels.map(item => <option key={item} value={item}>{item}</option>)}
           </select>
-          <select value={status} onChange={e => setStatus(e.target.value)} aria-label="Filter by status"
+          <select value={status} onChange={e => setTimelineFilter('status', e.target.value)} aria-label="Filter by status"
             className={`text-xs ${m.input} border rounded px-2 py-1.5 focus:outline-none focus:border-violet-500`}>
             <option value="">All statuses</option>
             <option value="success">Success</option>
             <option value="error">Error</option>
             <option value="blocked">Blocked</option>
           </select>
-          <select value={dateRange} onChange={e => setDateRange(e.target.value)} aria-label="Filter by date range"
+          <select value={dateRange} onChange={e => setTimelineFilter('dateRange', e.target.value)} aria-label="Filter by date range"
             className={`text-xs ${m.input} border rounded px-2 py-1.5 focus:outline-none focus:border-violet-500`}>
             <option value="7d">Last 7 days</option>
             <option value="30d">Last 30 days</option>
             <option value="90d">Last 90 days</option>
             <option value="">All time</option>
           </select>
-          <input type="search" value={search} onChange={e => setSearch(e.target.value)}
+          <input type="search" value={search} onChange={e => setTimelineFilter('search', e.target.value)}
             placeholder="Search runs…"
             className={`flex-1 min-w-[120px] text-xs ${m.input} border rounded px-2 py-1.5 focus:outline-none focus:border-violet-500 placeholder-gray-400`} />
           {availableProviders.length >= 2 && (
-            <button type="button" onClick={() => setShowModelCompare(p => !p)}
+            <button type="button" onClick={() => setTimelineFilter('showModelCompare', !showModelCompare)}
               className={`text-xs px-2 py-1.5 rounded border font-semibold transition-colors ${showModelCompare ? 'border-violet-500 text-violet-400' : `${m.border} ${m.textMuted}`}`}>
               Compare Models
+            </button>
+          )}
+          {hasActiveFilters && (
+            <button
+              type="button"
+              onClick={resetTimelineFilters}
+              className={`text-xs px-2 py-1.5 rounded border font-semibold transition-colors ${m.border} ${m.textMuted} hover:border-violet-400 hover:text-violet-400`}
+            >
+              Reset Filters
             </button>
           )}
         </div>
@@ -418,7 +489,7 @@ export default function RunTimelinePanel({ m, prompt, copy, compact, pageScroll 
 
         {/* Compare Panel */}
         {compareSelection.length === 2 && (
-          <ComparePanel runs={compareSelection} m={m} compact={compact} copy={copy} onClose={() => setCompareSelection([])} />
+          <ComparePanel runs={compareSelection} m={m} compact={compact} copy={copy} onClose={() => setCompareSelectionIds([])} />
         )}
 
         {/* Loading */}
@@ -433,15 +504,22 @@ export default function RunTimelinePanel({ m, prompt, copy, compact, pageScroll 
               <RunCard key={run.id} run={run} prompt={prompt} m={m}
                 updateRun={updateRun} copy={copy} copyBtn={copyBtn}
                 onSelectCompare={handleSelectCompare}
-                isCompareSelected={!!compareSelection.find(r => r.id === run.id)} />
+                isCompareSelected={compareSelectionIds.includes(run.id)} />
             ))}
           </div>
         )}
 
         {/* Empty */}
         {!loading && evalRuns.length === 0 && (
-          <div className={`text-center py-8 text-xs ${m.textMuted}`}>
-            No runs yet. Use the Prompt Editor to enhance a prompt and runs will appear here.
+          <div className={`${m.surface} border ${m.border} rounded-lg p-4 text-center`}>
+            <p className={`text-sm font-semibold ${m.text}`}>
+              {prompt ? 'No runs for this prompt yet.' : 'No evaluate runs yet.'}
+            </p>
+            <p className={`mt-1 text-xs ${m.textMuted}`}>
+              {prompt
+                ? 'Enhance this prompt, run its test cases, or compare variants and the timeline will fill in here.'
+                : 'Enhance a prompt or run an A/B compare and every saved run will appear here.'}
+            </p>
           </div>
         )}
 

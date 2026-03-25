@@ -151,6 +151,7 @@ const mocks = vi.hoisted(() => {
       runSingleCase: fn(),
       runAllCases: fn(),
       enhance: fn(),
+      enhanceWithMode: fn(),
       openOptions: fn(),
       copy: fn(),
       cancelEnhance: fn(),
@@ -291,6 +292,11 @@ vi.mock('../modals/PiiWarningModal.jsx', () => ({
 
 import App from '../App.jsx';
 
+function useDefaultMock(name) {
+  const mock = mocks[name];
+  return mock.getMockImplementation()();
+}
+
 describe('App', () => {
   beforeEach(() => {
     vi.clearAllMocks();
@@ -302,5 +308,38 @@ describe('App', () => {
     expect(screen.getByRole('heading', { name: 'Prompt Lab' })).toBeInTheDocument();
     expect(mocks.useNavigation).toHaveBeenCalledTimes(1);
     expect(screen.getByTestId('app-header')).toBeInTheDocument();
+  });
+
+  it('shows the new Create empty-state guidance before the first enhance run', () => {
+    mocks.useEditorState.mockReturnValueOnce({
+      ...useDefaultMock('useEditorState'),
+      raw: 'Draft a support reply for a delayed shipment.',
+    });
+
+    render(<App />);
+
+    expect(screen.getByText('Enhance a draft to unlock save, compare, and evaluation history.')).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: 'Run Enhance' })).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: 'Open Compose' })).toBeInTheDocument();
+  });
+
+  it('shows the inline save bar next to generated results in Create mode', () => {
+    mocks.useEditorState.mockReturnValueOnce({
+      ...useDefaultMock('useEditorState'),
+      raw: 'Turn this into a tighter prompt.',
+      enhanced: 'Rewritten prompt with stronger constraints.',
+      hasSavablePrompt: true,
+    });
+    mocks.usePersistenceFlow.mockReturnValueOnce({
+      ...useDefaultMock('usePersistenceFlow'),
+      saveTitle: 'Support rewrite',
+    });
+
+    render(<App />);
+
+    expect(screen.getByText('Save this result')).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: 'Save' })).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: 'Details' })).toBeInTheDocument();
+    expect(screen.getByLabelText('Prompt title')).toBeInTheDocument();
   });
 });

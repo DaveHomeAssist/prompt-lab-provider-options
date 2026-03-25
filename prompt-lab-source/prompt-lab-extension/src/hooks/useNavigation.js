@@ -13,7 +13,7 @@ export default function useNavigation({
   tab, setTab,
 }) {
   const activeSection = useMemo(() => {
-    if (primaryView === 'runs') return 'experiments';
+    if (primaryView === 'runs') return 'evaluate';
     if (workspaceView === 'library') return 'library';
     return 'create';
   }, [primaryView, workspaceView]);
@@ -34,7 +34,7 @@ export default function useNavigation({
       setWorkspaceView('library');
       return;
     }
-    if (nextSection === 'experiments') {
+    if (nextSection === 'evaluate' || nextSection === 'experiments') {
       setPrimaryView('runs');
       setRunsView('compare');
     }

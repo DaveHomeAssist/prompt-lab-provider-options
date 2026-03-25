@@ -1,7 +1,6 @@
-import { useEffect, useRef, useState } from 'react';
-import Ic from './icons';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import {
-  wordDiff, scorePrompt,
+  scorePrompt,
   ngramSimilarity,
   suggestTitleFromText,
 } from './promptUtils';
@@ -28,9 +27,8 @@ import {
   filterCommands,
 } from './lib/navigationRegistry.js';
 import MainWorkspace from './MainWorkspace';
-import EditorActions from './EditorActions';
+import CreateEditorPane from './CreateEditorPane';
 import { ThemeProvider } from './theme/ThemeProvider.jsx';
-import MarkdownPreview from './MarkdownPreview';
 import AppHeader from './AppHeader';
 import SavePanel from './SavePanel';
 import TemplateVariablesModal from './modals/TemplateVariablesModal';
@@ -43,8 +41,6 @@ import PiiWarningModal from './modals/PiiWarningModal';
 export default function App() {
   const ui = useUiState();
   const [showDesktopSettings, setShowDesktopSettings] = useState(false);
-  const [showGoldenComparison, setShowGoldenComparison] = useState(true);
-  const [showQuickInject, setShowQuickInject] = useState(true);
   const [mdPreview, setMdPreview] = useState(false);
   const [enhMdPreview, setEnhMdPreview] = useState(false);
   const [resultTab, setResultTab] = useState('improved');
@@ -125,7 +121,7 @@ export default function App() {
     varVals, setVarVals, showVarForm, setShowVarForm, pendingTemplate, applyTemplate, skipTemplate,
     editorLayout, setEditorLayout,
     composerBlocks, setComposerBlocks,
-    enhance, doSave, clearEditor, closeSavePanel, openSavePanel, openOptions, copy, cancelEnhance,
+    enhance, enhanceWithMode, doSave, clearEditor, closeSavePanel, openSavePanel, openOptions, copy, cancelEnhance,
     loadEntry, sendEntryToABTest, addToComposer,
     hasSavablePrompt, currentTestCases,
   } = ed;
@@ -143,8 +139,11 @@ export default function App() {
   const { activeSection, openCreateView, openSection, openRunsView } = nav;
 
   // ── Derived (view-only) ──
-  const score = scorePrompt(raw);
-  const wc = typeof raw === 'string' && raw.trim() ? raw.trim().split(/\s+/).length : 0;
+  const score = useMemo(() => scorePrompt(raw), [raw]);
+  const wc = useMemo(
+    () => (typeof raw === 'string' && raw.trim() ? raw.trim().split(/\s+/).length : 0),
+    [raw],
+  );
   const compact = viewportWidth < 720 || viewportHeight < 560;
   const effectiveEditorLayout = compact && editorLayout === 'split' ? 'editor' : editorLayout;
   const inp = `w-full ${m.input} border rounded-lg p-3 text-sm resize-none focus:outline-none focus:border-violet-500 transition-colors placeholder-gray-400 ${m.text}`;
@@ -280,7 +279,7 @@ export default function App() {
     goEditor: () => { openSection('create'); closePalette(); },
     goLibrary: () => { openSection('library'); closePalette(); },
     goBuild: () => { openCreateView('composer'); closePalette(); },
-    goRuns: () => { openSection('experiments'); closePalette(); },
+    goRuns: () => { openSection('evaluate'); closePalette(); },
     goCompare: () => { openRunsView('compare'); closePalette(); },
     goNotebook: () => { setPrimaryView('notebook'); closePalette(); },
     toggleTheme: () => { setColorMode(p => p === 'dark' ? 'light' : 'dark'); closePalette(); },
@@ -291,6 +290,12 @@ export default function App() {
   });
   const filteredCmds = filterCommands(CMD_ACTIONS, cmdQuery);
   const quickSave = () => persistenceFlow.doSave(executionFlow.refreshEvalRuns, { titleOverride: suggestedSaveTitle });
+  const handleReEnhance = (modeId) => {
+    setEnhMode(modeId);
+    setResultTab('improved');
+    setEnhMdPreview(false);
+    enhanceWithMode(modeId);
+  };
 
   // ─────────────────────────────────────────────────────────────────────────
   return (
@@ -321,596 +326,45 @@ export default function App() {
           showEditorPane={showEditorPane}
           showLibraryPane={showLibraryPane}
           editorPane={(
-            <div className="pl-tab-panel h-full min-h-0 flex flex-col overflow-hidden">
-              <div className="p-4 flex flex-col gap-3 h-full min-h-0 overflow-hidden">
-              {lib.quickInject.length > 0 && (
-                <div className={`${m.surface} border ${m.border} rounded-lg`}>
-                  <button
-                    type="button"
-                    onClick={() => setShowQuickInject((prev) => !prev)}
-                    className={`w-full flex items-center justify-between px-3 py-2 text-xs font-semibold ${m.textSub} uppercase tracking-wider`}
-                  >
-                    <span className="flex items-center gap-1.5">
-                      <Ic n="Zap" size={10} className="text-yellow-500" />
-                      Frequently Used
-                    </span>
-                    <Ic n={showQuickInject ? 'ChevronUp' : 'ChevronDown'} size={10} />
-                  </button>
-                  {showQuickInject && (
-                    <div className="px-3 pb-3 flex flex-col gap-2">
-                      <p className={`text-xs ${m.textMuted}`}>Reuse saved prompts without leaving Create. Load replaces the current draft; Copy keeps your editor state intact.</p>
-                      <div className="flex flex-col gap-1.5">
-                        {lib.quickInject.map((entry) => (
-                          <div key={entry.id} className={`flex flex-wrap items-center justify-between ${m.codeBlock} border ${m.border} rounded-lg px-3 py-2 gap-2`}>
-                            <span className={`text-xs ${m.textBody} min-w-0 flex-1 truncate`}>{entry.title}</span>
-                            <div className="flex flex-wrap gap-2 shrink-0">
-                              <button
-                                type="button"
-                                onClick={() => { copy(entry.enhanced, `Copied: ${entry.title}`); lib.bumpUse(entry.id); }}
-                                className={`ui-control px-2 py-1 rounded text-xs font-semibold transition-colors ${m.btn} ${m.textAlt}`}
-                              >
-                                Copy
-                              </button>
-                              <button
-                                type="button"
-                                onClick={() => loadEntry(entry)}
-                                className="ui-control px-2 py-1 rounded bg-violet-600 text-white text-xs font-semibold transition-colors hover:bg-violet-500"
-                              >
-                                Load
-                              </button>
-                            </div>
-                          </div>
-                        ))}
-                      </div>
-                    </div>
-                  )}
-                </div>
-              )}
-              {showCreateContext && (
-                <div className={`${m.surface} border ${m.border} rounded-xl p-3`}>
-                  <div className={`flex items-start justify-between gap-3 ${compact ? 'flex-col' : ''}`}>
-                    <div className="min-w-0">
-                      <div className="flex items-center gap-2 flex-wrap">
-                        <span className="text-xs text-violet-400 uppercase tracking-widest font-semibold">
-                          {currentEntry ? 'Editing' : 'Draft'}
-                        </span>
-                        {currentEntry?.collection && (
-                          <span className={`inline-flex items-center rounded-full px-2 py-0.5 text-[10px] font-semibold ${m.codeBlock} ${m.textSub}`}>
-                            {currentEntry.collection}
-                          </span>
-                        )}
-                      </div>
-                      <p className={`mt-1 text-sm font-semibold ${m.text}`}>
-                        {currentEntry?.title || suggestedSaveTitle}
-                      </p>
-                      <p className={`mt-1 text-xs ${m.textMuted}`}>
-                        {currentEntry
-                          ? 'Changes stay attached to this library prompt until you save or switch context.'
-                          : 'Your next save creates a new library prompt. Add tags and collection only if you need them.'}
-                      </p>
-                    </div>
-                    <div className={`flex flex-wrap items-center gap-2 ${compact ? 'w-full' : 'justify-end'} shrink-0`}>
-                      {currentEntry && (
-                        <button
-                          type="button"
-                          onClick={() => openSection('library')}
-                          className={`ui-control rounded-lg px-3 py-1.5 text-xs font-semibold transition-colors ${m.btn} ${m.textAlt}`}
-                        >
-                          View in Library
-                        </button>
-                      )}
-                      {canSavePanel && (
-                        <button
-                          type="button"
-                          onClick={() => openSavePanel()}
-                          className="ui-control rounded-lg bg-violet-600 px-3 py-1.5 text-xs font-semibold text-white transition-colors hover:bg-violet-500"
-                        >
-                          {currentEntry ? 'Edit Save Details' : 'Open Save Details'}
-                        </button>
-                      )}
-                    </div>
-                  </div>
-                </div>
-              )}
-              {/* Input */}
-              <div>
-                <div className={`flex justify-between items-center mb-1.5 ${compact ? 'gap-2 flex-wrap' : ''}`}>
-                  <div className="flex items-center gap-2">
-                    <span className={`text-xs ${m.textSub} uppercase tracking-widest font-semibold`}>Input</span>
-                    <div className="flex rounded-md overflow-visible border" style={{ borderColor: 'rgba(255,255,255,0.1)' }}>
-                      <button type="button" onClick={() => setMdPreview(false)} aria-pressed={!mdPreview}
-                        className={`text-[10px] px-2 py-0.5 transition-colors ${!mdPreview ? 'bg-violet-600 text-white' : `${m.btn} ${m.textAlt}`}`}>Write</button>
-                      <button type="button" onClick={() => setMdPreview(true)} aria-pressed={mdPreview}
-                        className={`text-[10px] px-2 py-0.5 transition-colors ${mdPreview ? 'bg-violet-600 text-white' : `${m.btn} ${m.textAlt}`}`}>Preview</button>
-                    </div>
-                  </div>
-                  <span className={`text-xs ${m.textMuted}`}>{wc}w · {raw.length}c{score ? ` · ~${score.tokens} tok` : ''}</span>
-                </div>
-                {mdPreview ? (
-                  <div className={`${inp} overflow-y-auto`} style={{ minHeight: '12rem', maxHeight: '24rem' }}>
-                    {raw.trim() ? <MarkdownPreview text={raw} /> : <span className={`text-sm ${m.textSub}`}>Nothing to preview</span>}
-                  </div>
-                ) : (
-                  <textarea rows={8} className={inp} placeholder="Paste or write your prompt here…" value={raw} onChange={e => setRaw(e.target.value)} />
-                )}
-              </div>
-              {/* Scoring */}
-              {score && (() => {
-                const checks = [['Role', score.role], ['Task', score.task], ['Format', score.format], ['Constraints', score.constraints], ['Context', score.context]];
-                const cnt = checks.filter(c => c[1]).length;
-                return (
-                  <div className={`${m.surface} border ${m.border} rounded-lg p-3`}>
-                    <div className="flex justify-between items-center mb-2">
-                      <span className={`text-xs font-semibold ${m.textSub} uppercase tracking-wider`}>Prompt Quality</span>
-                      <span className={`text-xs font-bold ${cnt >= 4 ? 'text-green-500' : cnt >= 2 ? 'text-yellow-500' : 'text-red-500'}`}>{cnt}/5</span>
-                    </div>
-                    <div className="flex gap-3 flex-wrap">
-                      {checks.map(([lbl, ok]) => (
-                        <span key={lbl} className={`flex items-center gap-1 text-xs ${ok ? m.scoreGood : m.scoreBad}`}>
-                          {ok ? <Ic n="Check" size={9} /> : <Ic n="X" size={9} />}{lbl}
-                        </span>
-                      ))}
-                    </div>
-                  </div>
-                );
-              })()}
-              {/* Lint Issues */}
-              {lintIssues.length > 0 && (
-                <div className={`${m.surface} border ${m.border} rounded-lg`}>
-                  <button onClick={() => setLintOpen(p => !p)}
-                    className={`w-full flex justify-between items-center px-3 py-2 text-xs font-semibold ${m.textSub} uppercase tracking-wider`}>
-                    <span>Lint ({lintIssues.length} {lintIssues.length === 1 ? 'issue' : 'issues'})</span>
-                    <Ic n={lintOpen ? 'ChevronUp' : 'ChevronDown'} size={10} />
-                  </button>
-                  {lintOpen && (
-                    <div className="px-3 pb-3 flex flex-col gap-1.5">
-                      {lintIssues.map(issue => (
-                        <div key={issue.id} className={`flex items-start justify-between gap-2 text-xs ${
-                          issue.severity === 'warning' ? 'text-yellow-400' : m.textAlt
-                        }`}>
-                          <span className="flex-1">{issue.message}</span>
-                          <button onClick={() => handleLintFix(issue.id)}
-                            className="shrink-0 text-violet-400 hover:text-violet-300 text-xs underline">Fix</button>
-                        </div>
-                      ))}
-                    </div>
-                  )}
-                </div>
-              )}
-              {/* Mode + Enhance */}
-              <span className={`text-xs ${m.textSub} uppercase tracking-widest font-semibold`}>Enhance Lab</span>
-              <EditorActions
-                m={m}
-                compact={compact}
-                enhMode={enhMode}
-                onEnhanceModeChange={setEnhMode}
-                onEnhance={enhance}
-                onRunCases={runAllCases}
-                onSave={() => openSavePanel()}
-                onClear={clearEditor}
-                onCancelEnhance={cancelEnhance}
-                loading={loading}
-                hasInput={Boolean(raw.trim())}
-                runningCases={runningCases}
-                batchProgress={batchProgress}
-                testCaseCount={currentTestCases.length}
-                hasSavablePrompt={hasSavablePrompt}
-                enhanceShortcutLabel={`${primaryModKey}+Enter`}
-              />
-              {(loading || batchProgress.active || optimisticSaveVisible) && (
-                <div className={`${m.surface} border ${m.border} rounded-lg px-3 py-2 flex items-center justify-between gap-3`}>
-                  <div className="min-w-0">
-                    {loading ? (
-                      <>
-                        <p className={`text-xs font-semibold ${m.textSub} uppercase tracking-wider`}>Generation Active</p>
-                        <p className={`text-xs ${m.textMuted} truncate`}>
-                          {streaming ? 'Streaming response from provider…' : 'Preparing response…'}
-                        </p>
-                      </>
-                    ) : batchProgress.active ? (
-                      <>
-                        <p className={`text-xs font-semibold ${m.textSub} uppercase tracking-wider`}>Batch Progress</p>
-                        <p className={`text-xs ${m.textMuted} truncate`}>
-                          {Math.min(batchProgress.completed, batchProgress.total)}/{batchProgress.total} complete
-                          {batchProgress.currentLabel ? ` · ${batchProgress.currentLabel}` : ''}
-                        </p>
-                      </>
-                    ) : (
-                      <>
-                        <p className={`text-xs font-semibold ${m.textSub} uppercase tracking-wider`}>Save Ready</p>
-                        <p className={`text-xs ${m.textMuted}`}>You can save this draft before the final result finishes.</p>
-                      </>
-                    )}
-                  </div>
-                  <div className="flex items-center gap-2 shrink-0">
-                    {hasSavablePrompt && !showSave && (
-                      <button
-                        type="button"
-                        onClick={() => openSavePanel()}
-                        className="ui-control rounded-lg bg-green-600 px-3 py-1.5 text-xs font-semibold text-white transition-colors hover:bg-green-500"
-                      >
-                        Save Draft
-                      </button>
-                    )}
-                    {loading && (
-                      <button
-                        type="button"
-                        onClick={cancelEnhance}
-                        className={`ui-control rounded-lg px-3 py-1.5 text-xs font-semibold transition-colors ${m.btn} ${m.textAlt}`}
-                      >
-                        Cancel
-                      </button>
-                    )}
-                  </div>
-                </div>
-              )}
-              {editingId && currentTestCases.length > 0 && (
-                <div className={`flex items-center justify-between ${m.surface} border ${m.border} rounded-lg px-3 py-2`}>
-                  <span className={`text-xs ${m.textSub} flex items-center gap-1.5`}>
-                    <Ic n="FlaskConical" size={10} />
-                    {currentTestCases.length} test {currentTestCases.length === 1 ? 'case' : 'cases'}
-                  </span>
-                  <button onClick={runAllCases} disabled={loading || runningCases}
-                    className="flex items-center gap-1 text-xs text-blue-400 hover:text-blue-300 disabled:opacity-40 font-semibold transition-colors">
-                    {runningCases ? <span className="w-3 h-3 border-2 border-blue-400 border-t-transparent rounded-full animate-spin" /> : <Ic n="FlaskConical" size={10} />}
-                    {batchProgress.active ? `${Math.min(batchProgress.completed, batchProgress.total)}/${batchProgress.total}` : 'Run All'}
-                  </button>
-                </div>
-              )}
-              {error && (
-                <div className={`rounded-xl border p-3 ${colorMode === 'dark' ? 'border-red-500/35 bg-red-950/24' : 'border-red-300 bg-red-50'}`}>
-                  <div className="flex items-start justify-between gap-3">
-                    <div className="min-w-0">
-                      <p className={`text-[11px] font-semibold uppercase tracking-wider ${colorMode === 'dark' ? 'text-red-300' : 'text-red-700'}`}>Recovery</p>
-                      <p className={`mt-1 text-sm font-semibold ${colorMode === 'dark' ? 'text-red-100' : 'text-red-800'}`}>{error.userMessage}</p>
-                    </div>
-                    <Ic n="AlertTriangle" size={14} className={`${colorMode === 'dark' ? 'text-red-300' : 'text-red-600'} shrink-0 mt-0.5`} />
-                  </div>
-                  {error.suggestions?.length > 0 && (
-                    <div className="mt-3">
-                      <p className={`text-[11px] font-semibold uppercase tracking-wider ${colorMode === 'dark' ? 'text-red-200/80' : 'text-red-700/80'}`}>Next steps</p>
-                      <div className="mt-2 flex flex-wrap gap-2">
-                        {error.suggestions.map((suggestion, index) => (
-                          <span key={index} className={`inline-flex items-center rounded-full border px-2.5 py-1 text-xs ${colorMode === 'dark' ? 'border-red-400/20 bg-red-500/10 text-red-100' : 'border-red-200 bg-white text-red-700'}`}>
-                            {suggestion}
-                          </span>
-                        ))}
-                      </div>
-                    </div>
-                  )}
-                  <div className="mt-3 flex flex-wrap gap-2">
-                    {error.actions?.includes('retry') && (
-                      <button
-                        type="button"
-                        onClick={() => enhance()}
-                        className="ui-control inline-flex items-center gap-1.5 rounded-lg bg-violet-600 px-3 py-1.5 text-xs font-semibold text-white transition-colors hover:bg-violet-500"
-                      >
-                        <Ic n="RefreshCw" size={11} />
-                        Try Again
-                      </button>
-                    )}
-                    {error.actions?.includes('open_provider_settings') && (
-                      <button
-                        type="button"
-                        onClick={openOptions}
-                        className={`ui-control inline-flex items-center gap-1.5 rounded-lg px-3 py-1.5 text-xs font-semibold transition-colors ${m.btn} ${m.textAlt}`}
-                      >
-                        <Ic n="Settings" size={11} />
-                        Open Provider Settings
-                      </button>
-                    )}
-                  </div>
-                </div>
-              )}
-              <div className="min-h-0 flex-1 overflow-y-auto pr-1 space-y-3">
-              {/* Enhanced */}
-              {(loading || enhanced) && <>
-                {loading && !enhanced && (
-                  <div className={`${m.surface} border ${m.border} rounded-xl p-3`}>
-                    <div className={`flex justify-between items-start gap-3 mb-3 ${compact ? 'flex-col' : ''}`}>
-                      <div className="min-w-0">
-                        <div className="flex items-center gap-2 flex-wrap">
-                          <span className="text-xs text-violet-400 uppercase tracking-widest font-semibold">Results</span>
-                          <span className="inline-flex items-center gap-1 rounded-full bg-violet-500/15 px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wide text-violet-300">
-                            <span className="h-1.5 w-1.5 rounded-full bg-violet-300 animate-pulse" />
-                            {streaming ? 'Streaming' : 'Preparing'}
-                          </span>
-                        </div>
-                        <p className={`mt-1 text-xs ${m.textMuted}`}>Output stays live while the request is in flight.</p>
-                      </div>
-                    </div>
-                    <div className="pl-skeleton-stack">
-                      <div className="pl-skeleton-line w-4/5" />
-                      <div className="pl-skeleton-line w-full" />
-                      <div className="pl-skeleton-line w-11/12" />
-                    </div>
-                    {streamPreview && (
-                      <div className={`${m.codeBlock} border ${m.border} rounded-lg p-3 text-xs leading-relaxed whitespace-pre-wrap mt-3 max-h-56 overflow-y-auto`}>
-                        {streamPreview}
-                      </div>
-                    )}
-                  </div>
-                )}
-              {enhanced && <>
-                <div className={`${m.surface} border ${m.border} rounded-xl p-3`}>
-                  <div className={`flex justify-between items-start gap-3 mb-3 ${compact ? 'flex-col' : ''}`}>
-                    <div className="min-w-0">
-                      <div className="flex items-center gap-2 flex-wrap">
-                        <span className="text-xs text-violet-400 uppercase tracking-widest font-semibold">Results</span>
-                        {goldenVerdict && (
-                          <span className={`text-[10px] font-bold uppercase px-1.5 py-0.5 rounded ${goldenVerdict === 'pass' ? 'bg-emerald-500/20 text-emerald-400' : 'bg-red-500/20 text-red-400'}`}>
-                            {goldenVerdict === 'pass' ? '✓' : '✗'} {Math.round(goldenSimilarity * 100)}%
-                          </span>
-                        )}
-                      </div>
-                      <p className={`mt-1 text-xs ${m.textMuted}`}>Review output, compare changes, and decide what to keep.</p>
-                    </div>
-                    <div className={`flex items-center gap-2 ${compact ? 'w-full flex-wrap' : 'justify-end flex-wrap'} min-w-0`}>
-                      {activeResultTab === 'improved' && (
-                        <button onClick={() => setEnhMdPreview(p => !p)} className={`flex items-center gap-1 text-xs transition-colors ${enhMdPreview ? 'text-violet-400' : `${m.textSub} hover:text-white`} shrink-0`}>
-                          <Ic n="Eye" size={10} />{enhMdPreview ? 'Edit' : 'Preview'}
-                        </button>
-                      )}
-                      {editingId && (
-                        <button
-                          onClick={() => lib.pinGoldenResponse(editingId, {
-                            text: enhanced,
-                            runId: latestEvalRun?.id,
-                            provider: latestEvalRun?.provider,
-                            model: latestEvalRun?.model,
-                          })}
-                          disabled={!enhanced.trim()}
-                          className={`flex items-center gap-1.5 text-xs px-2 py-1 rounded transition-colors shrink-0 ${
-                            enhanced.trim() ? 'bg-emerald-500/15 text-emerald-300 hover:bg-emerald-500/25' : `${m.btn} ${m.textMuted} opacity-40 cursor-not-allowed`
-                          }`}
-                        >
-                          <Ic n="Save" size={12} />Pin Golden
-                        </button>
-                      )}
-                      <button
-                        onClick={() => copy(enhanced)}
-                        className={`flex items-center gap-1.5 text-xs px-2.5 py-1.5 rounded-md font-semibold transition-colors ${copyBtn} shrink-0`}
-                      ><Ic n="Copy" size={12} />Copy</button>
-                    </div>
-                  </div>
-
-                  <div className="flex flex-wrap gap-1.5 mb-3" role="tablist" aria-label="Result views">
-                    {resultTabs.map(({ id, label }) => (
-                      <button
-                        key={id}
-                        type="button"
-                        role="tab"
-                        aria-selected={activeResultTab === id}
-                        onClick={() => {
-                          setResultTab(id);
-                          if (id !== 'improved') setEnhMdPreview(false);
-                        }}
-                        className={`ui-control rounded-lg px-2.5 py-1.5 text-xs font-semibold transition-colors ${activeResultTab === id ? 'bg-violet-600 text-white' : `${m.btn} ${m.textAlt}`}`}
-                      >
-                        {label}
-                      </button>
-                    ))}
-                  </div>
-
-                  {showInlineSaveBar && (
-                    <div className={`${m.codeBlock} border ${m.border} rounded-lg p-3 mb-3`}>
-                      <div className={`flex items-start gap-3 ${compact ? 'flex-col' : 'justify-between'}`}>
-                        <div className="min-w-0">
-                          <p className={`text-[11px] font-semibold uppercase tracking-wider ${m.textSub}`}>
-                            {currentEntry ? 'Update library prompt' : 'Save this result'}
-                          </p>
-                          <p className={`mt-1 text-xs ${m.textMuted}`}>
-                            {currentEntry
-                              ? 'Keep the title tight here, or open details for collection, tags, and change notes.'
-                              : 'Use the suggested title for a fast save, or open details for collection and tags.'}
-                          </p>
-                        </div>
-                        <div className={`flex items-center gap-2 ${compact ? 'w-full flex-col items-stretch' : 'flex-1 justify-end'}`}>
-                          <label htmlFor="inline-save-title" className="sr-only">Prompt title</label>
-                          <input
-                            id="inline-save-title"
-                            className={`${m.input} border rounded-lg px-3 py-2 text-sm focus:outline-none focus:border-violet-500 ${m.text} ${compact ? 'w-full' : 'min-w-[14rem] flex-1 max-w-sm'}`}
-                            placeholder={suggestedSaveTitle}
-                            value={saveTitle}
-                            onChange={(e) => setSaveTitle(e.target.value)}
-                          />
-                          <div className={`flex items-center gap-2 ${compact ? 'w-full' : ''}`}>
-                            <button
-                              type="button"
-                              onClick={quickSave}
-                              disabled={!canSavePanel}
-                              className="ui-control rounded-lg bg-green-600 px-3 py-2 text-xs font-semibold text-white transition-colors hover:bg-green-500 disabled:opacity-40"
-                            >
-                              {currentEntry ? 'Update' : 'Save'}
-                            </button>
-                            <button
-                              type="button"
-                              onClick={() => openSavePanel()}
-                              className={`ui-control rounded-lg px-3 py-2 text-xs font-semibold transition-colors ${m.btn} ${m.textAlt}`}
-                            >
-                              Details
-                            </button>
-                          </div>
-                        </div>
-                      </div>
-                    </div>
-                  )}
-
-                  {activeResultTab === 'improved' && (
-                    enhMdPreview ? (
-                      <div className={`${inp} border-violet-500/40 overflow-y-auto`} style={{ minHeight: '8rem', maxHeight: '24rem' }}>
-                        <MarkdownPreview text={enhanced} />
-                      </div>
-                    ) : (
-                      <textarea rows={5} className={`${inp} border-violet-500/40`} value={enhanced} onChange={e => setEnhanced(e.target.value)} />
-                    )
-                  )}
-
-                  {activeResultTab === 'diff' && (
-                    <div className={`${m.codeBlock} border ${m.border} rounded-lg p-3 text-sm leading-loose overflow-x-auto whitespace-pre-wrap break-words [overflow-wrap:anywhere]`}>
-                      {wordDiff(raw, enhanced).map((d, i) => (
-                        <span key={i} className={`${d.t === 'add' ? m.diffAdd : d.t === 'del' ? m.diffDel : m.diffEq} px-0.5 rounded mr-0.5 break-words [overflow-wrap:anywhere]`}>{d.v}</span>
-                      ))}
-                    </div>
-                  )}
-
-                  {activeResultTab === 'variants' && variants.length > 0 && (
-                    <div className="flex flex-col gap-2">
-                      {variants.map((v, i) => (
-                        <div key={i} className={`${m.codeBlock} border ${m.border} ${m.borderHov} rounded-lg p-3 transition-colors`}>
-                          <div className="flex justify-between items-center mb-1 gap-3">
-                            <span className="text-xs font-bold text-violet-400">{v.label}</span>
-                            <div className="flex gap-3">
-                              <button onClick={() => { setEnhanced(v.content); setResultTab('improved'); }} className={`text-xs ${m.textAlt} hover:text-violet-400 transition-colors`}>Use</button>
-                              <button onClick={() => copy(v.content)} className={`${m.textAlt} hover:text-white transition-colors`}><Ic n="Copy" size={10} /></button>
-                            </div>
-                          </div>
-                          <p className={`text-xs ${m.textAlt} leading-relaxed whitespace-pre-wrap`}>{v.content}</p>
-                        </div>
-                      ))}
-                    </div>
-                  )}
-
-                  {activeResultTab === 'notes' && showNotes && notes && (
-                    <div className={`${m.notesBg} border rounded-lg p-3`}>
-                      <p className={`text-xs font-bold ${m.notesText} mb-1`}>Enhancement Notes</p>
-                      <p className={`text-xs ${m.textBody} leading-relaxed whitespace-pre-wrap`}>{notes}</p>
-                    </div>
-                  )}
-                </div>
-                <div className={`${m.surface} border ${m.border} rounded-lg`}>
-                  <button type="button" onClick={() => setShowEvalHistory(p => !p)}
-                    className={`w-full flex justify-between items-center px-3 py-2 text-xs font-semibold ${m.textSub} uppercase tracking-wider`}>
-                    <span>{editingId ? `Run History (${evalRuns.length})` : `Recent Runs (${evalRuns.length})`}</span>
-                    <Ic n={showEvalHistory ? 'ChevronUp' : 'ChevronDown'} size={10} />
-                  </button>
-                  {showEvalHistory && evalRuns.length > 0 && (
-                    <div className="px-3 pb-3 flex flex-col gap-2 max-h-56 overflow-y-auto">
-                      {evalRuns.map((run) => (
-                        <div key={run.id} className={`${m.codeBlock} border ${m.border} rounded-lg p-2.5 text-xs`}>
-                          <div className="flex items-center justify-between gap-2 mb-1">
-                            <span className="font-semibold text-violet-400 truncate">{run.variantLabel || run.promptTitle}</span>
-                            <span className={m.textMuted}>{new Date(run.createdAt).toLocaleString([], { month: 'short', day: 'numeric', hour: 'numeric', minute: '2-digit' })}</span>
-                          </div>
-                          <div className={`flex flex-wrap gap-2 mb-1 ${m.textMuted}`}>
-                            <span className="uppercase">{run.mode}</span>
-                            <span>{run.provider}</span>
-                            <span>{run.model}</span>
-                            <span>{run.latencyMs}ms</span>
-                            {run.goldenScore != null && (
-                              <span className={`font-semibold ${run.goldenScore >= goldenThreshold ? 'text-emerald-400' : 'text-red-400'}`}>
-                                golden {Math.round(run.goldenScore * 100)}%
-                              </span>
-                            )}
-                          </div>
-                          <p className={`${m.textBody} leading-relaxed whitespace-pre-wrap`}>{(run.output || '').slice(0, 220)}{run.output && run.output.length > 220 ? '…' : ''}</p>
-                          {run.output && (
-                            <div className="mt-1 flex flex-wrap gap-3">
-                              <button onClick={() => copy(run.output, 'Run output copied')}
-                                className={`flex items-center gap-1 text-xs px-2 py-1 rounded-md font-semibold transition-colors ${copyBtn}`}>
-                                <Ic n="Copy" size={10} />Copy output
-                              </button>
-                              {editingId && (
-                                <button
-                                  onClick={() => lib.pinGoldenResponse(editingId, {
-                                    text: run.output,
-                                    runId: run.id,
-                                    provider: run.provider,
-                                    model: run.model,
-                                  })}
-                                  className="flex items-center gap-1 text-emerald-400 hover:text-emerald-300 transition-colors font-semibold"
-                                >
-                                  <Ic n="Save" size={10} />Pin as Golden
-                                </button>
-                              )}
-                            </div>
-                          )}
-                        </div>
-                      ))}
-                    </div>
-                  )}
-                  {showEvalHistory && evalRuns.length === 0 && (
-                    <div className={`ui-empty-state px-3 pb-3 text-xs ${m.textMuted}`}>No saved runs yet.</div>
-                  )}
-                </div>
-                {editingId && goldenResponse && (
-                  <div className={`${m.surface} border ${m.border} rounded-lg`}>
-                    <button
-                      type="button"
-                      onClick={() => setShowGoldenComparison((p) => !p)}
-                      className={`w-full flex justify-between items-center px-3 py-2 text-xs font-semibold ${m.textSub} uppercase tracking-wider`}
-                    >
-                      <span>Golden Benchmark</span>
-                      <Ic n={showGoldenComparison ? 'ChevronUp' : 'ChevronDown'} size={10} />
-                    </button>
-                    {showGoldenComparison && (
-                      <div className="px-3 pb-3 flex flex-col gap-3">
-                        <div className={`${m.codeBlock} border ${m.border} rounded-lg p-3`}>
-                          <div className="flex items-start justify-between gap-3 mb-2">
-                            <div>
-                              <p className="text-xs font-semibold text-emerald-400 uppercase tracking-wider">Pinned Golden</p>
-                              <p className={`text-xs ${m.textMuted} mt-1`}>
-                                {goldenResponse.provider || 'Unknown provider'}
-                                {goldenResponse.model ? ` · ${goldenResponse.model}` : ''}
-                                {goldenResponse.pinnedAt ? ` · ${new Date(goldenResponse.pinnedAt).toLocaleString()}` : ''}
-                              </p>
-                            </div>
-                            <button
-                              onClick={() => lib.clearGoldenResponse(editingId)}
-                              className="flex items-center gap-1 text-xs text-red-400 hover:text-red-300 transition-colors font-semibold"
-                            >
-                              <Ic n="Trash2" size={10} />Clear Golden
-                            </button>
-                          </div>
-                          <div className="flex items-center justify-between gap-3 mb-1">
-                            <span className={`text-xs ${m.textSub}`}>Similarity vs {comparisonSourceLabel.toLowerCase()}</span>
-                            <span className={`text-xs font-semibold ${goldenVerdict === 'fail' ? 'text-red-400' : 'text-emerald-400'}`}>
-                              {Math.round(goldenSimilarity * 100)}%
-                              {goldenVerdict && <span className="ml-1">({goldenVerdict})</span>}
-                            </span>
-                          </div>
-                          <div className={`relative w-full h-2 rounded-full overflow-hidden ${m.input} border ${m.border}`}>
-                            <div className={`h-full transition-all ${goldenVerdict === 'fail' ? 'bg-red-500' : 'bg-emerald-500'}`} style={{ width: `${Math.max(0, Math.min(100, goldenSimilarity * 100))}%` }} />
-                            <div className="absolute top-0 bottom-0 w-px bg-white/50" style={{ left: `${goldenThreshold * 100}%` }} title={`Threshold: ${Math.round(goldenThreshold * 100)}%`} />
-                          </div>
-                          <div className="flex items-center justify-between gap-2 mt-2">
-                            <label className={`text-xs ${m.textMuted}`}>Pass threshold</label>
-                            <div className="flex items-center gap-2">
-                              <input
-                                type="range" min="0" max="100" step="5"
-                                value={Math.round(goldenThreshold * 100)}
-                                onChange={(e) => lib.setGoldenThreshold(editingId, Number(e.target.value) / 100)}
-                                className="w-20 h-1 accent-emerald-500"
-                              />
-                              <span className={`text-xs font-mono ${m.textSub} w-8 text-right`}>{Math.round(goldenThreshold * 100)}%</span>
-                            </div>
-                          </div>
-                        </div>
-                        {comparisonText ? (
-                          <div>
-                            <p className={`text-xs ${m.textSub} font-semibold mb-1 uppercase tracking-wider`}>
-                              Word Diff: Golden vs {comparisonSourceLabel}
-                            </p>
-                            <div className={`${m.codeBlock} border ${m.border} rounded-lg p-3 text-sm leading-loose`}>
-                              {wordDiff(goldenResponse.text, comparisonText).map((d, i) => (
-                                <span key={i} className={`${d.t === 'add' ? m.diffAdd : d.t === 'del' ? m.diffDel : m.diffEq} px-0.5 rounded mr-0.5`}>
-                                  {d.v}
-                                </span>
-                              ))}
-                            </div>
-                          </div>
-                        ) : (
-                          <p className={`text-xs ${m.textMuted}`}>No enhanced output or eval run output is available to compare yet.</p>
-                        )}
-                      </div>
-                    )}
-                  </div>
-                )}
-              </>}
-              </>}
-              </div>
-            </div>
-            </div>
+            <CreateEditorPane
+              m={m}
+              compact={compact}
+              colorMode={colorMode}
+              quickInject={lib.quickInject}
+              loadEntry={loadEntry}
+              copy={copy}
+              bumpUse={lib.bumpUse}
+              showCreateContext={showCreateContext}
+              currentEntry={currentEntry}
+              suggestedSaveTitle={suggestedSaveTitle}
+              canSavePanel={canSavePanel}
+              openSavePanel={openSavePanel}
+              openSection={openSection}
+              raw={raw} setRaw={setRaw}
+              mdPreview={mdPreview} setMdPreview={setMdPreview}
+              wc={wc} score={score} inp={inp}
+              lintIssues={lintIssues} lintOpen={lintOpen} setLintOpen={setLintOpen} handleLintFix={handleLintFix}
+              enhMode={enhMode} setEnhMode={setEnhMode}
+              enhance={enhance} runAllCases={runAllCases} clearEditor={clearEditor} cancelEnhance={cancelEnhance}
+              loading={loading} runningCases={runningCases} batchProgress={batchProgress}
+              currentTestCases={currentTestCases} hasSavablePrompt={hasSavablePrompt} primaryModKey={primaryModKey}
+              streaming={streaming} optimisticSaveVisible={optimisticSaveVisible} showSave={showSave}
+              error={error} openOptions={openOptions}
+              enhanced={enhanced} setEnhanced={setEnhanced}
+              enhMdPreview={enhMdPreview} setEnhMdPreview={setEnhMdPreview}
+              resultTab={resultTab} setResultTab={setResultTab}
+              resultTabs={resultTabs} activeResultTab={activeResultTab} copyBtn={copyBtn}
+              showInlineSaveBar={showInlineSaveBar}
+              saveTitle={saveTitle} setSaveTitle={setSaveTitle} quickSave={quickSave}
+              editingId={editingId}
+              goldenResponse={goldenResponse} goldenSimilarity={goldenSimilarity}
+              goldenThreshold={goldenThreshold} goldenVerdict={goldenVerdict}
+              comparisonText={comparisonText} comparisonSourceLabel={comparisonSourceLabel}
+              lib={lib}
+              variants={variants} showNotes={showNotes} notes={notes}
+              evalRuns={evalRuns} showEvalHistory={showEvalHistory} setShowEvalHistory={setShowEvalHistory}
+              streamPreview={streamPreview}
+            />
           )}
           libraryPane={(
             <LibraryPanel
@@ -944,8 +398,26 @@ export default function App() {
         </div>
       )}
 
-      {/* ══ A/B TEST TAB ══ */}
-      {tab === 'abtest' && <div className="pl-tab-panel"><ABTestTab m={m} copy={copy} compact={compact} pageScroll={isWeb} {...abTest} /></div>}
+      {/* ══ EVALUATE SURFACE ══ */}
+      {primaryView === 'runs' && (
+        <div className="pl-tab-panel flex h-full min-h-0 flex-col overflow-hidden">
+          <div className={`border-b px-4 py-2 ${m.border} shrink-0`}>
+            <p className={`text-xs font-semibold ${m.textSub} uppercase tracking-wider`}>Evaluate</p>
+            <p className={`mt-1 text-xs ${m.textMuted}`}>
+              {runsView === 'compare'
+                ? 'Compare prompt variants, capture winners, and keep recent A/B runs in one place.'
+                : (currentEntry
+                    ? 'Review enhance, test-case, and A/B runs for the selected prompt.'
+                    : 'Review enhance, test-case, and A/B runs across your saved workbench.')}
+            </p>
+          </div>
+          <div className="min-h-0 flex-1 overflow-hidden">
+            {runsView === 'compare'
+              ? <ABTestTab m={m} copy={copy} compact={compact} pageScroll={isWeb} {...abTest} />
+              : <RunTimelinePanel m={m} prompt={currentEntry} copy={copy} compact={compact} pageScroll={isWeb} />}
+          </div>
+        </div>
+      )}
 
       {/* ══ PAD TAB ══ */}
       {tab === 'pad' && <div className="pl-tab-panel"><PadTab m={m} notify={notify} pageScroll={isWeb} onPromoteToLibrary={(title, content) => {
@@ -956,9 +428,6 @@ export default function App() {
         setTab('editor');
         notify('Loaded into editor — save to library when ready.');
       }} /></div>}
-
-      {/* ══ HISTORY TAB ══ */}
-      {tab === 'history' && <div className="pl-tab-panel"><RunTimelinePanel m={m} prompt={currentEntry} copy={copy} compact={compact} pageScroll={isWeb} /></div>}
       </main>
 
       {showSave && (
