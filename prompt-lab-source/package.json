@@ -18,7 +18,8 @@
     "notion:docs-agent": "npm run check:node && node scripts/notion-docs-agent.mjs",
     "publish:landing": "npm run build:landing",
     "preflight": "npm run check:node && node scripts/preflight.mjs",
-    "preflight:quick": "npm run check:node && node scripts/preflight.mjs --quick"
+    "preflight:quick": "npm run check:node && node scripts/preflight.mjs --quick",
+    "dashboard:update": "npm run check:node && node scripts/notionDashboardUpdate.mjs"
   },
   "devDependencies": {
     "markdownlint-cli2": "^0.18.1"
