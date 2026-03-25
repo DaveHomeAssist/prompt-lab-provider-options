@@ -331,6 +331,7 @@ export default function App() {
               compact={compact}
               colorMode={colorMode}
               quickInject={lib.quickInject}
+              recentPrompts={lib.recentPrompts}
               loadEntry={loadEntry}
               copy={copy}
               bumpUse={lib.bumpUse}

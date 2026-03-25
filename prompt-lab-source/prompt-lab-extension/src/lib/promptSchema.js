@@ -330,6 +330,7 @@ export function normalizeEntry(entry, fallbackTs = new Date().toISOString()) {
     updatedAt,
     updated_at: updatedAt || createdAt,
     useCount: Number.isFinite(entry.useCount) ? Math.max(0, entry.useCount) : 0,
+    lastAccessedAt: entry.lastAccessedAt ? safeDate(entry.lastAccessedAt) : null,
     currentVersionId: ensureString(entry.currentVersionId) || randomId(),
     version,
     schema_version: schemaVersion,

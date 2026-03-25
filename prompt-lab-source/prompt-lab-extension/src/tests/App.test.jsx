@@ -36,6 +36,8 @@ const mocks = vi.hoisted(() => {
       library: [],
       collections: [],
       quickInject: [],
+      recentPrompts: [],
+      trackRecentAccess: fn(),
       expandedVersionId: null,
       diffVersionIdx: null,
       setCollections: fn(),

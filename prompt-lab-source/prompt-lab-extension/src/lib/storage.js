@@ -29,6 +29,14 @@ export function saveJson(key, value) {
   }
 }
 
+export function getAnticipation() {
+  try { return JSON.parse(localStorage.getItem('pl2-anticipation') || '{}'); } catch { return {}; }
+}
+
+export function setAnticipation(data) {
+  localStorage.setItem('pl2-anticipation', JSON.stringify(data));
+}
+
 export function removeKey(key) {
   try {
     localStorage.removeItem(key);

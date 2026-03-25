@@ -8,7 +8,7 @@ import {
   suggestTitleFromText,
   updatePromptEntry,
 } from '../lib/promptSchema.js';
-import { loadJson, saveJson, storageKeys } from '../lib/storage.js';
+import { loadJson, saveJson, storageKeys, getAnticipation, setAnticipation } from '../lib/storage.js';
 import { ensureString } from '../lib/utils.js';
 import {
   getLoadedPacks,
@@ -430,6 +430,25 @@ export default function usePromptLibrary(notify) {
     [library],
   );
 
+  const trackRecentAccess = (id) => {
+    updateLibraryEntry(id, entry => ({
+      ...entry,
+      lastAccessedAt: new Date().toISOString(),
+    }));
+    const ant = getAnticipation();
+    const recent = (ant.lastAccessOrder || []).filter(rid => rid !== id);
+    recent.unshift(id);
+    ant.lastAccessOrder = recent.slice(0, 10);
+    setAnticipation(ant);
+  };
+
+  const recentPrompts = useMemo(() => {
+    const ant = getAnticipation();
+    const order = ant.lastAccessOrder || [];
+    const map = new Map(library.map(entry => [entry.id, entry]));
+    return order.map(id => map.get(id)).filter(Boolean).slice(0, 5);
+  }, [library]);
+
   return {
     library, setLibrary, libReady, collections, setCollections,
     search, setSearch, activeTag, setActiveTag, activeCollection, setActiveCollection,
@@ -440,6 +459,6 @@ export default function usePromptLibrary(notify) {
     pinGoldenResponse, clearGoldenResponse, setGoldenThreshold,
     exportLib, importLib, getShareUrl,
     starterLibraries, loadStarterPack,
-    allLibTags, filtered, quickInject,
+    allLibTags, filtered, quickInject, recentPrompts, trackRecentAccess,
   };
 }

@@ -137,6 +137,7 @@ export default function usePersistenceFlow({ ui, lib, editor }) {
       setSaveSourceEntry(null);
       setShowDiff(false);
       lib.bumpUse(normalized.id);
+      lib.trackRecentAccess(normalized.id);
       setTab('editor');
       notify('Loaded into editor!');
       return;
@@ -148,6 +149,7 @@ export default function usePersistenceFlow({ ui, lib, editor }) {
       if (!promptText.trim() || typeof setABVariant !== 'function') return;
       setABVariant(side, promptText);
       lib.bumpUse(normalized.id);
+      lib.trackRecentAccess(normalized.id);
       setTab('abtest');
       notify(`Loaded ${normalized.title || 'prompt'} into Variant ${side.toUpperCase()}`);
     }

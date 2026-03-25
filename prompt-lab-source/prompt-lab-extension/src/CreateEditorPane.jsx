@@ -29,6 +29,7 @@ export default function CreateEditorPane({
   colorMode,
   // Quick inject
   quickInject,
+  recentPrompts,
   loadEntry,
   copy,
   bumpUse,
@@ -150,6 +151,29 @@ export default function CreateEditorPane({
                 </button>
               )}
             </div>
+          </div>
+        )}
+
+        {/* ── Recent strip ── */}
+        {recentPrompts?.length > 0 && (
+          <div className="flex items-center gap-2 flex-wrap">
+            <span className={`text-[10px] ${m.textMuted} uppercase tracking-wider font-semibold shrink-0 flex items-center gap-1`}>
+              <Ic n="Clock" size={9} className="text-blue-400" />
+              Recent
+            </span>
+            {recentPrompts.map((entry) => (
+              <button
+                key={entry.id}
+                type="button"
+                onClick={() => loadEntry(entry)}
+                className={`inline-flex items-center ${m.codeBlock} border ${m.border} rounded-md px-2 py-1 cursor-pointer transition-colors hover:border-violet-400`}
+                title={entry.title}
+              >
+                <span className={`text-[11px] ${m.textBody} truncate max-w-[10rem]`}>
+                  {entry.title.length > 20 ? entry.title.slice(0, 20) + '\u2026' : entry.title}
+                </span>
+              </button>
+            ))}
           </div>
         )}
 
