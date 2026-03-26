@@ -1,6 +1,6 @@
 # Demo Mode Threat Model
 
-Prompt Lab demo mode uses the hosted web proxy in [`prompt-lab-web/api/proxy.js`](./prompt-lab-web/api/proxy.js) to inject provider API keys server-side for approved upstream domains only.
+Prompt Lab demo mode uses the hosted web proxy in [`api/proxy.js`](./api/proxy.js) to inject provider API keys server-side for approved upstream domains only. [`prompt-lab-web/api/proxy.js`](./prompt-lab-web/api/proxy.js) re-exports that canonical handler to keep the web package in sync.
 
 - A client can choose the request body and target provider path, but not an arbitrary hostname.
 - The proxy only forwards to `api.anthropic.com`, `api.openai.com`, `generativelanguage.googleapis.com`, and `openrouter.ai`.

@@ -9,7 +9,7 @@
   <meta property="og:title" content="Prompt Lab">
   <meta property="og:description" content="Multi-provider prompt engineering workbench.">
   <meta property="og:type" content="website">
-  <meta property="og:url" content="https://prompt-lab-tawny.vercel.app/app/">
+  <meta property="og:url" content="https://promptlab.tools/app/">
   <meta property="og:image" content="https://promptlab.tools/og-image.png">
   <meta name="twitter:card" content="summary">
   <meta name="twitter:title" content="Prompt Lab">
@@ -19,7 +19,7 @@
       <link rel="icon" type="image/png" sizes="32x32" href="../../../assets/icons/favicon/favicon-32.png" />
     <link rel="icon" type="image/png" sizes="16x16" href="../../../assets/icons/favicon/favicon-16.png" />
     <link rel="apple-touch-icon" sizes="180x180" href="../../../assets/icons/favicon/apple-touch-icon.png" />
-<link rel="canonical" href="https://prompt-lab-tawny.vercel.app/app/">
+<link rel="canonical" href="https://promptlab.tools/app/">
 <style>
     html, body {
       margin: 0;
@@ -37,6 +37,84 @@
       overflow-y: auto;
     }
   </style>
+  <script>
+    (function () {
+      function renderBootError(message) {
+        const root = document.getElementById('root');
+        if (!root) return;
+        root.innerHTML = `
+          <div style="min-height:100vh;display:flex;align-items:center;justify-content:center;padding:24px;background:#0f172a;color:#e2e8f0;font-family:system-ui,sans-serif">
+            <div style="max-width:720px;width:100%;background:#111827;border:1px solid #334155;border-radius:12px;padding:20px">
+              <div style="font-size:24px;font-weight:700;margin-bottom:8px">Prompt Lab failed to boot</div>
+              <div style="color:#94a3b8;line-height:1.6;margin-bottom:16px">
+                A startup error occurred before React finished mounting.
+              </div>
+              <pre style="white-space:pre-wrap;word-break:break-word;background:#020617;color:#f8fafc;border:1px solid #334155;border-radius:8px;padding:12px;font-size:13px;line-height:1.5;margin:0">${String(message || 'Unknown startup error')}</pre>
+            </div>
+          </div>
+        `;
+      }
+
+      window.addEventListener('error', function (event) {
+        renderBootError(event && (event.error?.stack || event.error?.message || event.message));
+      });
+
+      window.addEventListener('unhandledrejection', function (event) {
+        const reason = event && event.reason;
+        renderBootError(reason && (reason.stack || reason.message || String(reason)));
+      });
+    })();
+  </script>
+  <script>
+    (function () {
+      function parseSseChunks(buffer, flush, pickText) {
+        var chunks = [];
+        var working = buffer || '';
+        var frames = working.split('\n\n');
+        var completeFrames = flush ? frames : frames.slice(0, -1);
+        working = flush ? '' : (frames[frames.length - 1] || '');
+
+        for (var i = 0; i < completeFrames.length; i += 1) {
+          var frame = completeFrames[i];
+          var lines = frame.split('\n').filter(function (line) {
+            return line.indexOf('data:') === 0;
+          });
+
+          for (var j = 0; j < lines.length; j += 1) {
+            var payload = lines[j].slice(5).trim();
+            if (!payload || payload === '[DONE]') continue;
+            try {
+              var data = JSON.parse(payload);
+              var text = pickText(data);
+              if (text) chunks.push(text);
+            } catch (_) {
+              // Ignore malformed intermediate frames.
+            }
+          }
+        }
+
+        return { buffer: working, chunks: chunks };
+      }
+
+      // Compatibility shim for older Prompt Lab bundles that reference these
+      // SSE parsers as globals during provider registry initialization.
+      window.parseAnthropicSse = function parseAnthropicSse(buffer, flush) {
+        return parseSseChunks(buffer, !!flush, function (data) {
+          if (data && data.type === 'content_block_delta') return data.delta && data.delta.text || '';
+          if (data && data.type === 'message_delta') return data.delta && data.delta.text || '';
+          return '';
+        });
+      };
+
+      window.parseOpenAiSse = function parseOpenAiSse(buffer, flush) {
+        return parseSseChunks(buffer, !!flush, function (data) {
+          return data && data.choices && data.choices[0] && data.choices[0].delta
+            ? data.choices[0].delta.content || ''
+            : '';
+        });
+      };
+    })();
+  </script>
 </head>
 <body>
   <div id="root"></div>
