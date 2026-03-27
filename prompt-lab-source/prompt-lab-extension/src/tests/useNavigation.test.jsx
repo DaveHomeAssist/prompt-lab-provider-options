@@ -48,7 +48,8 @@ describe('useNavigation', () => {
     });
 
     expect(evaluate.setPrimaryView).toHaveBeenCalledWith('runs');
-    expect(evaluate.setRunsView).toHaveBeenCalledWith('compare');
+    // openSection('evaluate') should NOT force runsView — preserves user state
+    expect(evaluate.setRunsView).not.toHaveBeenCalled();
 
     const legacy = renderNavigation();
 
@@ -57,6 +58,6 @@ describe('useNavigation', () => {
     });
 
     expect(legacy.setPrimaryView).toHaveBeenCalledWith('runs');
-    expect(legacy.setRunsView).toHaveBeenCalledWith('compare');
+    expect(legacy.setRunsView).not.toHaveBeenCalled();
   });
 });
