@@ -69,6 +69,7 @@ describe('RunTimelinePanel', () => {
         },
       ],
       loading: false,
+      error: null,
       hasMore: false,
       loadMore: vi.fn(),
       updateRun: vi.fn(),

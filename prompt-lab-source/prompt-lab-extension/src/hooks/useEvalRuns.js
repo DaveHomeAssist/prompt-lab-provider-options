@@ -3,7 +3,6 @@ import { listEvalRuns, saveEvalRun, getEvalRunById } from '../experimentStore';
 import { logWarn } from '../lib/logger.js';
 
 export default function useEvalRuns(optionsOrLegacy) {
-  // Backward-compatible: accept { editingId, tab } (old) or { promptId, tab, limit, mode, provider, model, status, search, dateRange } (new)
   const opts = optionsOrLegacy || {};
   const promptId = opts.promptId ?? opts.editingId ?? null;
   const tab = opts.tab ?? null;
@@ -18,14 +17,26 @@ export default function useEvalRuns(optionsOrLegacy) {
   const [evalRuns, setEvalRuns] = useState([]);
   const [showEvalHistory, setShowEvalHistory] = useState(false);
   const [loading, setLoading] = useState(false);
+  const [error, setError] = useState(null);
   const [total, setTotal] = useState(0);
   const displayLimit = useRef(limit);
+  const reqIdRef = useRef(0);
+  const abortRef = useRef(null);
 
   const refreshEvalRuns = useCallback(async (overridePromptId) => {
     const pid = overridePromptId ?? promptId;
+
+    // Cancel any in-flight request
+    if (abortRef.current) abortRef.current.abort();
+    const controller = new AbortController();
+    abortRef.current = controller;
+
+    // Track this request so stale responses are discarded
+    const thisReqId = ++reqIdRef.current;
+
     setLoading(true);
+    setError(null);
     try {
-      // Fetch a large window so we can count total + paginate client-side
       const filters = { limit: 200 };
       if (pid) filters.promptId = pid;
       else filters.mode = 'enhance';
@@ -37,14 +48,22 @@ export default function useEvalRuns(optionsOrLegacy) {
       if (dateRangeFilter) filters.dateRange = dateRangeFilter;
 
       const rows = await listEvalRuns(filters);
+
+      // Discard if a newer request has been issued
+      if (thisReqId !== reqIdRef.current) return;
+
       setTotal(rows.length);
       setEvalRuns(rows.slice(0, displayLimit.current));
     } catch (e) {
+      if (thisReqId !== reqIdRef.current) return;
       logWarn('refresh eval runs', e);
+      setError(e.message || 'Failed to load runs');
       setEvalRuns([]);
       setTotal(0);
     } finally {
-      setLoading(false);
+      if (thisReqId === reqIdRef.current) {
+        setLoading(false);
+      }
     }
   }, [promptId, modeFilter, providerFilter, modelFilter, statusFilter, searchFilter, dateRangeFilter]);
 
@@ -56,21 +75,35 @@ export default function useEvalRuns(optionsOrLegacy) {
   const updateRun = useCallback(async (id, patch) => {
     try {
       const existing = await getEvalRunById(id);
-      if (!existing) return;
+      if (!existing) {
+        logWarn('update eval run', `Run ${id} not found — may have been deleted`);
+        return false;
+      }
       await saveEvalRun({ ...existing, ...patch });
       refreshEvalRuns();
+      return true;
     } catch (e) {
       logWarn('update eval run', e);
+      return false;
     }
   }, [refreshEvalRuns]);
 
+  // Reset pagination when filters change
   useEffect(() => {
     displayLimit.current = limit;
   }, [promptId, modeFilter, providerFilter, modelFilter, statusFilter, searchFilter, dateRangeFilter, limit]);
 
+  // Refresh when tab or filters change
   useEffect(() => {
     if (tab === 'editor' || tab === 'history') refreshEvalRuns();
-  }, [promptId, tab, refreshEvalRuns]);
+  }, [promptId, tab, modeFilter, providerFilter, modelFilter, statusFilter, searchFilter, dateRangeFilter, refreshEvalRuns]);
+
+  // Cleanup on unmount
+  useEffect(() => {
+    return () => {
+      if (abortRef.current) abortRef.current.abort();
+    };
+  }, []);
 
   return {
     evalRuns,
@@ -78,6 +111,7 @@ export default function useEvalRuns(optionsOrLegacy) {
     setShowEvalHistory,
     refreshEvalRuns,
     loading,
+    error,
     hasMore: evalRuns.length < total,
     loadMore,
     updateRun,

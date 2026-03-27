@@ -36,7 +36,7 @@ export default function useNavigation({
     }
     if (nextSection === 'evaluate' || nextSection === 'experiments') {
       setPrimaryView('runs');
-      setRunsView('compare');
+      // Don't force runsView — preserve user's history/compare state
     }
   }, [setPrimaryView, setWorkspaceView, setRunsView]);
 
