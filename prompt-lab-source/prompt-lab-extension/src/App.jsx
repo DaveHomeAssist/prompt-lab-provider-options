@@ -30,6 +30,7 @@ import MainWorkspace from './MainWorkspace';
 import CreateEditorPane from './CreateEditorPane';
 import { ThemeProvider } from './theme/ThemeProvider.jsx';
 import AppHeader from './AppHeader';
+import useRouteSync from './hooks/useRouteSync.js';
 import SavePanel from './SavePanel';
 import TemplateVariablesModal from './modals/TemplateVariablesModal';
 import SettingsModal from './modals/SettingsModal';
@@ -138,6 +139,9 @@ export default function App() {
     tab, setTab,
   });
   const { activeSection, openCreateView, openSection, openRunsView } = nav;
+
+  // ── Sync hash routes ↔ nav state ──
+  useRouteSync({ primaryView, setPrimaryView, workspaceView, setWorkspaceView, runsView, setRunsView });
 
   // ── Derived (view-only) ──
   const score = useMemo(() => scorePrompt(raw), [raw]);

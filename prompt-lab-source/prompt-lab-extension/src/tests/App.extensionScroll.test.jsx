@@ -1,4 +1,5 @@
 import { render, screen } from '@testing-library/react';
+import { MemoryRouter } from 'react-router-dom';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 
 const mocks = vi.hoisted(() => {
@@ -244,7 +245,7 @@ describe('App extension scroll mode', () => {
   });
 
   it('uses page scroll layout for the extension shell', () => {
-    const { container } = render(<App />);
+    const { container } = render(<MemoryRouter><App /></MemoryRouter>);
 
     const shell = container.querySelector('[data-theme="dark"]');
     expect(shell).toHaveClass('h-screen');

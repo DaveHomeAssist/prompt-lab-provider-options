@@ -1,4 +1,5 @@
 import { render, screen } from '@testing-library/react';
+import { MemoryRouter } from 'react-router-dom';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 
 const mocks = vi.hoisted(() => {
@@ -305,7 +306,7 @@ describe('App', () => {
   });
 
   it('renders the editor shell without reading navigation state before initialization', () => {
-    render(<App />);
+    render(<MemoryRouter><App /></MemoryRouter>);
 
     expect(screen.getByRole('heading', { name: 'Prompt Lab' })).toBeInTheDocument();
     expect(mocks.useNavigation).toHaveBeenCalledTimes(1);
@@ -318,7 +319,7 @@ describe('App', () => {
       raw: 'Draft a support reply for a delayed shipment.',
     });
 
-    render(<App />);
+    render(<MemoryRouter><App /></MemoryRouter>);
 
     expect(screen.getByText('Draft')).toBeInTheDocument();
     expect(screen.getByDisplayValue('Draft a support reply for a delayed shipment.')).toBeInTheDocument();
@@ -339,7 +340,7 @@ describe('App', () => {
       saveTitle: 'Support rewrite',
     });
 
-    render(<App />);
+    render(<MemoryRouter><App /></MemoryRouter>);
 
     expect(screen.getByText('Results')).toBeInTheDocument();
     expect(screen.getByRole('button', { name: 'Save' })).toBeInTheDocument();
