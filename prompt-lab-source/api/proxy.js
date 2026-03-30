@@ -1,30 +1,56 @@
 export const config = { runtime: 'edge' };
 
-const RATE_LIMIT = 30;
-const RATE_WINDOW_MS = 60_000;
-const ipHits = new Map();
+// Burst rate limit: 30 req / 60 sec (prevents abuse)
+const BURST_LIMIT = 30;
+const BURST_WINDOW_MS = 60_000;
 
-function isRateLimited(ip) {
-  const now = Date.now();
-  let entry = ipHits.get(ip);
+// Demo daily limit: 3 server-keyed requests per IP per day
+// Only applies when the server injects an API key (no user key provided)
+const DEMO_DAILY_LIMIT = 3;
+const DEMO_WINDOW_MS = 24 * 60 * 60_000;
 
-  if (!entry || now >= entry.resetAt) {
-    entry = { count: 0, resetAt: now + RATE_WINDOW_MS };
-    ipHits.set(ip, entry);
-  }
+const burstHits = new Map();
+const demoHits = new Map();
 
-  entry.count += 1;
-
-  // Prune stale entries to keep the in-memory map bounded on warm instances.
-  if (ipHits.size > 500) {
-    for (const [key, value] of ipHits) {
-      if (now >= value.resetAt) {
-        ipHits.delete(key);
-      }
+function pruneMap(map, now) {
+  if (map.size > 500) {
+    for (const [key, value] of map) {
+      if (now >= value.resetAt) map.delete(key);
     }
   }
+}
 
-  return entry.count > RATE_LIMIT;
+function isBurstLimited(ip) {
+  const now = Date.now();
+  let entry = burstHits.get(ip);
+  if (!entry || now >= entry.resetAt) {
+    entry = { count: 0, resetAt: now + BURST_WINDOW_MS };
+    burstHits.set(ip, entry);
+  }
+  entry.count += 1;
+  pruneMap(burstHits, now);
+  return entry.count > BURST_LIMIT;
+}
+
+function isDemoLimited(ip) {
+  const now = Date.now();
+  let entry = demoHits.get(ip);
+  if (!entry || now >= entry.resetAt) {
+    entry = { count: 0, resetAt: now + DEMO_WINDOW_MS };
+    demoHits.set(ip, entry);
+  }
+  entry.count += 1;
+  pruneMap(demoHits, now);
+  return {
+    limited: entry.count > DEMO_DAILY_LIMIT,
+    remaining: Math.max(0, DEMO_DAILY_LIMIT - entry.count),
+    resetAt: entry.resetAt,
+  };
+}
+
+function isDemoRequest(headers) {
+  // If the client sends their own API key, it's not a demo request
+  return !headers['x-api-key'] && !headers['authorization'];
 }
 
 const ALLOWED_HOSTS = new Set([
@@ -89,7 +115,7 @@ export default async function handler(request) {
     request.headers.get('x-real-ip') ||
     'unknown';
 
-  if (isRateLimited(clientIp)) {
+  if (isBurstLimited(clientIp)) {
     return jsonResponse({ error: 'Rate limit exceeded. Try again shortly.' }, 429);
   }
 
@@ -101,6 +127,22 @@ export default async function handler(request) {
   }
 
   const { targetUrl, headers = {}, body } = payload || {};
+
+  // Check demo daily limit for server-keyed requests
+  if (isDemoRequest(headers)) {
+    const demo = isDemoLimited(clientIp);
+    if (demo.limited) {
+      return jsonResponse(
+        {
+          error: 'Daily demo limit reached. Add your own API key or upgrade to Pro for unlimited access.',
+          demo_remaining: 0,
+          demo_reset_at: new Date(demo.resetAt).toISOString(),
+        },
+        429,
+        { 'X-Demo-Remaining': '0', 'X-Demo-Reset': new Date(demo.resetAt).toISOString() },
+      );
+    }
+  }
 
   if (!targetUrl) {
     return jsonResponse({ error: 'Missing targetUrl' }, 400);
@@ -134,12 +176,21 @@ export default async function handler(request) {
 
     const responseBody = await upstream.arrayBuffer();
 
+    // Add demo remaining header for server-keyed requests
+    const demoHeaders = {};
+    if (isDemoRequest(headers)) {
+      const entry = demoHits.get(clientIp);
+      const remaining = entry ? Math.max(0, DEMO_DAILY_LIMIT - entry.count) : DEMO_DAILY_LIMIT;
+      demoHeaders['X-Demo-Remaining'] = String(remaining);
+    }
+
     return new Response(responseBody, {
       status: upstream.status,
       headers: {
         'Content-Type':
           upstream.headers.get('Content-Type') || 'application/json',
         ...CORS_HEADERS,
+        ...demoHeaders,
       },
     });
   } catch (error) {
