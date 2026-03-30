@@ -24,17 +24,14 @@ Consequences: what this unlocks or closes off
 
 ### [D-001] PLB nav strategy — hash mode vs state router
 
-Status: open
+Status: resolved
 Owner: Dave
 Date opened: 2026-03-25
+Date resolved: 2026-03-30
 
-Context: PromptLab's internal navigation strategy needs to be locked before Phase 2 UI work begins. Two viable approaches are on the table.
-
-Options:
-- React Router hash mode (`/#/library`, `/#/evaluate`) — URL-based, shareable, predictable, compatible with MV3 extension context
-- State router (React state only, no URL changes) — simpler, no URL coupling, but harder to deep-link and debug
-
-Consequences: This decision gates all Phase 2 component work. Choosing wrong means refactoring navigation across every view.
+Decision: React Router hash mode
+Rationale: Works across all 3 surfaces (extension, web, desktop). Keeps deep links viable for QA and support. Extension context uses hash URLs naturally. Dave confirmed hash mode multiple times across sessions.
+Consequences: Unblocks Phase 5+ component work, new tab additions, and CI integration (frontend-review Phase 4). Next step: wire HashRouter into App.jsx.
 
 ---
 
