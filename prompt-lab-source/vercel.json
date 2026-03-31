@@ -5,6 +5,7 @@
   "framework": null,
   "rewrites": [
     { "source": "/tools", "destination": "/tools.html" },
+    { "source": "/templates", "destination": "/templates/index.html" },
     { "source": "/privacy", "destination": "/privacy.html" },
     { "source": "/guide", "destination": "/guide.html" },
     { "source": "/setup", "destination": "/setup.html" },

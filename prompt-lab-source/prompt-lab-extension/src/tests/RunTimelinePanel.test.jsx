@@ -216,6 +216,45 @@ describe('RunTimelinePanel', () => {
     expect(screen.getByRole('button', { name: 'Reset All Filters' })).toBeInTheDocument();
   });
 
+  it('keeps the Compare Models toggle visible when the persisted compare view is active', () => {
+    localStorage.setItem('pl2-evaluate-timeline-filters', JSON.stringify({
+      mode: '',
+      provider: '',
+      model: '',
+      status: '',
+      dateRange: '30d',
+      search: '',
+      showModelCompare: true,
+    }));
+
+    useEvalRunsMock.mockReturnValue({
+      evalRuns: [
+        {
+          id: 'run-1',
+          provider: 'openai',
+          model: 'gpt-4.1',
+          mode: 'enhance',
+          status: 'success',
+          createdAt: '2026-03-24T10:00:00.000Z',
+          output: 'First output',
+          latencyMs: 420,
+        },
+      ],
+      totalRuns: 1,
+      loading: false,
+      error: null,
+      hasMore: false,
+      loadMore: vi.fn(),
+      refreshEvalRuns: vi.fn(),
+      updateRun: vi.fn(),
+    });
+
+    renderPanel();
+
+    expect(screen.getByRole('button', { name: 'Compare Models' })).toBeInTheDocument();
+    expect(screen.getByText('Model compare')).toBeInTheDocument();
+  });
+
   it('renders an error banner and retries the timeline fetch', () => {
     const refreshEvalRuns = vi.fn();
 

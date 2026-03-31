@@ -2,18 +2,24 @@ import { act, renderHook, waitFor } from '@testing-library/react';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import useEvalRuns from '../hooks/useEvalRuns.js';
 
-const { listEvalRuns } = vi.hoisted(() => ({
+const { listEvalRuns, getEvalRunById, saveEvalRun } = vi.hoisted(() => ({
   listEvalRuns: vi.fn(),
+  getEvalRunById: vi.fn(),
+  saveEvalRun: vi.fn(),
 }));
 
 vi.mock('../experimentStore', () => ({
   listEvalRuns,
+  getEvalRunById,
+  saveEvalRun,
 }));
 
 describe('useEvalRuns', () => {
   beforeEach(() => {
     vi.clearAllMocks();
     listEvalRuns.mockResolvedValue([]);
+    getEvalRunById.mockResolvedValue(null);
+    saveEvalRun.mockResolvedValue(null);
   });
 
   it('refreshEvalRuns calls listEvalRuns with promptId filter', async () => {
@@ -42,5 +48,90 @@ describe('useEvalRuns', () => {
     await waitFor(() => {
       expect(listEvalRuns).toHaveBeenCalledWith({ limit: 200, promptId: 'prompt-9' });
     });
+  });
+
+  it('forwards the full Evaluate filter set into listEvalRuns', async () => {
+    const { result } = renderHook(() => useEvalRuns({
+      promptId: null,
+      tab: 'history',
+      mode: 'ab',
+      provider: 'openai',
+      model: 'gpt-4.1',
+      status: 'error',
+      search: 'regression',
+      dateRange: '7d',
+    }));
+
+    await act(async () => {
+      await result.current.refreshEvalRuns();
+    });
+
+    expect(listEvalRuns).toHaveBeenLastCalledWith({
+      limit: 200,
+      mode: 'ab',
+      provider: 'openai',
+      model: 'gpt-4.1',
+      status: 'error',
+      search: 'regression',
+      dateRange: '7d',
+    });
+  });
+
+  it('supports pagination with loadMore and reports hasMore from total rows', async () => {
+    const rows = Array.from({ length: 30 }, (_, index) => ({
+      id: `run-${index}`,
+      output: `output-${index}`,
+    }));
+    listEvalRuns.mockResolvedValue(rows);
+
+    const { result } = renderHook(() => useEvalRuns({ promptId: 'prompt-2', tab: 'history', limit: 12 }));
+
+    await waitFor(() => {
+      expect(result.current.evalRuns).toHaveLength(12);
+    });
+    expect(result.current.totalRuns).toBe(30);
+    expect(result.current.hasMore).toBe(true);
+
+    await act(async () => {
+      await result.current.loadMore();
+    });
+
+    expect(result.current.evalRuns).toHaveLength(30);
+    expect(result.current.hasMore).toBe(false);
+  });
+
+  it('merges run patches through updateRun and refreshes the timeline', async () => {
+    listEvalRuns.mockResolvedValue([{ id: 'run-1', notes: '' }]);
+    getEvalRunById.mockResolvedValue({ id: 'run-1', notes: '', verdict: null });
+    saveEvalRun.mockResolvedValue({ id: 'run-1', notes: 'keep', verdict: 'pass' });
+
+    const { result } = renderHook(() => useEvalRuns({ promptId: 'prompt-7', tab: 'history' }));
+
+    await waitFor(() => {
+      expect(listEvalRuns).toHaveBeenCalled();
+    });
+    listEvalRuns.mockClear();
+
+    let updated = false;
+    await act(async () => {
+      updated = await result.current.updateRun('run-1', { notes: 'keep', verdict: 'pass' });
+    });
+
+    expect(updated).toBe(true);
+    expect(getEvalRunById).toHaveBeenCalledWith('run-1');
+    expect(saveEvalRun).toHaveBeenCalledWith({ id: 'run-1', notes: 'keep', verdict: 'pass' });
+    expect(listEvalRuns).toHaveBeenCalledTimes(1);
+  });
+
+  it('returns false when updateRun cannot find the requested row', async () => {
+    const { result } = renderHook(() => useEvalRuns({ promptId: 'prompt-7', tab: 'history' }));
+
+    let updated = true;
+    await act(async () => {
+      updated = await result.current.updateRun('missing-run', { verdict: 'fail' });
+    });
+
+    expect(updated).toBe(false);
+    expect(saveEvalRun).not.toHaveBeenCalled();
   });
 });

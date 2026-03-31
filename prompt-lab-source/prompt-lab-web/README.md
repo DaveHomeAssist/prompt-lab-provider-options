@@ -43,10 +43,17 @@ The Vite build is configured as a multi-page app:
 
 ```bash
 cd ..
-vercel
+npm run deploy:preview
 ```
 
-Vercel builds `prompt-lab-web/`, serves `prompt-lab-web/dist`, and deploys the root edge function at `/api/proxy`.
+For production:
+
+```bash
+cd ..
+npm run deploy:prod
+```
+
+The deploy helper temporarily mirrors the linked `.vercel/project.json` from `prompt-lab-source/` to the repo root so Vercel uses the existing `prompt-lab` project with the correct root directory.
 
 ## Key files
 
@@ -55,4 +62,6 @@ Vercel builds `prompt-lab-web/`, serves `prompt-lab-web/dist`, and deploys the r
 - `index.html` — landing page entry served at `/`
 - `app/index.html` — app entry served at `/app/`
 - `public/` — static assets and auxiliary public docs published at the site root
+- `../scripts/publish-landing.mjs` — syncs the canonical landing from `prompt-lab-web/` into `../docs/`
+- `../scripts/vercel-deploy.mjs` — safe preview/production deploy wrapper for the linked Vercel project
 - `vite.config.js` — sets `VITE_WEB_MODE=true` and builds both HTML entry points

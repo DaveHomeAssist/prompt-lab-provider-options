@@ -418,6 +418,7 @@ export default function RunTimelinePanel({
     );
     return [...set].sort();
   }, [evalRuns, provider]);
+  const canToggleModelCompare = showModelCompare || availableProviders.length >= 2;
 
   const compareSelection = useMemo(() => (
     compareSelectionIds
@@ -518,7 +519,7 @@ export default function RunTimelinePanel({
           <input type="search" value={search} onChange={e => setTimelineFilter('search', e.target.value)}
             placeholder="Search runs…"
             className={`flex-1 min-w-[120px] text-xs ${m.input} border rounded px-2 py-1.5 focus:outline-none focus:border-violet-500 placeholder-gray-400`} />
-          {availableProviders.length >= 2 && (
+          {canToggleModelCompare && (
             <button type="button" onClick={() => setTimelineFilter('showModelCompare', !showModelCompare)}
               className={`text-xs px-2 py-1.5 rounded border font-semibold transition-colors ${showModelCompare ? 'border-violet-500 text-violet-400' : `${m.border} ${m.textMuted}`}`}>
               Compare Models

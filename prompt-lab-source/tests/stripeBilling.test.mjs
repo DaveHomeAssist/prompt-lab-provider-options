@@ -1,17 +1,18 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import path from 'node:path';
-import { pathToFileURL } from 'node:url';
+import { fileURLToPath, pathToFileURL } from 'node:url';
 
-const checkoutUrl = pathToFileURL(
-  path.resolve(process.cwd(), 'prompt-lab-source/api/billing/checkout.js'),
-).href;
-const licenseUrl = pathToFileURL(
-  path.resolve(process.cwd(), 'prompt-lab-source/api/billing/license.js'),
-).href;
-const portalUrl = pathToFileURL(
-  path.resolve(process.cwd(), 'prompt-lab-source/api/billing/portal.js'),
-).href;
+const testDir = path.dirname(fileURLToPath(import.meta.url));
+const sourceDir = path.resolve(testDir, '..');
+
+function billingModuleUrl(fileName) {
+  return pathToFileURL(path.join(sourceDir, 'api', 'billing', fileName)).href;
+}
+
+const checkoutUrl = billingModuleUrl('checkout.js');
+const licenseUrl = billingModuleUrl('license.js');
+const portalUrl = billingModuleUrl('portal.js');
 
 const ORIGINAL_FETCH = globalThis.fetch;
 const ENV_KEYS = [

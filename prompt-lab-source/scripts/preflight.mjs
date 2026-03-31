@@ -152,8 +152,8 @@ async function checkBundleSize() {
 
 // ── 8. LANDING PAGE ASSETS ──
 async function checkLandingAssets() {
-  const required = ['index.html', 'fonts', 'hero-logo.png', 'og-image.png'];
-  const docsPages = ['guide.html', 'setup.html', 'prompt-embed.html', 'privacy.html'];
+  const required = ['index.html', 'fonts', 'hero-logo.png', 'landing-product-shot.png', 'og-image.png'];
+  const docsPages = ['guide.html', 'setup.html', 'prompt-embed.html', 'privacy.html', 'tools.html'];
   const optional = ['templates'];
 
   for (const name of required) {

@@ -9,6 +9,7 @@ const legacyLandingFile = join(sourceDir, 'public', 'prompt-lab-landing.html');
 const webDir = join(sourceDir, 'prompt-lab-web');
 const webIndexHtml = join(webDir, 'index.html');
 const webPublicDir = join(sourceDir, 'prompt-lab-web', 'public');
+const webTemplatesDir = join(webPublicDir, 'templates');
 const docsDir = join(repoDir, 'docs');
 
 const copyTargets = [
@@ -33,6 +34,7 @@ async function resetDocsDir() {
   const generatedTargets = [
     ...copyTargets.map(([, toName]) => join(docsDir, toName)),
     ...webPageTargets.map(([, toName]) => join(docsDir, toName)),
+    join(docsDir, 'templates'),
     join(docsDir, 'fonts'),
     join(docsDir, '.nojekyll'),
     join(docsDir, 'CNAME'),
@@ -61,6 +63,16 @@ async function copyFontsDir() {
   }
 
   await cp(sourceFontsDir, targetFontsDir, { recursive: true });
+}
+
+async function copyTemplatesDir() {
+  try {
+    const templateStats = await stat(webTemplatesDir);
+    if (!templateStats.isDirectory()) return;
+    await cp(webTemplatesDir, join(docsDir, 'templates'), { recursive: true });
+  } catch {
+    // Templates remain optional; skip when the public directory does not exist.
+  }
 }
 
 async function writeNoJekyll() {
@@ -115,6 +127,7 @@ async function main() {
   }
 
   await copyFontsDir();
+  await copyTemplatesDir();
 
   // Copy web pages (guide, setup)
   for (const [fromName, toName] of webPageTargets) {

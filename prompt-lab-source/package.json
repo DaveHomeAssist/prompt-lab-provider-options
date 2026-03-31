@@ -17,6 +17,8 @@
     "build:landing": "npm run check:node && node scripts/publish-landing.mjs",
     "notion:docs-agent": "npm run check:node && node scripts/notion-docs-agent.mjs",
     "publish:landing": "npm run build:landing",
+    "deploy:preview": "npm run check:node && node scripts/vercel-deploy.mjs",
+    "deploy:prod": "npm run check:node && node scripts/vercel-deploy.mjs --prod",
     "preflight": "npm run check:node && node scripts/preflight.mjs",
     "preflight:quick": "npm run check:node && node scripts/preflight.mjs --quick",
     "dashboard:update": "npm run check:node && node scripts/notionDashboardUpdate.mjs"
