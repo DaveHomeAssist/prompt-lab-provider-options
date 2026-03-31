@@ -1,3 +1,4 @@
+import { useEffect, useState } from 'react';
 import Ic from '../icons';
 
 export default function SettingsModal({
@@ -17,7 +18,16 @@ export default function SettingsModal({
   openBilling,
   canUseCollections = true,
   canExportLibrary = true,
+  telemetry,
 }) {
+  const [telemetryEnabled, setTelemetryEnabled] = useState(telemetry?.telemetryEnabled !== false);
+  const [contactEmail, setContactEmail] = useState(telemetry?.contactEmail || '');
+
+  useEffect(() => {
+    setTelemetryEnabled(telemetry?.telemetryEnabled !== false);
+    setContactEmail(telemetry?.contactEmail || '');
+  }, [telemetry?.contactEmail, telemetry?.telemetryEnabled]);
+
   return (
     <div className={`fixed inset-0 ${m.modalBg} flex items-center justify-center z-40 p-4`}>
       <div className={`pl-modal-panel ${m.modal} border rounded-xl p-5 w-full max-w-sm flex flex-col gap-4`} role="dialog" aria-modal="true" aria-labelledby="modal-settings">
@@ -56,6 +66,49 @@ export default function SettingsModal({
                 {billing.plan === 'pro' ? 'Manage Billing' : 'Upgrade to Pro'}
               </button>
             </div>
+          </div>
+        )}
+        {telemetry && (
+          <div className={`rounded-xl border p-3 ${m.surface} ${m.border} flex flex-col gap-3`}>
+            <div className="flex items-start justify-between gap-3">
+              <div>
+                <p className={`text-xs font-semibold uppercase tracking-wider ${m.textSub}`}>Insights</p>
+                <p className={`mt-1 text-xs leading-relaxed ${m.textMuted}`}>
+                  Share lightweight usage events and an optional contact email so Prompt Lab can understand activation, upgrade, and retention patterns.
+                </p>
+              </div>
+              <input
+                type="checkbox"
+                checked={telemetryEnabled}
+                onChange={(event) => setTelemetryEnabled(event.target.checked)}
+                className="mt-1 accent-violet-500"
+                aria-label="Enable usage insights"
+              />
+            </div>
+            <input
+              value={contactEmail}
+              onChange={(event) => setContactEmail(event.target.value)}
+              placeholder="Billing or contact email"
+              className={`${m.input} w-full rounded-lg border px-3 py-2 text-sm ${m.border} ${m.text} focus:border-violet-500 focus:outline-none`}
+            />
+            <div className="flex items-center justify-between gap-3">
+              <p className={`text-[11px] leading-relaxed ${m.textMuted}`}>
+                Prompt text, provider API keys, and model responses are not included in insights events.
+              </p>
+              <button
+                type="button"
+                onClick={() => telemetry.updatePreferences?.({ telemetryEnabled, contactEmail })}
+                disabled={telemetry.busyAction === 'preferences'}
+                className="ui-control rounded-lg bg-violet-600 px-3 py-2 text-xs font-semibold text-white transition-colors hover:bg-violet-500 disabled:opacity-40"
+              >
+                {telemetry.busyAction === 'preferences' ? 'Saving...' : 'Save'}
+              </button>
+            </div>
+            {(telemetry.lastSyncedAt || telemetry.lastError) && (
+              <p className={`text-[11px] ${telemetry.lastError ? 'text-red-400' : m.textMuted}`}>
+                {telemetry.lastError || `Last synced ${new Date(telemetry.lastSyncedAt).toLocaleString()}`}
+              </p>
+            )}
           </div>
         )}
         {canUseCollections && collections.length > 0 && (

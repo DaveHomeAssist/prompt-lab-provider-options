@@ -29,11 +29,18 @@ async function readErrorMessage(response, fallback) {
   try {
     const data = await response.json();
     if (data?.error?.message) return data.error.message;
+    if (typeof data?.error === 'string') return data.error;
     if (data?.message) return data.message;
     return fallback;
   } catch {
     return fallback;
   }
+}
+
+function responseError(response, message) {
+  const error = new Error(message);
+  error.status = response?.status;
+  return error;
 }
 
 function fetchOrThrow(fetchImpl) {
@@ -92,7 +99,7 @@ async function executeProviderStream(descriptor, payload, settings, fetchImpl, o
   }, options.signal));
 
   if (!response.ok) {
-    throw new Error(await readErrorMessage(response, `${descriptor.label} request failed (${response.status})`));
+    throw responseError(response, await readErrorMessage(response, `${descriptor.label} request failed (${response.status})`));
   }
   if (!response.body) {
     throw new Error(`${descriptor.label} returned no stream body.`);
@@ -142,7 +149,7 @@ async function executeProvider(descriptor, payload, settings, fetchImpl, options
   }, options.signal));
 
   if (!response.ok) {
-    throw new Error(await readErrorMessage(response, `${descriptor.label} request failed (${response.status})`));
+    throw responseError(response, await readErrorMessage(response, `${descriptor.label} request failed (${response.status})`));
   }
 
   const data = await response.json();

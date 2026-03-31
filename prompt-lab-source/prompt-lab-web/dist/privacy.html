@@ -176,18 +176,17 @@ footer a {
 <div class="wrapper">
 
 <h1>Privacy Policy</h1>
-<p class="subtitle">Last updated: March 18, 2026</p>
+<p class="subtitle">Last updated: March 31, 2026</p>
 
 <h2>Local-First Architecture</h2>
-<p>Prompt Lab stores all data locally on your device. Your prompts, API keys, settings, and experiment results never leave your browser unless you explicitly send a request to an AI provider.</p>
+<p>Prompt Lab stores prompts, API keys, settings, and experiment results locally on your device. Those artifacts do not leave your browser unless you explicitly send a request to an AI provider.</p>
 
-<h2>What Prompt Lab Does Not Collect</h2>
+<h2>What Prompt Lab Does Not Store Server-Side</h2>
 <ul>
-  <li>No analytics or tracking scripts</li>
   <li>No cookies (beyond what your browser stores locally)</li>
-  <li>No telemetry or usage data sent to any server</li>
-  <li>No user accounts, logins, or registration</li>
-  <li>No server-side account or prompt storage controlled by Prompt Lab</li>
+  <li>No prompt text or model responses stored in a developer-controlled backend</li>
+  <li>No provider API keys stored in a developer-controlled backend</li>
+  <li>No mandatory user account, login, or registration flow for the editor itself</li>
 </ul>
 
 <h2>API Keys</h2>
@@ -195,6 +194,12 @@ footer a {
 
 <h2>AI Provider Requests</h2>
 <p>When you run a prompt, Prompt Lab sends your input to the provider API you selected. In extension and desktop environments, that traffic is direct. In the hosted web app, traffic passes through a narrow proxy that validates the target domain and forwards the request. Each provider has its own privacy policy and data handling practices. Prompt Lab does not store your prompts or responses in a developer-controlled backend.</p>
+
+<h2>Billing and Pro Access</h2>
+<p>Prompt Lab uses Stripe for checkout, subscription management, and customer portal flows. If you start a Pro upgrade, Prompt Lab and Stripe process billing metadata such as your billing email, Stripe customer ID, subscription status, and configured Prompt Lab price IDs. Prompt Lab uses that metadata to sync Pro access locally on your device.</p>
+
+<h2>Usage Insights</h2>
+<p>Prompt Lab can send lightweight usage events to developer-controlled endpoints. These events include event names, app surface, anonymous device/session identifiers, plan state, and an optional contact email if you choose to provide one in Settings. Prompt text, model responses, and provider API keys are not included in usage insights payloads.</p>
 
 <h2>Data Export and Import</h2>
 <p>You can export your library, experiments, and settings as a local JSON file at any time. Imported data is processed entirely in the browser. No data is uploaded to external services during import or export.</p>

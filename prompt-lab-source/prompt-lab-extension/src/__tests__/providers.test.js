@@ -57,4 +57,41 @@ describe('provider registry', () => {
       provider: 'ollama',
     });
   });
+
+  it('sanitizes anthropic payloads before sending them upstream', async () => {
+    const fetchMock = vi.fn().mockResolvedValue({
+      ok: true,
+      json: async () => ({
+        content: [{ type: 'text', text: 'Improved prompt' }],
+      }),
+    });
+
+    await expect(callProvider({
+      provider: 'anthropic',
+      payload: {
+        system: 'Return valid JSON.',
+        messages: [{ role: 'user', content: 'hello' }],
+        max_tokens: 256,
+        temperature: 0.4,
+        responseFormat: 'json',
+      },
+      settings: { apiKey: 'sk-ant', anthropicModel: 'claude-sonnet-4-20250514' },
+      fetchImpl: fetchMock,
+    })).resolves.toEqual(expect.objectContaining({
+      provider: 'anthropic',
+      model: 'claude-sonnet-4-20250514',
+    }));
+
+    const [, init] = fetchMock.mock.calls[0];
+    const requestBody = JSON.parse(init.body);
+    expect(requestBody).toEqual({
+      model: 'claude-sonnet-4-20250514',
+      max_tokens: 256,
+      messages: [{ role: 'user', content: 'hello' }],
+      stream: false,
+      system: 'Return valid JSON.',
+      temperature: 0.4,
+    });
+    expect(requestBody.responseFormat).toBeUndefined();
+  });
 });

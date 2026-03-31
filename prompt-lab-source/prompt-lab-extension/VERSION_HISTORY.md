@@ -1,5 +1,19 @@
 # Prompt Lab — Version History
 
+## Unreleased — 2026-03-31
+
+Billing, hosted-web reliability, and privacy-policy follow-up after `v1.7.0`.
+
+### Billing and telemetry
+
+- Swapped the Pro purchase flow from Lemon Squeezy license activation to Stripe checkout, billing-email sync, Stripe customer portal, and Stripe webhook persistence.
+- Updated local billing state, billing modal copy, and privacy docs to reflect Stripe customer identifiers and optional usage insights preferences.
+
+### Hosted provider fixes
+
+- Fixed hosted Anthropic requests to strip unsupported provider fields, preserve supported request fields, and honor SSE streaming in the shared web shell.
+- Preserved provider HTTP status during normalization so hosted provider failures surface as provider errors instead of generic unexpected-error recovery panels.
+
 ## v1.7.0 — 2026-03-30
 
 Runtime and release-hygiene follow-up after the shared frontend rollout.

@@ -18,16 +18,15 @@ describe('useBillingState', () => {
     localStorage.clear();
   });
 
-  it('activates a Lemon license and persists Pro state', async () => {
+  it('syncs a Stripe purchase and persists Pro state', async () => {
     global.fetch = vi.fn(async () => new Response(JSON.stringify({
       ok: true,
       plan: 'pro',
       status: 'active',
       billingPeriod: 'monthly',
-      licenseKey: 'license-123',
-      instanceId: 'instance-1',
-      instanceName: 'prompt-lab-web',
-      manageUrl: 'https://promptlab.lemonsqueezy.com/billing',
+      customerId: 'cus_123',
+      customerEmail: 'user@example.com',
+      subscriptionId: 'sub_123',
     }), {
       status: 200,
       headers: { 'Content-Type': 'application/json' },
@@ -37,22 +36,22 @@ describe('useBillingState', () => {
     const { result } = renderHook(() => useBillingState({ notify }));
 
     await act(async () => {
-      await result.current.activateLicense('license-123');
+      await result.current.activateLicense('user@example.com');
     });
 
     expect(result.current.plan).toBe('pro');
     expect(result.current.billingPeriod).toBe('monthly');
-    expect(result.current.instanceId).toBe('instance-1');
+    expect(result.current.customerId).toBe('cus_123');
     expect(result.current.hasFeature('abTesting')).toBe(true);
-    expect(notify).toHaveBeenCalledWith('Prompt Lab Pro activated.');
+    expect(notify).toHaveBeenCalledWith('Prompt Lab Pro synced to this device.');
   });
 
   it('keeps cached Pro access when billing validation is temporarily offline', async () => {
     localStorage.setItem('pl2-billing', JSON.stringify({
       plan: 'pro',
       status: 'active',
-      licenseKey: 'license-123',
-      instanceId: 'instance-1',
+      customerEmail: 'user@example.com',
+      customerId: 'cus_123',
       lastValidatedAt: new Date(Date.now() - (8 * 60 * 60 * 1000)).toISOString(),
     }));
 

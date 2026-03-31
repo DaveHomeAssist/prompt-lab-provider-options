@@ -173,9 +173,9 @@ Options:
 
 Decision: Hybrid — free tier gets all providers + basic editor + single runs + library (50 prompts) + basic history. Paid tier gates A/B testing, side-by-side diff viewer, batch runs, collections, CSV/JSON export, priority support.
 
-Rationale: Free users need multi-provider access to experience the core value (comparing LLM outputs). Gating the analysis and workflow tools creates a natural upgrade moment: "I want to run these head-to-head automatically" triggers A/B testing paywall. No auth system needed at launch — Lemon Squeezy license key validates locally via a `plan` field in Dexie.
+Rationale: Free users need multi-provider access to experience the core value (comparing LLM outputs). Gating the analysis and workflow tools creates a natural upgrade moment: "I want to run these head-to-head automatically" triggers A/B testing paywall. A lightweight Stripe billing path with local plan caching keeps the app auth-light while still capturing customer/subscription data.
 
-Consequences: Lemon Squeezy integration unblocked. Implementation path: (1) add `plan` field to Dexie, (2) license key check on app load, (3) `if (plan === 'pro')` guards on gated features, (4) "Upgrade to Pro" modal linking to Lemon Squeezy checkout.
+Consequences: Billing integration unblocked. Implementation path: (1) add `plan` field to local storage, (2) Stripe checkout + customer portal routes, (3) Pro sync by billing email on app load, (4) `if (plan === 'pro')` guards on gated features, (5) "Upgrade to Pro" modal linking to Stripe checkout.
 
 ---
 
@@ -194,14 +194,14 @@ Consequences: All run logging, prompt storage, and library state lives in Dexie/
 
 ---
 
-### [D-R02] Monetization platform — Lemon Squeezy vs Gumroad
+### [D-R02] Monetization platform — Stripe vs Gumroad
 
 Status: resolved
 Date resolved: 2026-03 (prior sprint)
 
-Decision: Lemon Squeezy
-Rationale: Fee structure analysis favored Lemon Squeezy. Better VAT handling for international sales.
-Consequences: All PLB product listings, prompt packs, and subscription tiers will be managed through Lemon Squeezy.
+Decision: Stripe
+Rationale: Capturing customer identity, subscription state, portal activity, and webhook events is more valuable than the earlier fee-optimization argument. Stripe better matches the current need to connect billing to product analytics without restoring the prior full auth stack.
+Consequences: All Prompt Lab subscriptions run through Stripe hosted checkout, Stripe billing portal, and Stripe webhooks.
 
 ---
 
@@ -221,9 +221,9 @@ Consequences: Feature gating strategy needs to be defined — what lives behind 
 Status: resolved
 Date resolved: 2026-03-31
 
-Decision: Lemon Squeezy hosted checkout + license key activation/validation, with plan state cached locally in Prompt Lab storage.
-Rationale: The prior Stripe gateway was tightly coupled to Clerk auth, customer records, and server-side entitlements. Current Prompt Lab is local-storage-first and intentionally auth-light. Lemon Squeezy provides hosted checkout, an unsigned/signed customer portal, and a license API that fits extension, desktop, and hosted web surfaces without reintroducing a user account system.
-Consequences: Prompt Lab now depends on three billing API routes (`/api/billing/checkout`, `/api/billing/license`, `/api/billing/portal`) plus local `plan` and license state in app storage. Pro gating is implemented in the shared React shell for A/B testing, diff view, batch runs, collections, and exports. Revisit only if Prompt Lab adds a durable server-side user identity layer that justifies moving entitlement state back to the backend.
+Decision: Stripe hosted checkout + Stripe customer portal, with Pro access synced by billing email and cached locally in Prompt Lab storage.
+Rationale: Stripe captures customer and subscription data that the product can use for upgrade, retention, and support workflows without forcing Prompt Lab back into a full account system. A billing-email sync flow preserves the app's local-first posture while making customer identity durable on the backend.
+Consequences: Prompt Lab now depends on Stripe-backed billing API routes (`/api/billing/checkout`, `/api/billing/license`, `/api/billing/portal`, `/api/billing/webhook`) plus local `plan` and customer state in app storage. Pro gating is implemented in the shared React shell for A/B testing, diff view, batch runs, collections, and exports.
 
 ---
 

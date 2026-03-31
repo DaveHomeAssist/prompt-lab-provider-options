@@ -1,13 +1,13 @@
 export const config = { runtime: 'edge' };
 
 import {
-  buildLemonWebhookEvent,
-  buildTelemetryConfig,
+  buildStripeConfig,
+  buildStripeWebhookRecord,
   jsonResponse,
   optionsResponse,
-  persistTelemetryEvent,
-  verifyLemonSignature,
-} from '../_lib/telemetryStore.js';
+  persistStripeWebhookRecord,
+  verifyStripeSignature,
+} from '../_lib/stripeBilling.js';
 
 export default async function handler(request) {
   if (request.method === 'OPTIONS') return optionsResponse();
@@ -15,22 +15,22 @@ export default async function handler(request) {
     return jsonResponse({ error: 'Method not allowed.' }, 405);
   }
 
-  const config = buildTelemetryConfig();
+  const config = buildStripeConfig();
   if (!config.webhookSecret) {
-    return jsonResponse({ error: 'Lemon webhook secret is not configured.' }, 503);
+    return jsonResponse({ error: 'Stripe webhook secret is not configured.' }, 503);
   }
 
   const rawBody = await request.text();
-  const providedSignature = request.headers.get('x-signature') || request.headers.get('X-Signature') || '';
-  const isValid = await verifyLemonSignature(rawBody, providedSignature, config.webhookSecret);
+  const providedSignature = request.headers.get('stripe-signature') || request.headers.get('Stripe-Signature') || '';
+  const isValid = await verifyStripeSignature(rawBody, providedSignature, config.webhookSecret);
   if (!isValid) {
     return jsonResponse({ error: 'Invalid webhook signature.' }, 401);
   }
 
   try {
     const payload = JSON.parse(rawBody || '{}');
-    const event = buildLemonWebhookEvent(payload);
-    const result = await persistTelemetryEvent(event, config);
+    const record = buildStripeWebhookRecord(payload, config);
+    const result = await persistStripeWebhookRecord(record, config);
     return jsonResponse({ ok: true, mode: result.mode }, 200);
   } catch (error) {
     return jsonResponse({ error: error.message || 'Could not process webhook.' }, 400);

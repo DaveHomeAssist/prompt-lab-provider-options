@@ -37,11 +37,10 @@ export function createDefaultBillingState() {
   return {
     plan: PLAN_FREE,
     status: 'free',
-    licenseKey: '',
-    instanceId: '',
-    instanceName: '',
+    customerId: '',
+    subscriptionId: '',
+    priceId: '',
     billingPeriod: '',
-    variantId: '',
     productName: '',
     customerEmail: '',
     customerName: '',
@@ -59,11 +58,10 @@ export function normalizeBillingState(value = {}) {
     ...(value && typeof value === 'object' ? value : {}),
     plan,
     status: typeof value?.status === 'string' && value.status.trim() ? value.status.trim() : fallback.status,
-    licenseKey: typeof value?.licenseKey === 'string' ? value.licenseKey : '',
-    instanceId: typeof value?.instanceId === 'string' ? value.instanceId : '',
-    instanceName: typeof value?.instanceName === 'string' ? value.instanceName : '',
+    customerId: typeof value?.customerId === 'string' ? value.customerId : '',
+    subscriptionId: typeof value?.subscriptionId === 'string' ? value.subscriptionId : '',
+    priceId: typeof value?.priceId === 'string' ? value.priceId : '',
     billingPeriod: typeof value?.billingPeriod === 'string' ? value.billingPeriod : '',
-    variantId: typeof value?.variantId === 'string' ? value.variantId : '',
     productName: typeof value?.productName === 'string' ? value.productName : '',
     customerEmail: typeof value?.customerEmail === 'string' ? value.customerEmail : '',
     customerName: typeof value?.customerName === 'string' ? value.customerName : '',
@@ -104,30 +102,22 @@ export function getBillingApiBase() {
   return `${configuredBase}/api`;
 }
 
-export function buildLicenseInstanceName() {
-  const runtime = isExtension
-    ? 'extension'
-    : (typeof window !== 'undefined' && /^https?:/.test(window.location.origin || ''))
-      ? 'web'
-      : 'desktop';
-  const host = typeof window !== 'undefined' && window.location?.hostname
-    ? window.location.hostname
-    : 'local';
-  return `prompt-lab-${runtime}-${host}`;
-}
-
 export function describeBillingStatus(state) {
   switch (state.status) {
     case 'active':
-      return 'Pro is active on this device.';
+      return 'Prompt Lab Pro is active for this Stripe billing email.';
+    case 'trialing':
+      return 'Your Prompt Lab Pro trial is active.';
+    case 'past_due':
+      return 'Billing needs attention, but Pro access is still available for now.';
     case 'inactive':
-      return 'License is valid but not currently activated on this device.';
+      return 'Billing is connected, but no active Prompt Lab Pro subscription was found.';
     case 'offline':
       return 'Could not reach billing. Cached Pro access is still available.';
-    case 'expired':
-      return 'This license has expired.';
-    case 'disabled':
-      return 'This license has been disabled.';
+    case 'canceled':
+      return 'This Prompt Lab Pro subscription has been canceled.';
+    case 'unpaid':
+      return 'Stripe reports this subscription as unpaid.';
     case 'error':
       return state.validationError || 'Billing could not be verified.';
     default:

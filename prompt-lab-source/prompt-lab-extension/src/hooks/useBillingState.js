@@ -1,6 +1,5 @@
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import {
-  buildLicenseInstanceName,
   canAccessFeature,
   createDefaultBillingState,
   describeBillingStatus,
@@ -13,7 +12,7 @@ import { loadJson, saveJson, storageKeys } from '../lib/storage.js';
 const REVALIDATE_AFTER_MS = 6 * 60 * 60 * 1000;
 
 function shouldRevalidate(state) {
-  if (!state.licenseKey) return false;
+  if (!state.customerEmail && !state.customerId) return false;
   const lastValidated = Date.parse(state.lastValidatedAt || '');
   if (!Number.isFinite(lastValidated)) return true;
   return (Date.now() - lastValidated) > REVALIDATE_AFTER_MS;
@@ -24,11 +23,10 @@ function normalizeResponseState(payload, previousState) {
     ...previousState,
     plan: payload.plan,
     status: payload.status || (payload.plan === 'pro' ? 'active' : 'free'),
-    licenseKey: payload.licenseKey || previousState.licenseKey,
-    instanceId: payload.instanceId || previousState.instanceId,
-    instanceName: payload.instanceName || previousState.instanceName,
+    customerId: payload.customerId || previousState.customerId,
+    subscriptionId: payload.subscriptionId || previousState.subscriptionId,
+    priceId: payload.priceId || previousState.priceId,
     billingPeriod: payload.billingPeriod || previousState.billingPeriod,
-    variantId: payload.variantId || previousState.variantId,
     productName: payload.productName || previousState.productName,
     customerEmail: payload.customerEmail || previousState.customerEmail,
     customerName: payload.customerName || previousState.customerName,
@@ -68,7 +66,7 @@ export default function useBillingState({ notify, telemetry }) {
   }, [apiBase]);
 
   const refreshLicense = useCallback(async ({ silent = false } = {}) => {
-    if (!state.licenseKey) return false;
+    if (!state.customerEmail && !state.customerId) return false;
 
     if (!silent) setBusyAction('validate');
     try {
@@ -77,8 +75,8 @@ export default function useBillingState({ notify, telemetry }) {
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           action: 'validate',
-          licenseKey: state.licenseKey,
-          instanceId: state.instanceId || undefined,
+          customerEmail: state.customerEmail || undefined,
+          customerId: state.customerId || undefined,
         }),
       });
 
@@ -111,29 +109,27 @@ export default function useBillingState({ notify, telemetry }) {
     refreshLicense({ silent: true });
   }, [refreshLicense, state]);
 
-  const activateLicense = useCallback(async (licenseKeyInput) => {
-    const licenseKey = String(licenseKeyInput || '').trim();
-    if (!licenseKey) throw new Error('Enter a Lemon Squeezy license key.');
+  const activateLicense = useCallback(async (customerEmailInput) => {
+    const customerEmail = String(customerEmailInput || '').trim().toLowerCase();
+    if (!customerEmail) throw new Error('Enter the Stripe billing email for your Prompt Lab Pro purchase.');
 
     setBusyAction('activate');
     try {
-      const instanceName = buildLicenseInstanceName();
       const payload = await requestBilling('/billing/license', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           action: 'activate',
-          licenseKey,
-          instanceName,
+          customerEmail,
+          customerId: state.customerId || undefined,
         }),
       });
       const nextState = normalizeResponseState(payload, {
         ...state,
-        licenseKey,
-        instanceName,
+        customerEmail,
       });
       setState(nextState);
-      notify?.('Prompt Lab Pro activated.');
+      notify?.('Prompt Lab Pro synced to this device.');
       telemetry?.track?.('billing.license_activated', {
         plan: nextState.plan,
         status: nextState.status,
@@ -146,31 +142,17 @@ export default function useBillingState({ notify, telemetry }) {
   }, [notify, requestBilling, state]);
 
   const deactivateLicense = useCallback(async () => {
-    if (!state.licenseKey || !state.instanceId) {
-      setState(createDefaultBillingState());
-      return;
-    }
-
     setBusyAction('deactivate');
     try {
-      await requestBilling('/billing/license', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          action: 'deactivate',
-          licenseKey: state.licenseKey,
-          instanceId: state.instanceId,
-        }),
-      });
       setState(createDefaultBillingState());
-      notify?.('Prompt Lab Pro deactivated on this device.');
+      notify?.('Cleared local billing access on this device.');
       telemetry?.track?.('billing.license_deactivated', { plan: 'free' });
     } finally {
       setBusyAction('');
     }
-  }, [notify, requestBilling, state.instanceId, state.licenseKey, telemetry]);
+  }, [notify, telemetry]);
 
-  const startCheckout = useCallback(async (period, source = 'billing-modal', metadata = {}) => {
+  const startCheckout = useCallback(async (period, source = 'billing-modal', metadata = {}, overrides = {}) => {
     setBusyAction(`checkout:${period}`);
     try {
       const payload = await requestBilling('/billing/checkout', {
@@ -178,8 +160,7 @@ export default function useBillingState({ notify, telemetry }) {
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           period,
-          email: state.customerEmail || telemetry?.contactEmail || '',
-          name: state.customerName,
+          email: overrides?.email || state.customerEmail || telemetry?.contactEmail || '',
           source,
           deviceId: metadata?.deviceId || telemetry?.deviceId || '',
           sessionId: metadata?.sessionId || telemetry?.sessionId || '',
@@ -191,7 +172,7 @@ export default function useBillingState({ notify, telemetry }) {
         throw new Error('Billing checkout did not return a URL.');
       }
       window.open(payload.url, '_blank', 'noopener,noreferrer');
-      notify?.('Opened Lemon Squeezy checkout.');
+      notify?.('Opened Stripe checkout.');
       telemetry?.track?.('billing.checkout_started', {
         period,
         source,
@@ -201,13 +182,18 @@ export default function useBillingState({ notify, telemetry }) {
     } finally {
       setBusyAction('');
     }
-  }, [notify, requestBilling, state.customerEmail, state.customerName, telemetry]);
+  }, [notify, requestBilling, state.customerEmail, telemetry]);
 
-  const openManagePurchases = useCallback(async () => {
+  const openManagePurchases = useCallback(async (overrides = {}) => {
     setBusyAction('portal');
     try {
       const payload = await requestBilling('/billing/portal', {
-        method: 'GET',
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          customerId: overrides?.customerId || state.customerId || undefined,
+          customerEmail: overrides?.customerEmail || state.customerEmail || undefined,
+        }),
       });
       if (!payload?.url) {
         throw new Error('Billing portal is not configured.');
@@ -218,7 +204,7 @@ export default function useBillingState({ notify, telemetry }) {
     } finally {
       setBusyAction('');
     }
-  }, [requestBilling, state.plan, telemetry]);
+  }, [requestBilling, state.customerEmail, state.customerId, state.plan, telemetry]);
 
   const billing = useMemo(() => ({
     ...state,

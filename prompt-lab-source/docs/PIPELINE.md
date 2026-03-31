@@ -143,13 +143,13 @@ LLM inference: Ollama (assumption — confirm vs llama-server across Windows nod
 
 | Property | Host | Notes |
 |---|---|---|
-| promptlab.tools | Netlify | Live |
+| promptlab.tools | Vercel | Live |
 | standardacidprocedure.com | Vercel | Custom domain cutover complete |
 | act-two-catering | Netlify | In progress |
 | av-resume | GitHub Pages | Live |
 | davehomeassist (27 repos) | GitHub Pages | Audited 2026-03-26 |
 
-Monetization platform: Lemon Squeezy (selected over Gumroad based on fee analysis).
+Monetization platform: Stripe (selected to preserve customer/subscription data and webhook visibility).
 
 ---
 
@@ -161,12 +161,12 @@ Phase milestones:
 1. Core architecture (Dexie schema, provider registry, run logging) — complete
 2. UI component extraction from App.jsx monolith — phases 1–2 complete
 3. Evaluate tab + run history — Issue 003 QA complete, 7 bugs documented
-4. Monetization (Lemon Squeezy integration, prompt packs, gating)
+4. Monetization (Stripe integration, prompt packs, gating)
 5. Public launch (CWS listing, website, onboarding)
 
 Nav strategy decision pending: React Router hash mode vs state router. Must be resolved before Phase 2 UI work continues.
 
 ---
 
-*Last updated: 2026-03-27*
+*Last updated: 2026-03-31*
 *Related: CLAUDE.md, PROMPT_SYSTEM.md, DECISIONS.md*

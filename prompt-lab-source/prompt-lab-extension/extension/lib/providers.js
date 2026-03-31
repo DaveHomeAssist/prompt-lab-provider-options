@@ -1,6 +1,7 @@
 import {
   DEFAULTS,
   DEFAULT_PROVIDER,
+  toAnthropicMessages,
   normalizeBaseUrl,
   normalizeProvider,
   toChatMessages,
@@ -13,6 +14,7 @@ async function readErrorMessage(response, fallback) {
   try {
     const data = await response.json();
     if (data?.error?.message) return data.error.message;
+    if (typeof data?.error === 'string') return data.error;
     if (data?.message) return data.message;
     return fallback;
   } catch {
@@ -34,9 +36,17 @@ export async function callAnthropic(payload, settings = {}, fetchImpl = globalTh
   }
 
   const requestBody = {
-    ...payload,
     model: settings.anthropicModel || payload?.model || DEFAULTS.anthropicModel,
+    max_tokens: payload?.max_tokens || 1500,
+    messages: toAnthropicMessages(payload),
+    stream: false,
   };
+  if (typeof payload?.system === 'string' && payload.system.trim()) {
+    requestBody.system = payload.system;
+  }
+  if (typeof payload?.temperature === 'number') {
+    requestBody.temperature = payload.temperature;
+  }
 
   const response = await fetchOrThrow(fetchImpl)('https://api.anthropic.com/v1/messages', {
     method: 'POST',

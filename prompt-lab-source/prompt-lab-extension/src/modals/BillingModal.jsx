@@ -5,13 +5,13 @@ import { BILLING_FEATURES, getFeatureMeta } from '../lib/billing.js';
 const FEATURE_LIST = Object.values(BILLING_FEATURES);
 
 export default function BillingModal({ m, billing, requestedFeature, onClose }) {
-  const [licenseKey, setLicenseKey] = useState(billing.licenseKey || '');
+  const [accessEmail, setAccessEmail] = useState(billing.customerEmail || '');
   const [localError, setLocalError] = useState('');
   const feature = useMemo(() => getFeatureMeta(requestedFeature), [requestedFeature]);
 
   useEffect(() => {
-    setLicenseKey(billing.licenseKey || '');
-  }, [billing.licenseKey]);
+    setAccessEmail(billing.customerEmail || '');
+  }, [billing.customerEmail]);
 
   useEffect(() => {
     setLocalError('');
@@ -20,9 +20,9 @@ export default function BillingModal({ m, billing, requestedFeature, onClose }) 
   async function handleActivate() {
     try {
       setLocalError('');
-      await billing.activateLicense(licenseKey);
+      await billing.activateLicense(accessEmail);
     } catch (error) {
-      setLocalError(error.message || 'Could not activate this license.');
+      setLocalError(error.message || 'Could not sync this purchase.');
     }
   }
 
@@ -38,7 +38,7 @@ export default function BillingModal({ m, billing, requestedFeature, onClose }) 
   async function handleManagePurchases() {
     try {
       setLocalError('');
-      await billing.openManagePurchases();
+      await billing.openManagePurchases({ customerEmail: accessEmail || billing.customerEmail });
     } catch (error) {
       setLocalError(error.message || 'Could not open billing portal.');
     }
@@ -47,9 +47,11 @@ export default function BillingModal({ m, billing, requestedFeature, onClose }) 
   async function handleCheckout(period) {
     try {
       setLocalError('');
-      await billing.startCheckout(period, requestedFeature || 'billing-modal');
+      await billing.startCheckout(period, requestedFeature || 'billing-modal', {}, {
+        email: accessEmail,
+      });
     } catch (error) {
-      setLocalError(error.message || 'Could not open Lemon Squeezy checkout.');
+      setLocalError(error.message || 'Could not open Stripe checkout.');
     }
   }
 
@@ -81,8 +83,8 @@ export default function BillingModal({ m, billing, requestedFeature, onClose }) 
             </h2>
             <p className={`mt-2 text-sm leading-relaxed ${m.textMuted}`}>
               {requestedFeature
-                ? `${feature.description} Upgrade to Pro or activate an existing Lemon Squeezy license key to keep going.`
-                : 'Use Lemon Squeezy checkout for Prompt Lab Pro, then activate the license key from your receipt email here.'}
+                ? `${feature.description} Upgrade to Pro or sync an existing Stripe subscription to keep going.`
+                : 'Use Stripe checkout for Prompt Lab Pro, then sync access on this device using the same billing email.'}
             </p>
           </div>
           <button
@@ -121,7 +123,7 @@ export default function BillingModal({ m, billing, requestedFeature, onClose }) 
             className="ui-control rounded-xl bg-violet-600 px-4 py-3 text-left text-white transition-colors hover:bg-violet-500 disabled:opacity-40"
           >
             <div className="text-sm font-semibold">Go Pro Monthly</div>
-            <div className="mt-1 text-xs text-violet-100">$9/month via Lemon Squeezy</div>
+            <div className="mt-1 text-xs text-violet-100">$9/month via Stripe</div>
           </button>
           <button
             type="button"
@@ -136,7 +138,7 @@ export default function BillingModal({ m, billing, requestedFeature, onClose }) 
 
         <div className="mt-5">
           <div className="flex items-center justify-between gap-2">
-            <p className={`text-xs font-semibold uppercase tracking-wider ${m.textSub}`}>License key</p>
+            <p className={`text-xs font-semibold uppercase tracking-wider ${m.textSub}`}>Billing email</p>
             <button
               type="button"
               onClick={handleManagePurchases}
@@ -149,36 +151,39 @@ export default function BillingModal({ m, billing, requestedFeature, onClose }) 
           </div>
           <div className="mt-2 flex flex-col gap-2">
             <input
-              value={licenseKey}
-              onChange={(event) => setLicenseKey(event.target.value)}
-              placeholder="Paste your Lemon Squeezy license key"
+              value={accessEmail}
+              onChange={(event) => setAccessEmail(event.target.value)}
+              placeholder="Enter the email used at Stripe checkout"
               className={`${m.input} w-full rounded-lg border px-3 py-2 text-sm ${m.border} ${m.text} focus:border-violet-500 focus:outline-none`}
             />
+            <p className={`text-[11px] leading-relaxed ${m.textMuted}`}>
+              Stripe keeps the customer record. Prompt Lab syncs Pro access locally after you confirm the billing email.
+            </p>
             <div className="flex flex-wrap gap-2">
               <button
                 type="button"
                 onClick={handleActivate}
-                disabled={!licenseKey.trim() || billing.busyAction === 'activate'}
+                disabled={!accessEmail.trim() || billing.busyAction === 'activate'}
                 className="ui-control rounded-lg bg-violet-600 px-3 py-2 text-xs font-semibold text-white transition-colors hover:bg-violet-500 disabled:opacity-40"
               >
-                Activate License
+                Sync Purchase
               </button>
               <button
                 type="button"
                 onClick={handleRefresh}
-                disabled={!billing.licenseKey || billing.busyAction === 'validate'}
+                disabled={(!billing.customerEmail && !billing.customerId) || billing.busyAction === 'validate'}
                 className={`ui-control rounded-lg px-3 py-2 text-xs font-semibold transition-colors ${m.btn} ${m.textAlt} disabled:opacity-40`}
               >
                 Refresh Status
               </button>
-              {billing.plan === 'pro' && billing.instanceId && (
+              {billing.plan === 'pro' && (billing.customerEmail || billing.customerId) && (
                 <button
                   type="button"
                   onClick={handleDeactivate}
                   disabled={billing.busyAction === 'deactivate'}
                   className={`ui-control rounded-lg px-3 py-2 text-xs font-semibold transition-colors ${m.dangerGhost} disabled:opacity-40`}
                 >
-                  Deactivate Here
+                  Clear Local Access
                 </button>
               )}
             </div>

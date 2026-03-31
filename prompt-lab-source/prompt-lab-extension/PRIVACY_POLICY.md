@@ -8,15 +8,22 @@ This policy applies to the Prompt Lab Chrome extension. Prompt Lab also has host
 
 ## Data Storage
 
-Prompt Lab stores user data locally on the user's device. For the extension, provider settings are stored in browser-managed local extension storage, and app state stays local to the browser environment. No data is written to any external database or cloud service controlled by the developer.
+Prompt Lab stores prompts, saved runs, settings, and provider keys locally on the user's device. For the extension, provider settings are stored in browser-managed local extension storage, and app state stays local to the browser environment.
 
 ## Data Transmission
 
-The extension transmits data only to the AI provider explicitly selected and configured by the user. Supported providers are Anthropic, OpenAI, Google Gemini, OpenRouter, and Ollama (local). No data is sent to any server other than the user's chosen provider endpoint.
+The extension transmits data to:
+
+- the AI provider explicitly selected and configured by the user for prompt execution
+- Prompt Lab's hosted billing endpoints when a user starts Stripe checkout, opens the Stripe billing portal, validates a Pro subscription, or has usage insights enabled
+
+Supported providers are Anthropic, OpenAI, Google Gemini, OpenRouter, and Ollama (local). Prompt and response content is not sent to Prompt Lab billing or insights endpoints.
 
 ## Telemetry and Tracking
 
-Prompt Lab contains zero telemetry, analytics, or third-party tracking of any kind. No usage data, crash reports, or identifiers are collected or transmitted.
+Prompt Lab can send limited product telemetry to developer-controlled endpoints. This includes event names, app surface, plan, anonymous device/session identifiers, and an optional contact email if you provide one in Settings. Prompt text, model responses, and provider API keys are not included in telemetry payloads.
+
+If you start Stripe billing flows, Stripe and Prompt Lab also process billing metadata such as customer email, Stripe customer ID, subscription status, and product/price identifiers so Prompt Lab can unlock Pro features locally on your device.
 
 ## Contact
 

@@ -1,13 +1,12 @@
 export const config = { runtime: 'edge' };
 
 import {
-  buildBillingConfig,
-  callLicenseApi,
+  buildStripeConfig,
   jsonResponse,
-  normalizeLicenseRecord,
+  lookupBilling,
   optionsResponse,
   parseJsonBody,
-} from '../_lib/lemonSqueezy.js';
+} from '../_lib/stripeBilling.js';
 
 function readString(value) {
   return typeof value === 'string' ? value.trim() : '';
@@ -21,48 +20,41 @@ export default async function handler(request) {
 
   const body = await parseJsonBody(request);
   const action = readString(body?.action).toLowerCase();
-  const licenseKey = readString(body?.licenseKey);
-  const instanceId = readString(body?.instanceId);
-  const instanceName = readString(body?.instanceName);
+  const customerEmail = readString(body?.customerEmail || body?.licenseKey).toLowerCase();
+  const customerId = readString(body?.customerId || body?.instanceId);
 
   if (!['activate', 'deactivate', 'validate'].includes(action)) {
     return jsonResponse({ error: 'Unknown billing action.' }, 400);
   }
 
-  if (!licenseKey) {
-    return jsonResponse({ error: 'A license key is required.' }, 400);
+  if (action === 'deactivate') {
+    return jsonResponse({
+      ok: true,
+      deactivated: true,
+    });
   }
 
-  if (action === 'activate' && !instanceName) {
-    return jsonResponse({ error: 'An instance name is required to activate this license.' }, 400);
-  }
-
-  if (action === 'deactivate' && !instanceId) {
-    return jsonResponse({ error: 'An instance ID is required to deactivate this license.' }, 400);
+  if (!customerEmail && !customerId) {
+    return jsonResponse({ error: 'The Stripe billing email is required.' }, 400);
   }
 
   try {
-    const payload = await callLicenseApi(action, {
-      license_key: licenseKey,
-      ...(instanceId ? { instance_id: instanceId } : {}),
-      ...(instanceName ? { instance_name: instanceName } : {}),
+    const payload = await lookupBilling(buildStripeConfig(), {
+      customerEmail,
+      customerId,
     });
 
-    if (action === 'deactivate') {
-      return jsonResponse({
-        ok: Boolean(payload?.deactivated),
-        deactivated: Boolean(payload?.deactivated),
-      });
+    if (action === 'activate' && payload.plan !== 'pro') {
+      return jsonResponse({ error: 'No active Prompt Lab Pro subscription was found for this Stripe billing email.' }, 404);
     }
 
-    const normalized = normalizeLicenseRecord(payload, buildBillingConfig());
     return jsonResponse({
       ok: true,
-      ...normalized,
+      ...payload,
     });
   } catch (error) {
-    const message = error.message || 'License request failed.';
-    const status = /configured Prompt Lab Pro plans/i.test(message) ? 403 : 400;
+    const message = error.message || 'Billing request failed.';
+    const status = /No active Prompt Lab Pro subscription/i.test(message) ? 404 : 400;
     return jsonResponse({ error: message }, status);
   }
 }

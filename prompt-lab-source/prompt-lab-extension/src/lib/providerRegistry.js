@@ -17,6 +17,18 @@ export function anthropicBlocksToText(content) {
     .join('');
 }
 
+export function toAnthropicMessages(payload) {
+  const messages = [];
+  for (const msg of payload?.messages || []) {
+    if (msg?.role === 'system') continue;
+    messages.push({
+      role: msg?.role === 'assistant' ? 'assistant' : 'user',
+      content: anthropicBlocksToText(msg?.content),
+    });
+  }
+  return messages;
+}
+
 export function toChatMessages(payload) {
   const out = [];
   if (typeof payload?.system === 'string' && payload.system.trim()) {
@@ -121,12 +133,20 @@ const PROVIDERS = Object.freeze({
       };
     },
 
-    buildPayload(payload, settings) {
-      return {
-        ...payload,
+    buildPayload(payload, settings, options = {}) {
+      const body = {
         model: this.resolveModel(payload, settings),
-        stream: false,
+        max_tokens: payload?.max_tokens || 1500,
+        messages: toAnthropicMessages(payload),
+        stream: !!options.stream,
       };
+      if (typeof payload?.system === 'string' && payload.system.trim()) {
+        body.system = payload.system;
+      }
+      if (typeof payload?.temperature === 'number') {
+        body.temperature = payload.temperature;
+      }
+      return body;
     },
 
     parseStream: parseAnthropicSse,

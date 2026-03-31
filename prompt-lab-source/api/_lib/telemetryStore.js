@@ -55,7 +55,6 @@ export function buildTelemetryConfig() {
     redisToken: readStringEnv('KV_REST_API_TOKEN', 'UPSTASH_REDIS_REST_TOKEN'),
     prefix: readStringEnv('PROMPTLAB_TELEMETRY_PREFIX') || DEFAULT_PREFIX,
     consoleFallback: readBooleanEnv('PROMPTLAB_TELEMETRY_CONSOLE_FALLBACK', true),
-    webhookSecret: readStringEnv('LEMON_SQUEEZY_WEBHOOK_SECRET'),
   };
 }
 
@@ -108,65 +107,6 @@ export async function persistTelemetryEvent(event, config = buildTelemetryConfig
   }
 
   return { ok: true, mode };
-}
-
-export async function verifyLemonSignature(rawBody, providedSignature, secret) {
-  if (!secret) return false;
-  const encoder = new TextEncoder();
-  const key = await crypto.subtle.importKey(
-    'raw',
-    encoder.encode(secret),
-    { name: 'HMAC', hash: 'SHA-256' },
-    false,
-    ['sign']
-  );
-  const signatureBuffer = await crypto.subtle.sign('HMAC', key, encoder.encode(rawBody));
-  const digest = Array.from(new Uint8Array(signatureBuffer))
-    .map((value) => value.toString(16).padStart(2, '0'))
-    .join('');
-  return digest.toLowerCase() === String(providedSignature || '').trim().toLowerCase();
-}
-
-export function buildLemonWebhookEvent(payload = {}) {
-  const meta = payload?.meta || {};
-  const data = payload?.data || {};
-  const attributes = data?.attributes || {};
-  const custom = meta?.custom_data || {};
-  const eventName = sanitizeEventName(`billing.${meta?.event_name || 'webhook.received'}`);
-  const deviceId = normalizeShortString(
-    custom?.device_id || custom?.deviceId || attributes?.identifier || data?.id,
-    120,
-  ) || `lemon-${Date.now().toString(36)}`;
-  const plan = normalizeEnum(custom?.plan, ['free', 'pro'], 'pro');
-
-  return normalizeTelemetryEvent({
-    event: eventName,
-    surface: normalizeEnum(custom?.surface, ['extension', 'web', 'desktop', 'server'], 'server'),
-    deviceId,
-    sessionId: normalizeShortString(custom?.session_id || custom?.sessionId, 120),
-    plan,
-    contactEmail: normalizeEmail(
-      attributes?.user_email ||
-      attributes?.customer_email ||
-      attributes?.email ||
-      custom?.contact_email ||
-      custom?.contactEmail
-    ),
-    context: {
-      source: 'lemon-webhook',
-      lemonEvent: meta?.event_name || '',
-      resourceType: data?.type || '',
-      resourceId: data?.id || '',
-      status: normalizeShortString(attributes?.status, 40),
-      orderIdentifier: normalizeShortString(attributes?.order_identifier, 80),
-      productName: normalizeShortString(attributes?.product_name || meta?.custom_data?.product_name, 120),
-      variantName: normalizeShortString(attributes?.variant_name, 120),
-      productId: normalizeShortString(attributes?.product_id, 40),
-      variantId: normalizeShortString(attributes?.variant_id || meta?.variant_id, 40),
-      customerName: normalizeShortString(attributes?.user_name || attributes?.customer_name, 120),
-      urls: sanitizeContext(attributes?.urls || {}),
-    },
-  });
 }
 
 function hasRedis(config) {

@@ -49,6 +49,18 @@ export function anthropicBlocksToText(content) {
     .join('');
 }
 
+export function toAnthropicMessages(payload) {
+  const messages = [];
+  for (const msg of payload?.messages || []) {
+    if (msg?.role === 'system') continue;
+    messages.push({
+      role: msg?.role === 'assistant' ? 'assistant' : 'user',
+      content: anthropicBlocksToText(msg?.content),
+    });
+  }
+  return messages;
+}
+
 export function toChatMessages(payload) {
   const out = [];
   if (typeof payload?.system === 'string' && payload.system.trim()) {
