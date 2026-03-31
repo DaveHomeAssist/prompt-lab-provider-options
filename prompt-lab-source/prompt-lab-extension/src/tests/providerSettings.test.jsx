@@ -177,6 +177,34 @@ describe('DesktopSettingsModal', () => {
     });
   });
 
+  it('hosted_web_mode_locks_provider_to_anthropic_and_makes_api_key_optional', async () => {
+    vi.stubEnv('VITE_WEB_MODE', 'true');
+    loadProviderSettings.mockResolvedValueOnce({
+      provider: 'openai',
+      openaiApiKey: 'sk-openai',
+      openaiModel: 'gpt-4o',
+      apiKey: '',
+      anthropicModel: 'claude-sonnet-4-20250514',
+    });
+
+    await renderModal();
+
+    expect(screen.queryByRole('combobox', { name: 'Provider' })).not.toBeInTheDocument();
+    expect(await screen.findByText('Hosted access')).toBeInTheDocument();
+    expect(screen.getByDisplayValue('Anthropic (hosted default)')).toBeDisabled();
+    expect(screen.getByLabelText('Personal API Key (optional)')).toHaveValue('');
+    expect(screen.getByRole('textbox', { name: 'Model' })).toBeDisabled();
+
+    fireEvent.click(screen.getByRole('button', { name: 'Save' }));
+
+    await waitFor(() => {
+      expect(saveProviderSettings).toHaveBeenCalledWith(expect.objectContaining({
+        provider: 'anthropic',
+        anthropicModel: 'claude-sonnet-4-20250514',
+      }));
+    });
+  });
+
   it('platform_branch_behavior_matches_contract', async () => {
     const payload = {
       model: 'test-model',
@@ -220,6 +248,7 @@ describe('DesktopSettingsModal', () => {
     expect(callModelDirect).toHaveBeenCalledWith(payload, undefined);
 
     vi.resetModules();
+    vi.stubEnv('VITE_WEB_MODE', 'true');
     vi.doMock('../lib/desktopApi.js', async (importOriginal) => importOriginal());
     const callProvider = vi.fn().mockResolvedValue({ provider: 'openai', model: 'web-model' });
     const listModels = vi.fn();
@@ -229,6 +258,7 @@ describe('DesktopSettingsModal', () => {
       listOllamaModels: listModels,
     }));
     vi.doMock('../lib/providerRegistry.js', () => ({
+      DEFAULTS: { anthropicModel: 'claude-sonnet-4-20250514' },
       normalizeProvider,
     }));
     localStorage.setItem('pl2-provider-settings', JSON.stringify({
@@ -239,12 +269,14 @@ describe('DesktopSettingsModal', () => {
     await desktopApi.callModelDirect(payload);
 
     expect(callProvider).toHaveBeenCalledWith(expect.objectContaining({
-      provider: 'openai',
+      provider: 'anthropic',
       payload,
       settings: expect.objectContaining({
-        openaiModel: 'gpt-4o',
+        provider: 'anthropic',
+        anthropicModel: 'claude-sonnet-4-20250514',
+        apiKey: expect.any(String),
       }),
-      fetchImpl: globalThis.fetch,
+      fetchImpl: expect.any(Function),
     }));
   });
 });

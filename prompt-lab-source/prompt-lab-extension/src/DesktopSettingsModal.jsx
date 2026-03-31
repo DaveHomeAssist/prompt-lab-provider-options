@@ -9,6 +9,9 @@ import {
   testProviderConnection,
 } from './lib/platform.js';
 
+const IS_WEB = typeof import.meta !== 'undefined'
+  && import.meta.env?.VITE_WEB_MODE === 'true';
+
 const DEFAULT_SETTINGS = {
   provider: 'anthropic',
   apiKey: '',
@@ -35,6 +38,8 @@ export default function DesktopSettingsModal({ show, onClose, m, notify }) {
 
   const inputClass = `w-full px-3 py-2 rounded-lg border text-sm ${m.input} ${m.border} ${m.text}`;
   const buttonClass = `px-4 py-2 rounded-lg text-sm font-medium ${m.btn} ${m.textAlt}`;
+  const readOnlyInputClass = `${inputClass} cursor-not-allowed opacity-70`;
+  const isHostedWeb = !isExtension && IS_WEB;
 
   useEffect(() => {
     if (!show) return;
@@ -47,18 +52,26 @@ export default function DesktopSettingsModal({ show, onClose, m, notify }) {
     loadProviderSettings()
       .then((stored) => {
         if (!cancelled) {
-          setSettings({ ...DEFAULT_SETTINGS, ...(stored && typeof stored === 'object' ? stored : {}) });
+          const nextSettings = {
+            ...DEFAULT_SETTINGS,
+            ...(stored && typeof stored === 'object' ? stored : {}),
+          };
+          if (isHostedWeb) {
+            nextSettings.provider = 'anthropic';
+            nextSettings.anthropicModel = nextSettings.anthropicModel || DEFAULT_SETTINGS.anthropicModel;
+          }
+          setSettings(nextSettings);
         }
       })
       .catch(() => {
         if (!cancelled) {
-          setSettings(DEFAULT_SETTINGS);
+          setSettings(isHostedWeb ? { ...DEFAULT_SETTINGS, provider: 'anthropic' } : DEFAULT_SETTINGS);
         }
       });
     return () => {
       cancelled = true;
     };
-  }, [show]);
+  }, [isHostedWeb, show]);
 
   const currentModel = useMemo(() => {
     switch (settings.provider) {
@@ -170,28 +183,52 @@ export default function DesktopSettingsModal({ show, onClose, m, notify }) {
         </div>
 
         <div className="space-y-4">
-          <label className="block space-y-1">
-            <span className={`text-xs font-medium uppercase tracking-wide ${m.textMuted}`}>Provider</span>
-            <select
-              value={settings.provider}
-              onChange={event => updateSetting('provider', event.target.value)}
-              className={inputClass}
-            >
-              <option value="anthropic">Anthropic</option>
-              <option value="openai">OpenAI</option>
-              <option value="gemini">Google Gemini</option>
-              <option value="openrouter">OpenRouter</option>
-              <option value="ollama">Ollama (local)</option>
-            </select>
-          </label>
+          {isHostedWeb ? (
+            <>
+              <div className={`space-y-2 rounded-xl border p-3 ${m.border} ${m.btn}`}>
+                <p className={`text-sm font-semibold ${m.text}`}>Hosted access</p>
+                <p className={`text-xs ${m.textMuted}`}>
+                  Hosted Prompt Lab is currently locked to Anthropic. The shared hosted key is used
+                  automatically when you leave the personal key field blank.
+                </p>
+              </div>
+              <label className="block space-y-1">
+                <span className={`text-xs font-medium uppercase tracking-wide ${m.textMuted}`}>Provider</span>
+                <input
+                  type="text"
+                  value="Anthropic (hosted default)"
+                  readOnly
+                  disabled
+                  className={readOnlyInputClass}
+                />
+              </label>
+            </>
+          ) : (
+            <label className="block space-y-1">
+              <span className={`text-xs font-medium uppercase tracking-wide ${m.textMuted}`}>Provider</span>
+              <select
+                value={settings.provider}
+                onChange={event => updateSetting('provider', event.target.value)}
+                className={inputClass}
+              >
+                <option value="anthropic">Anthropic</option>
+                <option value="openai">OpenAI</option>
+                <option value="gemini">Google Gemini</option>
+                <option value="openrouter">OpenRouter</option>
+                <option value="ollama">Ollama (local)</option>
+              </select>
+            </label>
+          )}
 
           {settings.provider === 'anthropic' && (
             <>
               <label className="block space-y-1">
-                <span className={`text-xs font-medium uppercase tracking-wide ${m.textMuted}`}>API Key</span>
+                <span className={`text-xs font-medium uppercase tracking-wide ${m.textMuted}`}>
+                  {isHostedWeb ? 'Personal API Key (optional)' : 'API Key'}
+                </span>
                 <input
                   type="password"
-                  placeholder="sk-ant-..."
+                  placeholder={isHostedWeb ? 'Optional personal override' : 'sk-ant-...'}
                   value={settings.apiKey}
                   onChange={event => updateSetting('apiKey', event.target.value)}
                   className={inputClass}
@@ -203,13 +240,20 @@ export default function DesktopSettingsModal({ show, onClose, m, notify }) {
                   type="text"
                   value={settings.anthropicModel}
                   onChange={event => updateSetting('anthropicModel', event.target.value)}
-                  className={inputClass}
+                  readOnly={isHostedWeb}
+                  disabled={isHostedWeb}
+                  className={isHostedWeb ? readOnlyInputClass : inputClass}
                 />
               </label>
+              {isHostedWeb && (
+                <p className={`text-xs ${m.textMuted}`}>
+                  Hosted mode keeps Anthropic fixed for now so shared usage stays predictable.
+                </p>
+              )}
             </>
           )}
 
-          {settings.provider === 'openai' && (
+          {!isHostedWeb && settings.provider === 'openai' && (
             <>
               <label className="block space-y-1">
                 <span className={`text-xs font-medium uppercase tracking-wide ${m.textMuted}`}>API Key</span>
@@ -232,7 +276,7 @@ export default function DesktopSettingsModal({ show, onClose, m, notify }) {
             </>
           )}
 
-          {settings.provider === 'gemini' && (
+          {!isHostedWeb && settings.provider === 'gemini' && (
             <>
               <label className="block space-y-1">
                 <span className={`text-xs font-medium uppercase tracking-wide ${m.textMuted}`}>API Key</span>
@@ -255,7 +299,7 @@ export default function DesktopSettingsModal({ show, onClose, m, notify }) {
             </>
           )}
 
-          {settings.provider === 'openrouter' && (
+          {!isHostedWeb && settings.provider === 'openrouter' && (
             <>
               <label className="block space-y-1">
                 <span className={`text-xs font-medium uppercase tracking-wide ${m.textMuted}`}>API Key</span>
@@ -278,7 +322,7 @@ export default function DesktopSettingsModal({ show, onClose, m, notify }) {
             </>
           )}
 
-          {settings.provider === 'ollama' && (
+          {!isHostedWeb && settings.provider === 'ollama' && (
             <>
               <label className="block space-y-1">
                 <span className={`text-xs font-medium uppercase tracking-wide ${m.textMuted}`}>Base URL</span>

@@ -5,10 +5,12 @@
  * All provider logic lives in ./providers.js (shared with the extension).
  */
 import { callProvider, listOllamaModels as listModels } from './providers.js';
-import { normalizeProvider } from './providerRegistry.js';
+import { DEFAULTS, normalizeProvider } from './providerRegistry.js';
 import { createProxyFetch } from './proxyFetch.js';
 
 const SETTINGS_KEY = 'pl2-provider-settings';
+const HOSTED_PROVIDER = 'anthropic';
+export const HOSTED_KEY_PLACEHOLDER = '__plb_hosted_shared_key__';
 
 const IS_WEB = typeof import.meta !== 'undefined'
   && import.meta.env?.VITE_WEB_MODE === 'true';
@@ -18,37 +20,45 @@ function getFetchImpl(provider) {
   return createProxyFetch();
 }
 
+function normalizeHostedSettings(settings = {}) {
+  if (!IS_WEB) return settings;
+  return {
+    ...settings,
+    provider: HOSTED_PROVIDER,
+    anthropicModel: settings.anthropicModel || DEFAULTS.anthropicModel,
+  };
+}
+
 export function loadSettings() {
   try {
     const raw = localStorage.getItem(SETTINGS_KEY);
-    return raw ? JSON.parse(raw) : {};
+    const parsed = raw ? JSON.parse(raw) : {};
+    return normalizeHostedSettings(parsed);
   } catch {
-    return {};
+    return normalizeHostedSettings({});
   }
 }
 
 export function saveSettings(settings) {
-  localStorage.setItem(SETTINGS_KEY, JSON.stringify(settings));
+  localStorage.setItem(SETTINGS_KEY, JSON.stringify(normalizeHostedSettings(settings)));
 }
 
 /**
  * In web demo mode the proxy injects real keys server-side,
  * but providers.js still checks for a truthy key before calling fetch.
- * Inject placeholders so the validation passes — the proxy overwrites them.
+ * Inject a sentinel placeholder so the validation passes — the proxy strips
+ * it and injects the shared hosted key only when no personal key is present.
  */
 function withDemoKeys(settings, provider) {
   if (!IS_WEB) return settings;
   const s = { ...settings };
-  if (provider === 'anthropic' && !s.apiKey)            s.apiKey = 'demo';
-  if (provider === 'openai'    && !s.openaiApiKey)      s.openaiApiKey = 'demo';
-  if (provider === 'gemini'    && !s.geminiApiKey)       s.geminiApiKey = 'demo';
-  if (provider === 'openrouter' && !s.openrouterApiKey)  s.openrouterApiKey = 'demo';
+  if (provider === HOSTED_PROVIDER && !s.apiKey) s.apiKey = HOSTED_KEY_PLACEHOLDER;
   return s;
 }
 
 export async function callModelDirect(payload, { settingsOverride, onChunk, signal } = {}) {
-  const s = settingsOverride || loadSettings();
-  const provider = normalizeProvider(s.provider);
+  const s = normalizeHostedSettings(settingsOverride || loadSettings());
+  const provider = IS_WEB ? HOSTED_PROVIDER : normalizeProvider(s.provider);
   return callProvider({
     provider,
     payload,
@@ -60,6 +70,9 @@ export async function callModelDirect(payload, { settingsOverride, onChunk, sign
 }
 
 export async function listOllamaModelsDirect(baseUrl) {
+  if (IS_WEB) {
+    return { error: 'Ollama is unavailable in hosted web mode.' };
+  }
   try {
     const models = await listModels(baseUrl);
     return { models };
