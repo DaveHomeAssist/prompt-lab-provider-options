@@ -38,6 +38,18 @@ import CommandPaletteModal from './modals/CommandPaletteModal';
 import ShortcutsModal from './modals/ShortcutsModal';
 import PiiWarningModal from './modals/PiiWarningModal';
 
+const EVALUATE_QUICK_START_PROMPT = `Write a concise product update about Prompt Lab's Evaluate workspace.
+
+Audience: experienced prompt engineers
+
+Output format:
+- one short summary paragraph
+- three practical bullets
+
+Constraints:
+- keep it under 140 words
+- sound precise, not hypey`;
+
 // ── Main App ──────────────────────────────────────────────────────────────────
 export default function App() {
   const ui = useUiState();
@@ -106,6 +118,7 @@ export default function App() {
     raw, setRaw, enhanced, setEnhanced, variants, notes, loading, error,
     streamPreview, streaming, optimisticSaveVisible, batchProgress,
     enhMode, setEnhMode, showNotes, setShowNotes,
+    cursor, updateCursor,
     lintIssues, lintOpen, setLintOpen, handleLintFix,
     piiWarning, piiSendAnyway, piiRedactAndSend, piiCancel,
     showSave, setShowSave, editingId, setEditingId, saveTargetId, hasPanelSaveSource, saveTitle, setSaveTitle,
@@ -300,6 +313,23 @@ export default function App() {
     setEnhMdPreview(false);
     enhanceWithMode(modeId);
   };
+  const handleEvaluateQuickStart = () => {
+    if (currentEntry || raw.trim()) {
+      openSection('create');
+      notify(currentEntry
+        ? 'Opened Create. Enhance this prompt to generate its first run.'
+        : 'Opened Create. Enhance your current draft to generate its first run.');
+      return;
+    }
+    clearEditor();
+    setRaw(EVALUATE_QUICK_START_PROMPT);
+    openSection('create');
+    notify('Loaded a starter prompt into Create. Enhance it to generate your first saved run.');
+  };
+  const handleEvaluateOpenCompare = () => {
+    openRunsView('compare');
+    notify('Opened Compare. Paste two variants or send prompts from the library to start an A/B run.');
+  };
 
   // ─────────────────────────────────────────────────────────────────────────
   return (
@@ -351,6 +381,7 @@ export default function App() {
               openSavePanel={openSavePanel}
               openSection={openSection}
               raw={raw} setRaw={setRaw}
+              updateCursor={updateCursor}
               mdPreview={mdPreview} setMdPreview={setMdPreview}
               wc={wc} score={score} inp={inp}
               lintIssues={lintIssues} lintOpen={lintOpen} setLintOpen={setLintOpen} handleLintFix={handleLintFix}
@@ -424,7 +455,17 @@ export default function App() {
           <div className={`min-h-0 flex-1 ${pageScroll ? '' : 'overflow-hidden'}`}>
             {runsView === 'compare'
               ? <ABTestTab m={m} copy={copy} compact={compact} pageScroll={pageScroll} {...abTest} />
-              : <RunTimelinePanel m={m} prompt={currentEntry} copy={copy} compact={compact} pageScroll={pageScroll} />}
+              : (
+                <RunTimelinePanel
+                  m={m}
+                  prompt={currentEntry}
+                  copy={copy}
+                  compact={compact}
+                  pageScroll={pageScroll}
+                  onQuickStart={handleEvaluateQuickStart}
+                  onOpenCompare={handleEvaluateOpenCompare}
+                />
+              )}
           </div>
         </div>
       )}

@@ -128,4 +128,55 @@ describe('RunTimelinePanel', () => {
     expect(screen.getByLabelText('Filter by mode')).toHaveValue('');
     expect(screen.getByPlaceholderText('Search runs…')).toHaveValue('');
   });
+
+  it('shows quick-start actions when the global evaluate timeline is empty', () => {
+    const onQuickStart = vi.fn();
+    const onOpenCompare = vi.fn();
+
+    useEvalRunsMock.mockReturnValue({
+      evalRuns: [],
+      loading: false,
+      error: null,
+      hasMore: false,
+      loadMore: vi.fn(),
+      updateRun: vi.fn(),
+    });
+
+    renderPanel({ onQuickStart, onOpenCompare });
+
+    expect(screen.getByText('No evaluate runs yet.')).toBeInTheDocument();
+    expect(screen.getByText('Quick Start loads a starter prompt into Create so you can generate your first saved run.')).toBeInTheDocument();
+
+    fireEvent.click(screen.getByRole('button', { name: 'Quick Start' }));
+    fireEvent.click(screen.getByRole('button', { name: 'Open Compare' }));
+
+    expect(onQuickStart).toHaveBeenCalledTimes(1);
+    expect(onOpenCompare).toHaveBeenCalledTimes(1);
+  });
+
+  it('uses an Open Create CTA for prompt-scoped empty history', () => {
+    const onQuickStart = vi.fn();
+
+    useEvalRunsMock.mockReturnValue({
+      evalRuns: [],
+      loading: false,
+      error: null,
+      hasMore: false,
+      loadMore: vi.fn(),
+      updateRun: vi.fn(),
+    });
+
+    renderPanel({
+      prompt: { id: 'prompt-1', title: 'Launch Notes' },
+      onQuickStart,
+    });
+
+    expect(screen.getByText('No runs for this prompt yet.')).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: 'Open Create' })).toBeInTheDocument();
+    expect(screen.queryByRole('button', { name: 'Open Compare' })).not.toBeInTheDocument();
+
+    fireEvent.click(screen.getByRole('button', { name: 'Open Create' }));
+
+    expect(onQuickStart).toHaveBeenCalledTimes(1);
+  });
 });

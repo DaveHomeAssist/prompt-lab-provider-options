@@ -33,12 +33,19 @@ export function wordDiff(a, b) {
 export function scorePrompt(text) {
   if (typeof text !== 'string') return null;
   if (!text.trim()) return null;
-  return {
+  const checks = {
     role: /\b(you are|act as|as a|your role|persona)\b/i.test(text),
     task: /\b(write|create|generate|explain|analyze|summarize|list|help|please|provide)\b/i.test(text),
     format: /\b(format|output|respond in|json|list|bullet|markdown|table|return)\b/i.test(text),
     constraints: /\b(do not|don't|avoid|must|should|limit|max|minimum|only|never|always)\b/i.test(text),
     context: text.length > 80,
+  };
+  const points = Object.values(checks).filter(Boolean).length;
+  return {
+    ...checks,
+    points,
+    maxPoints: 5,
+    weighting: 'equal',
     tokens: Math.round(text.length / 4),
   };
 }

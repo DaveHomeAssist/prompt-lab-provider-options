@@ -19,10 +19,12 @@ export default function SavePanel({
       <div className={`flex items-start justify-between gap-3 border-b ${m.border} px-4 py-4`}>
         <div>
           <p id="save-panel-title" className={`text-sm font-semibold ${m.text}`}>
-            {saveTargetId ? 'Update Prompt' : 'Save to Library'}
+            {saveTargetId ? 'Save New Library Version' : 'Save Prompt to Library'}
           </p>
           <p className={`mt-1 text-xs ${m.textMuted}`}>
-            Keep editing in the background while you set title, collection, and tags.
+            {saveTargetId
+              ? 'This stores the current draft/output as the next saved version for this prompt.'
+              : 'This stores the current draft/output as a reusable prompt in your library.'}
           </p>
         </div>
         <button
@@ -136,7 +138,7 @@ export default function SavePanel({
             className="flex-1 flex items-center justify-center gap-1.5 rounded-lg bg-green-600 py-2 text-sm font-semibold text-white transition-colors hover:bg-green-500 disabled:opacity-40"
           >
             <Ic n="Save" size={12} />
-            Save {primaryModKey}+S
+            {saveTargetId ? 'Save Version' : 'Save to Library'} {primaryModKey}+S
           </button>
           <button
             type="button"

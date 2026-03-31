@@ -82,9 +82,9 @@ export default function EditorActions({
         type="button"
         onClick={onSave}
         disabled={!hasSavablePrompt}
-        className="ui-control min-w-[6.5rem] flex-[1_1_6.5rem] px-2.5 bg-green-600 hover:bg-green-500 disabled:opacity-40 text-white rounded-lg text-xs font-semibold transition-colors py-2"
+        className="ui-control min-w-[8.75rem] flex-[1_1_8.75rem] px-2.5 bg-green-600 hover:bg-green-500 disabled:opacity-40 text-white rounded-lg text-xs font-semibold transition-colors py-2"
       >
-        Save
+        Save to Library
       </button>
       <button
         type="button"

@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from 'react';
-import { lintPrompt, applyLintQuickFix } from '../promptLint';
+import { lintPrompt, applyLintQuickFixAtSelection } from '../promptLint';
 import { normalizeError } from '../lib/errorTaxonomy.js';
 
 /**
@@ -41,10 +41,14 @@ export default function useEditorState() {
 
   const handleLintFix = (ruleId) => {
     try {
-      setRaw(applyLintQuickFix(raw, ruleId));
+      const result = applyLintQuickFixAtSelection(raw, ruleId, cursor);
+      setRaw(result.text);
+      setCursor({ start: result.selectionStart, end: result.selectionEnd });
       setLintError(null);
+      return result;
     } catch (caught) {
       setLintError(normalizeError(caught, 'lint'));
+      return null;
     }
   };
 

@@ -1,8 +1,9 @@
-import { useState } from 'react';
+import { useRef, useState } from 'react';
 import Ic from './icons';
 import { wordDiff } from './promptUtils';
 import MarkdownPreview from './MarkdownPreview';
 import EditorActions from './EditorActions';
+import { getLintQuickFixMeta } from './promptLint';
 
 /**
  * CreateEditorPane – compressed Create workflow.
@@ -44,6 +45,7 @@ export default function CreateEditorPane({
   // Input
   raw,
   setRaw,
+  updateCursor,
   mdPreview,
   setMdPreview,
   wc,
@@ -110,10 +112,12 @@ export default function CreateEditorPane({
   streamPreview,
 }) {
   // ── Scoring strip (inline) ──
+  const rawInputRef = useRef(null);
   const scoreChecks = score
     ? [['Role', score.role], ['Task', score.task], ['Format', score.format], ['Constraints', score.constraints], ['Context', score.context]]
     : [];
-  const scoreCnt = scoreChecks.filter(c => c[1]).length;
+  const scoreCnt = score?.points ?? scoreChecks.filter(c => c[1]).length;
+  const qualityHint = 'Heuristic quality score: five equal-weight checks for role, task, format, constraints, and context.';
   const shellClass = pageScroll
     ? 'pl-tab-panel min-h-0 flex flex-col'
     : 'pl-tab-panel h-full min-h-0 flex flex-col overflow-hidden';
@@ -123,6 +127,25 @@ export default function CreateEditorPane({
   const resultsClass = pageScroll
     ? 'space-y-3'
     : 'min-h-0 flex-1 overflow-y-auto pr-1 space-y-3';
+  const syncRawCursor = (target) => {
+    if (!target || typeof updateCursor !== 'function') return;
+    updateCursor(target.selectionStart ?? 0, target.selectionEnd ?? target.selectionStart ?? 0);
+  };
+  const handleRawChange = (event) => {
+    setRaw(event.target.value);
+    syncRawCursor(event.target);
+  };
+  const handleLintQuickFix = (ruleId) => {
+    setMdPreview(false);
+    const result = handleLintFix(ruleId);
+    if (!result) return;
+    requestAnimationFrame(() => {
+      const input = rawInputRef.current;
+      if (!input) return;
+      input.focus();
+      input.setSelectionRange(result.selectionStart, result.selectionEnd);
+    });
+  };
 
   return (
     <div className={shellClass}>
@@ -157,7 +180,7 @@ export default function CreateEditorPane({
                   onClick={() => openSavePanel()}
                   className="text-[10px] font-semibold text-violet-400 hover:text-violet-300 transition-colors"
                 >
-                  {currentEntry ? 'Save Details' : 'Save Details'}
+                  Library Details
                 </button>
               )}
             </div>
@@ -230,12 +253,22 @@ export default function CreateEditorPane({
             </div>
             <span className={`text-xs ${m.textMuted}`}>{wc}w · {raw.length}c{score ? ` · ~${score.tokens} tok` : ''}</span>
           </div>
-          {mdPreview ? (
+            {mdPreview ? (
             <div className={`${inp} overflow-y-auto`} style={{ minHeight: '12rem', maxHeight: '24rem' }}>
               {raw.trim() ? <MarkdownPreview text={raw} /> : <span className={`text-sm ${m.textSub}`}>Nothing to preview</span>}
             </div>
           ) : (
-            <textarea rows={8} className={inp} placeholder="Paste or write your prompt here…" value={raw} onChange={e => setRaw(e.target.value)} />
+            <textarea
+              ref={rawInputRef}
+              rows={8}
+              className={inp}
+              placeholder="Paste or write your prompt here…"
+              value={raw}
+              onChange={handleRawChange}
+              onSelect={(event) => syncRawCursor(event.currentTarget)}
+              onClick={(event) => syncRawCursor(event.currentTarget)}
+              onKeyUp={(event) => syncRawCursor(event.currentTarget)}
+            />
           )}
         </div>
 
@@ -246,6 +279,9 @@ export default function CreateEditorPane({
               <div className="flex items-center gap-2">
                 <span className={`text-[10px] font-semibold ${m.textSub} uppercase tracking-wider`}>Quality</span>
                 <span className={`text-[10px] font-bold ${scoreCnt >= 4 ? 'text-green-500' : scoreCnt >= 2 ? 'text-yellow-500' : 'text-red-500'}`}>{scoreCnt}/5</span>
+                <span className={`text-[10px] ${m.textMuted}`} title={qualityHint}>
+                  1 pt each
+                </span>
                 <div className="flex gap-1.5">
                   {scoreChecks.map(([lbl, ok]) => (
                     <span key={lbl} className={`flex items-center gap-0.5 text-[10px] ${ok ? m.scoreGood : m.scoreBad}`}>
@@ -277,8 +313,13 @@ export default function CreateEditorPane({
                 issue.severity === 'warning' ? 'text-yellow-400' : m.textAlt
               }`}>
                 <span className="flex-1">{issue.message}</span>
-                <button onClick={() => handleLintFix(issue.id)}
-                  className="shrink-0 text-violet-400 hover:text-violet-300 text-xs underline">Fix</button>
+                <button
+                  type="button"
+                  onClick={() => handleLintQuickFix(issue.id)}
+                  className="shrink-0 text-violet-400 hover:text-violet-300 text-xs underline"
+                >
+                  {getLintQuickFixMeta(issue.id)?.label || 'Quick Fix'}
+                </button>
               </div>
             ))}
           </div>
@@ -342,7 +383,7 @@ export default function CreateEditorPane({
                     onClick={() => openSavePanel()}
                     className="text-[10px] font-semibold text-green-400 hover:text-green-300 transition-colors"
                   >
-                    Save Draft
+                    Save to Library
                   </button>
                 )}
                 {loading && (
@@ -455,7 +496,7 @@ export default function CreateEditorPane({
                         </span>
                       )}
                     </div>
-                    <p className={`mt-1 text-xs ${m.textMuted}`}>Review output, compare changes, and decide what to keep.</p>
+                    <p className={`mt-1 text-xs ${m.textMuted}`}>Copy keeps plain text only. Save stores a reusable library entry or a new library version.</p>
                   </div>
                   <div className={`flex items-center gap-2 ${compact ? 'w-full flex-wrap' : 'justify-end flex-wrap'} min-w-0`}>
                     {activeResultTab === 'improved' && (
@@ -482,7 +523,7 @@ export default function CreateEditorPane({
                     <button
                       onClick={() => copy(enhanced)}
                       className={`flex items-center gap-1.5 text-xs px-2.5 py-1.5 rounded-md font-semibold transition-colors ${copyBtn} shrink-0`}
-                    ><Ic n="Copy" size={12} />Copy</button>
+                    ><Ic n="Copy" size={12} />Copy Output</button>
                   </div>
                 </div>
 
@@ -509,7 +550,7 @@ export default function CreateEditorPane({
                   <div className={`${m.codeBlock} border ${m.border} rounded-lg p-3 mb-3`}>
                     <div className={`flex items-center gap-3 ${compact ? 'flex-col items-stretch' : ''}`}>
                       <span className={`text-[10px] font-semibold uppercase tracking-wider ${m.textSub} shrink-0`}>
-                        {currentEntry ? 'Update' : 'Save'}
+                        {currentEntry ? 'Library Version' : 'Library Save'}
                       </span>
                       <label htmlFor="inline-save-title" className="sr-only">Prompt title</label>
                       <input
@@ -526,14 +567,14 @@ export default function CreateEditorPane({
                           disabled={!canSavePanel}
                           className="ui-control rounded-lg bg-green-600 px-3 py-1.5 text-xs font-semibold text-white transition-colors hover:bg-green-500 disabled:opacity-40"
                         >
-                          {currentEntry ? 'Update' : 'Save'}
+                          {currentEntry ? 'Save New Version' : 'Save to Library'}
                         </button>
                         <button
                           type="button"
                           onClick={() => openSavePanel()}
                           className={`ui-control rounded-lg px-3 py-1.5 text-xs font-semibold transition-colors ${m.btn} ${m.textAlt}`}
                         >
-                          Details
+                          Library Details
                         </button>
                       </div>
                     </div>

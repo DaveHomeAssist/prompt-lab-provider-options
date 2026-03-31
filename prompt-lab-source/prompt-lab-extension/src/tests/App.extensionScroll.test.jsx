@@ -69,6 +69,8 @@ const mocks = vi.hoisted(() => {
       setEditorLayout: fn(),
       composerBlocks: [],
       setComposerBlocks: fn(),
+      cursor: { start: 0, end: 0 },
+      updateCursor: fn(),
       lintIssues: [],
       lintOpen: false,
       setLintOpen: fn(),

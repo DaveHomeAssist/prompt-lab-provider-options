@@ -325,7 +325,15 @@ function ComparePanel({ runs, m, compact, copy, onClose }) {
 }
 
 // ── Main Panel ──
-export default function RunTimelinePanel({ m, prompt, copy, compact, pageScroll }) {
+export default function RunTimelinePanel({
+  m,
+  prompt,
+  copy,
+  compact,
+  pageScroll,
+  onQuickStart,
+  onOpenCompare,
+}) {
   const [timelineFilters, setTimelineFilters] = usePersistedState(
     EVALUATE_TIMELINE_FILTERS_KEY,
     { ...DEFAULT_EVALUATE_TIMELINE_FILTERS },
@@ -520,6 +528,31 @@ export default function RunTimelinePanel({ m, prompt, copy, compact, pageScroll 
                 ? 'Enhance this prompt, run its test cases, or compare variants and the timeline will fill in here.'
                 : 'Enhance a prompt or run an A/B compare and every saved run will appear here.'}
             </p>
+            <div className="mt-3 flex items-center justify-center gap-2 flex-wrap">
+              <button
+                type="button"
+                onClick={onQuickStart}
+                className="ui-control inline-flex items-center gap-1.5 rounded-lg bg-violet-600 px-3 py-1.5 text-xs font-semibold text-white transition-colors hover:bg-violet-500"
+              >
+                <Ic n="Wand2" size={11} />
+                {prompt ? 'Open Create' : 'Quick Start'}
+              </button>
+              {!prompt && (
+                <button
+                  type="button"
+                  onClick={onOpenCompare}
+                  className={`ui-control inline-flex items-center gap-1.5 rounded-lg px-3 py-1.5 text-xs font-semibold transition-colors ${m.btn} ${m.textAlt}`}
+                >
+                  <Ic n="GitBranch" size={11} />
+                  Open Compare
+                </button>
+              )}
+            </div>
+            {!prompt && (
+              <p className={`mt-2 text-[11px] ${m.textMuted}`}>
+                Quick Start loads a starter prompt into Create so you can generate your first saved run.
+              </p>
+            )}
           </div>
         )}
 

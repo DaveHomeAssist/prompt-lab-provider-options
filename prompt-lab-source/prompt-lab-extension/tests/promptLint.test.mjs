@@ -1,7 +1,13 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 
-import { lintPrompt, applyLintQuickFix, LINT_FIXES } from '../src/promptLint.js';
+import {
+  lintPrompt,
+  applyLintQuickFix,
+  applyLintQuickFixAtSelection,
+  getLintQuickFixMeta,
+  LINT_FIXES,
+} from '../src/promptLint.js';
 
 // ── Empty / invalid input ───────────────────────────────────────────────────
 
@@ -136,9 +142,9 @@ test('issues have correct shape', () => {
 
 // ── Quick fixes ─────────────────────────────────────────────────────────────
 
-test('applyLintQuickFix prepends role fix', () => {
+test('applyLintQuickFix inserts role fix content', () => {
   const result = applyLintQuickFix('My prompt', 'role_definition');
-  assert.ok(result.startsWith(LINT_FIXES.role_section.trim()));
+  assert.ok(result.includes(LINT_FIXES.role_section.trim()));
   assert.ok(result.includes('My prompt'));
 });
 
@@ -170,4 +176,31 @@ test('applyLintQuickFix unknown rule returns original', () => {
 test('applyLintQuickFix handles non-string input', () => {
   const result = applyLintQuickFix(null, 'constraints');
   assert.ok(typeof result === 'string');
+});
+
+test('quick fix metadata exposes inject role label', () => {
+  assert.deepEqual(getLintQuickFixMeta('role_definition'), {
+    label: 'Inject Role Block',
+    strategy: 'cursor',
+    snippet: LINT_FIXES.role_section,
+  });
+});
+
+test('applyLintQuickFixAtSelection inserts role fix at cursor', () => {
+  const prompt = 'Goal:\nWrite a release note.\n\nAudience:\nEngineers';
+  const cursor = prompt.indexOf('Audience:');
+  const result = applyLintQuickFixAtSelection(prompt, 'role_definition', { start: cursor, end: cursor });
+
+  assert.equal(
+    result.text,
+    'Goal:\nWrite a release note.\n\nRole:\nYou are an expert assistant for this task.\n\nAudience:\nEngineers',
+  );
+  assert.ok(result.selectionStart > cursor);
+  assert.equal(result.selectionStart, result.selectionEnd);
+});
+
+test('applyLintQuickFixAtSelection keeps goal fix pinned near top', () => {
+  const result = applyLintQuickFixAtSelection('My prompt', 'goal_near_top', { start: 2, end: 2 });
+  assert.ok(result.text.startsWith(LINT_FIXES.goal_section.trim()));
+  assert.equal(result.selectionStart, LINT_FIXES.goal_section.trim().length);
 });

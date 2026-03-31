@@ -8,6 +8,34 @@ export const LINT_FIXES = {
   example_block: '\nExample:\nInput: <short sample input>\nOutput: <short sample output>\n',
 };
 
+export const LINT_QUICK_FIX_META = Object.freeze({
+  goal_near_top: {
+    label: 'Add Goal Block',
+    strategy: 'prepend',
+    snippet: LINT_FIXES.goal_section,
+  },
+  role_definition: {
+    label: 'Inject Role Block',
+    strategy: 'cursor',
+    snippet: LINT_FIXES.role_section,
+  },
+  constraints: {
+    label: 'Inject Constraints',
+    strategy: 'cursor',
+    snippet: LINT_FIXES.constraints_section,
+  },
+  output_format: {
+    label: 'Inject Output Format',
+    strategy: 'cursor',
+    snippet: LINT_FIXES.output_format_section,
+  },
+  example_io: {
+    label: 'Inject Example Block',
+    strategy: 'cursor',
+    snippet: LINT_FIXES.example_block,
+  },
+});
+
 function lineFromIndex(text, idx) {
   if (typeof text !== 'string' || idx <= 0) return 1;
   return text.slice(0, idx).split('\n').length;
@@ -110,20 +138,80 @@ export function lintPrompt(prompt, opts = {}) {
   return issues;
 }
 
-export function applyLintQuickFix(text, ruleId) {
-  const base = typeof text === 'string' ? text : '';
-  const map = {
-    goal_near_top: LINT_FIXES.goal_section,
-    role_definition: LINT_FIXES.role_section,
-    constraints: LINT_FIXES.constraints_section,
-    output_format: LINT_FIXES.output_format_section,
-    example_io: LINT_FIXES.example_block,
-  };
-  const patch = map[ruleId];
-  if (!patch) return base;
+function normalizeSelection(text, selection) {
+  const length = typeof text === 'string' ? text.length : 0;
+  const start = Number.isFinite(selection?.start) ? Math.max(0, Math.min(length, selection.start)) : length;
+  const end = Number.isFinite(selection?.end) ? Math.max(start, Math.min(length, selection.end)) : start;
+  return { start, end };
+}
 
-  if (ruleId === 'goal_near_top' || ruleId === 'role_definition') {
-    return `${patch.trim()}\n\n${base}`.trim();
+function buildCursorInsertion(base, snippet, selection) {
+  const { start } = normalizeSelection(base, selection);
+  const before = base.slice(0, start);
+  const after = base.slice(start);
+  const trimmedSnippet = snippet.trim();
+
+  const prefix = before.length === 0
+    ? ''
+    : before.endsWith('\n\n')
+      ? ''
+      : before.endsWith('\n')
+        ? '\n'
+        : '\n\n';
+  const suffix = after.length === 0
+    ? ''
+    : after.startsWith('\n\n')
+      ? ''
+      : after.startsWith('\n')
+        ? '\n'
+        : '\n\n';
+
+  const inserted = `${prefix}${trimmedSnippet}${suffix}`;
+  const nextText = `${before}${inserted}${after}`;
+  const cursorPos = before.length + inserted.length;
+  return {
+    text: nextText,
+    selectionStart: cursorPos,
+    selectionEnd: cursorPos,
+  };
+}
+
+function buildPrependInsertion(base, snippet) {
+  const trimmedBase = base.trim();
+  const trimmedSnippet = snippet.trim();
+  const nextText = trimmedBase
+    ? `${trimmedSnippet}\n\n${trimmedBase}`
+    : trimmedSnippet;
+  const cursorPos = trimmedSnippet.length;
+  return {
+    text: nextText,
+    selectionStart: cursorPos,
+    selectionEnd: cursorPos,
+  };
+}
+
+export function getLintQuickFixMeta(ruleId) {
+  return LINT_QUICK_FIX_META[ruleId] || null;
+}
+
+export function applyLintQuickFixAtSelection(text, ruleId, selection) {
+  const base = typeof text === 'string' ? text : '';
+  const meta = getLintQuickFixMeta(ruleId);
+  if (!meta?.snippet) {
+    return {
+      text: base,
+      selectionStart: base.length,
+      selectionEnd: base.length,
+    };
   }
-  return `${base.trim()}\n${patch}`.trim();
+
+  if (meta.strategy === 'prepend') {
+    return buildPrependInsertion(base, meta.snippet);
+  }
+
+  return buildCursorInsertion(base, meta.snippet, selection);
+}
+
+export function applyLintQuickFix(text, ruleId) {
+  return applyLintQuickFixAtSelection(text, ruleId).text;
 }
