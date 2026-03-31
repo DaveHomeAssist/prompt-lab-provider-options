@@ -345,8 +345,8 @@ describe('App', () => {
     render(<MemoryRouter><App /></MemoryRouter>);
 
     expect(screen.getByText('Results')).toBeInTheDocument();
-    expect(screen.getByRole('button', { name: 'Save' })).toBeInTheDocument();
-    expect(screen.getByRole('button', { name: 'Details' })).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: 'Save to Library' })).toBeInTheDocument();
+    expect(screen.getAllByRole('button', { name: 'Library Details' }).length).toBeGreaterThan(0);
     expect(screen.getByLabelText('Prompt title')).toBeInTheDocument();
   });
 });

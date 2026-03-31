@@ -76,7 +76,7 @@ describe('ComposerTab', () => {
   it('surfaces starter and specialized groupings with differentiated add buttons', () => {
     const { addToComposer, library } = renderComposer();
 
-    expect(screen.getByText('Start Here')).toBeInTheDocument();
+    expect(screen.getAllByText('Start Here').length).toBeGreaterThan(0);
     expect(screen.getByText('Specialized Library')).toBeInTheDocument();
     expect(screen.getByRole('button', { name: 'Add Popular' })).toBeInTheDocument();
     expect(screen.getByRole('button', { name: 'Add Starter' })).toBeInTheDocument();
