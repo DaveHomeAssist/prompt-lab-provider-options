@@ -2,9 +2,10 @@
 
 Prompt Lab's public web deployment lives at `https://promptlab.tools` and is built from `prompt-lab-web/`.
 
-The public site has two routes:
+The public site has three primary routes:
 
 - `/` — landing page and product marketing surface
+- `/tools` — public tools hub linking the hosted app and auxiliary utilities
 - `https://promptlab.tools/app/` — current public hosted Prompt Lab application
 
 The `/app/` shell reuses the same frontend source as the extension and desktop app.

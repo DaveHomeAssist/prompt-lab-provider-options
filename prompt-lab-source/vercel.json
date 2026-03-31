@@ -4,6 +4,7 @@
   "outputDirectory": "prompt-lab-web/dist",
   "framework": null,
   "rewrites": [
+    { "source": "/tools", "destination": "/tools.html" },
     { "source": "/privacy", "destination": "/privacy.html" },
     { "source": "/guide", "destination": "/guide.html" },
     { "source": "/setup", "destination": "/setup.html" },
