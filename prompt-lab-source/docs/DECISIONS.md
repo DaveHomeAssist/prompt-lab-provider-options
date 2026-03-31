@@ -158,9 +158,10 @@ Context: 27 uncommitted files split into 5 clean commits covering docs cleanup, 
 
 ### [D-010] PLB feature gating strategy — free vs paid tier
 
-Status: open
+Status: resolved
 Owner: Dave
 Date opened: 2026-03-27
+Date resolved: 2026-03-30
 
 Context: D-R03 resolved the pricing structure (free / $9 per month / $100 annual) but did not define which features live behind the paywall. This must be decided before any gating logic is implemented.
 
@@ -170,7 +171,11 @@ Options:
 - Gate by provider access (free tier limited to one provider)
 - Hybrid (usage + feature gates)
 
-Consequences: Blocks Lemon Squeezy integration and any paywall UI work.
+Decision: Hybrid — free tier gets all providers + basic editor + single runs + library (50 prompts) + basic history. Paid tier gates A/B testing, side-by-side diff viewer, batch runs, collections, CSV/JSON export, priority support.
+
+Rationale: Free users need multi-provider access to experience the core value (comparing LLM outputs). Gating the analysis and workflow tools creates a natural upgrade moment: "I want to run these head-to-head automatically" triggers A/B testing paywall. No auth system needed at launch — Lemon Squeezy license key validates locally via a `plan` field in Dexie.
+
+Consequences: Lemon Squeezy integration unblocked. Implementation path: (1) add `plan` field to Dexie, (2) license key check on app load, (3) `if (plan === 'pro')` guards on gated features, (4) "Upgrade to Pro" modal linking to Lemon Squeezy checkout.
 
 ---
 
