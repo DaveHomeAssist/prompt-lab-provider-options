@@ -4,7 +4,7 @@
   "private": true,
   "type": "module",
   "scripts": {
-    "check:node": "node ../scripts/require-node-22.mjs",
+    "check:node": "node ../scripts/require-node-20.mjs",
     "dev": "npm run check:node && vite",
     "build": "npm run check:node && vite build && node scripts/assemble.js",
     "preview": "npm run check:node && vite preview",
@@ -18,7 +18,7 @@
     "build:cws": "npm run check:node && vite build --outDir dist-cws --minify false && node scripts/assemble.js dist-cws"
   },
   "engines": {
-    "node": "22.x"
+    "node": "20.x"
   },
   "dependencies": {
     "diff-match-patch": "^1.0.5",

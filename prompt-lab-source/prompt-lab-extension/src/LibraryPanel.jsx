@@ -105,6 +105,16 @@ const LibraryPanel = memo(function LibraryPanel({
             >
               {canExportLibrary ? 'Export' : 'Export Pro'}
             </button>
+            {isWeb && typeof lib.recoverLegacyWebLibrary === 'function' && (
+              <button
+                type="button"
+                onClick={() => lib.recoverLegacyWebLibrary({ force: true })}
+                disabled={lib.recoveringLegacyLibrary}
+                className={`ui-control px-2.5 rounded-lg text-xs transition-colors ${lib.recoveringLegacyLibrary ? `${m.btn} ${m.textMuted} cursor-wait` : `${m.btn} ${m.textAlt}`} ${compact ? 'flex-1 py-1.5' : ''}`}
+              >
+                {lib.recoveringLegacyLibrary ? 'Checking...' : 'Recover'}
+              </button>
+            )}
             <button type="button" onClick={() => setShowImportPanel(p => !p)} aria-label="Import preset pack" className={`ui-control px-2.5 rounded-lg text-xs transition-colors ${showImportPanel ? 'bg-violet-600 text-white' : `${m.btn} ${m.textAlt}`} ${compact ? 'flex-1 py-1.5' : ''}`}>
               <span className="flex items-center gap-1"><Ic n="Upload" size={11} />Import Pack</span>
             </button>

@@ -4,10 +4,10 @@
   "version": "1.7.0",
   "type": "module",
   "engines": {
-    "node": "22.x"
+    "node": "20.x"
   },
   "scripts": {
-    "check:node": "node scripts/require-node-22.mjs",
+    "check:node": "node scripts/require-node-20.mjs",
     "dev": "npm run check:node && npm run dev --prefix prompt-lab-extension",
     "build": "npm run check:node && npm run build --prefix prompt-lab-extension",
     "test": "npm run check:node && npm test --prefix prompt-lab-extension",
