@@ -88,6 +88,7 @@ Updated: 2026-03-30
 | Path | Scope | Status | Notes |
 |---|---|---|---|
 | `../CURRENT_PROJECT_REPORT.md` | Current-state project report | Working | Current repo-state handoff and Perplexity-ready context. |
+| `../PROJECT_CONTEXT.md` | Durable repo-local context map | Working | Consolidated onboarding and handoff context spanning repo layout, runtime surfaces, backend seams, and known doc drift. |
 | `../PROMPT_LAB_AGENT.md` | Stable repo-local agent prompt | Working | Prompt Lab-specific operating rules for AI assistants. |
 | `../SESSION_INIT_PROMPT.md` | New-session bootstrap prompt | Working | Paste-ready repo-specific session initializer. |
 | `../SESSION_HANDOFF_PROMPT.md` | Current session handoff prompt | Working | Current repo handoff prompt for fresh AI sessions. |

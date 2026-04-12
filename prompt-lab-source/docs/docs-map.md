@@ -79,6 +79,7 @@ Use `VERSION_HISTORY.md` as the canonical changelog. Treat the others as support
 
 ### AI / operational handoff context
 
+- `../../PROJECT_CONTEXT.md`
 - `../../CURRENT_PROJECT_REPORT.md`
 - `../../PROMPT_LAB_AGENT.md`
 - `../../SESSION_INIT_PROMPT.md`
@@ -92,8 +93,8 @@ These are working-context files, not canonical product documentation.
 
 - `../ARCHITECTURE.md`
 - `../prompt-lab-web/README.md`
-- `../../vercel.json`
-- `../../api/proxy.js`
+- `../vercel.json`
+- `../api/proxy.js`
 
 ### I need the menu or navigation model
 
