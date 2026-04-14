@@ -21,6 +21,7 @@ Completed in this pass:
 - integration owned Notion inbox created for bug reporting: `Prompt Lab Bug Reports Inbox`
 - fresh preview deployment is ready at `https://prompt-4krrbhvc9-daves-projects-7059ba1c.vercel.app`
 - authenticated preview `/app/` shell was verified with `vercel curl`
+- release branch commit pushed to GitHub: `e7efd86`
 
 ## Root Cause Of The Previous Blocker
 
@@ -99,17 +100,17 @@ Outstanding:
 
 - resolve PR `#4` as superseded-by-cherry-picks or split follow-up work
 - resolve PR `#5` as merged elsewhere, obsolete, or still needing a smaller regression-only fix
-- commit and push the local patch branch cleanly
+- decide whether to open a release PR from `patch/2026-04-stability-bugreport` or promote directly after hosted QA
 
 ## Action Plan
 
 ### Immediate
 
-1. Commit the security patch, bug-report feature, warning cleanup, and doc cleanup as one intentional patch set or as two small commits.
-2. Keep using `patch/2026-04-stability-bugreport` as the active release branch until production is shipped.
-3. Re-run preview verification against `https://prompt-4krrbhvc9-daves-projects-7059ba1c.vercel.app` and submit one real hosted bug report.
-4. Confirm the hosted submission creates a child page under `Prompt Lab Bug Reports Inbox`.
-5. Promote to production only after preview verification is complete.
+1. Keep using `patch/2026-04-stability-bugreport` as the active release branch until production is shipped.
+2. Re-run preview verification against `https://prompt-4krrbhvc9-daves-projects-7059ba1c.vercel.app` and submit one real hosted bug report.
+3. Confirm the hosted submission creates a child page under `Prompt Lab Bug Reports Inbox`.
+4. Promote to production only after preview verification is complete.
+5. Choose release PR or direct promotion based on how you want the ship record captured.
 
 ### Before Calling The Patch Fully Shipped
 
@@ -130,13 +131,13 @@ Outstanding:
 - warning surface is limited to the intentional dirty working tree and extension bundle size
 - local execution of `api/bug-report.js` now succeeds end to end against the integration owned inbox page
 - Notion fallback intake is now documented in `README.md`
+- branch `patch/2026-04-stability-bugreport` is committed and pushed to origin at `e7efd86`
 
 ## Recommended Next Command Sequence
 
 ```bash
 cd /Users/daverobertson/Desktop/Code/10-active-projects/prompt-lab
-git add .
-git commit -m "Patch runtime, security, and bug reporting"
+git checkout patch/2026-04-stability-bugreport
 ```
 
 Then deploy or promote from the same supported runtime used for local verification.
