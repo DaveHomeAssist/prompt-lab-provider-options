@@ -8,6 +8,7 @@ export default function BillingModal({ m, billing, requestedFeature, onClose }) 
   const [accessEmail, setAccessEmail] = useState(billing.customerEmail || '');
   const [localError, setLocalError] = useState('');
   const feature = useMemo(() => getFeatureMeta(requestedFeature), [requestedFeature]);
+  const hasClerkIdentity = Boolean(billing.clerkUserId);
 
   useEffect(() => {
     setAccessEmail(billing.customerEmail || '');
@@ -51,7 +52,7 @@ export default function BillingModal({ m, billing, requestedFeature, onClose }) 
         email: accessEmail,
       });
     } catch (error) {
-      setLocalError(error.message || 'Could not open Stripe checkout.');
+      setLocalError(error.message || 'Could not open checkout.');
     }
   }
 
@@ -83,8 +84,10 @@ export default function BillingModal({ m, billing, requestedFeature, onClose }) 
             </h2>
             <p className={`mt-2 text-sm leading-relaxed ${m.textMuted}`}>
               {requestedFeature
-                ? `${feature.description} Upgrade to Pro or sync an existing Stripe subscription to keep going.`
-                : 'Use Stripe checkout for Prompt Lab Pro, then sync access on this device using the same billing email.'}
+                ? `${feature.description} Upgrade to Pro or sync an existing purchase to keep going.`
+                : hasClerkIdentity
+                  ? 'Use Clerk Billing to start Prompt Lab Pro. Stripe handles payment processing underneath, and your signed in account keeps subscription state in sync.'
+                  : 'Start Prompt Lab Pro checkout, then sync access on this device using the billing email if needed.'}
             </p>
           </div>
           <button
@@ -123,7 +126,9 @@ export default function BillingModal({ m, billing, requestedFeature, onClose }) 
             className="ui-control rounded-xl bg-violet-600 px-4 py-3 text-left text-white transition-colors hover:bg-violet-500 disabled:opacity-40"
           >
             <div className="text-sm font-semibold">Go Pro Monthly</div>
-            <div className="mt-1 text-xs text-violet-100">$9/month via Stripe</div>
+            <div className="mt-1 text-xs text-violet-100">
+              {hasClerkIdentity ? '$9/month via Clerk Billing' : '$9/month'}
+            </div>
           </button>
           <button
             type="button"
@@ -138,7 +143,9 @@ export default function BillingModal({ m, billing, requestedFeature, onClose }) 
 
         <div className="mt-5">
           <div className="flex items-center justify-between gap-2">
-            <p className={`text-xs font-semibold uppercase tracking-wider ${m.textSub}`}>Billing email</p>
+            <p className={`text-xs font-semibold uppercase tracking-wider ${m.textSub}`}>
+              {hasClerkIdentity ? 'Billing access' : 'Billing email'}
+            </p>
             <button
               type="button"
               onClick={handleManagePurchases}
@@ -153,11 +160,13 @@ export default function BillingModal({ m, billing, requestedFeature, onClose }) 
             <input
               value={accessEmail}
               onChange={(event) => setAccessEmail(event.target.value)}
-              placeholder="Enter the email used at Stripe checkout"
+              placeholder={hasClerkIdentity ? 'Billing email for fallback device sync' : 'Enter the billing email used for checkout'}
               className={`${m.input} w-full rounded-lg border px-3 py-2 text-sm ${m.border} ${m.text} focus:border-violet-500 focus:outline-none`}
             />
             <p className={`text-[11px] leading-relaxed ${m.textMuted}`}>
-              Stripe keeps the customer record. Prompt Lab syncs Pro access locally after you confirm the billing email.
+              {hasClerkIdentity
+                ? 'Your signed in account keeps subscription state in sync. The billing email remains available as a fallback for local device activation.'
+                : 'Prompt Lab syncs Pro access locally after you confirm the billing email used for checkout.'}
             </p>
             <div className="flex flex-wrap gap-2">
               <button
@@ -166,7 +175,7 @@ export default function BillingModal({ m, billing, requestedFeature, onClose }) 
                 disabled={!accessEmail.trim() || billing.busyAction === 'activate'}
                 className="ui-control rounded-lg bg-violet-600 px-3 py-2 text-xs font-semibold text-white transition-colors hover:bg-violet-500 disabled:opacity-40"
               >
-                Sync Purchase
+                {hasClerkIdentity ? 'Sync Device Access' : 'Sync Purchase'}
               </button>
               <button
                 type="button"

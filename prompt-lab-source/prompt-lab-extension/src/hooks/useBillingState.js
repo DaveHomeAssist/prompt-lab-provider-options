@@ -58,10 +58,10 @@ export default function useBillingState({ notify, telemetry, clerkUser, clerkGet
     if (!clerkUser) return;
     const email = clerkUser.primaryEmailAddress?.emailAddress;
     const clerkId = clerkUser.id;
-    if (email && email !== state.customerEmail) {
+    if (email && (email !== state.customerEmail || clerkId !== state.clerkUserId)) {
       setState((prev) => normalizeBillingState({ ...prev, customerEmail: email, clerkUserId: clerkId }));
     }
-  }, [clerkUser, state.customerEmail]);
+  }, [clerkUser, state.clerkUserId, state.customerEmail]);
 
   useEffect(() => {
     saveJson(storageKeys.billing, state);
@@ -144,7 +144,7 @@ export default function useBillingState({ notify, telemetry, clerkUser, clerkGet
 
   const activateLicense = useCallback(async (customerEmailInput) => {
     const customerEmail = String(customerEmailInput || '').trim().toLowerCase();
-    if (!customerEmail) throw new Error('Enter the Stripe billing email for your Prompt Lab Pro purchase.');
+    if (!customerEmail) throw new Error('Enter the billing email used for your Prompt Lab Pro purchase.');
 
     setBusyAction('activate');
     try {
@@ -205,7 +205,7 @@ export default function useBillingState({ notify, telemetry, clerkUser, clerkGet
         throw new Error('Billing checkout did not return a URL.');
       }
       window.open(payload.url, '_blank', 'noopener,noreferrer');
-      notify?.('Opened Stripe checkout.');
+      notify?.('Opened checkout.');
       telemetry?.track?.('billing.checkout_started', {
         period,
         source,

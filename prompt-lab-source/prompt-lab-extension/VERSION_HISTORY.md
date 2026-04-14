@@ -6,8 +6,8 @@ Billing, hosted-web reliability, and privacy-policy follow-up after `v1.7.0`.
 
 ### Billing and telemetry
 
-- Swapped the Pro purchase flow from Lemon Squeezy license activation to Stripe checkout, billing-email sync, Stripe customer portal, and Stripe webhook persistence.
-- Updated local billing state, billing modal copy, and privacy docs to reflect Stripe customer identifiers and optional usage insights preferences.
+- Swapped the Pro purchase flow from Lemon Squeezy license activation to hosted billing built around Clerk identity, with Stripe handling checkout, customer portal, and webhook persistence underneath.
+- Updated local billing state, billing modal copy, and privacy docs to reflect Clerk aware subscription sync, Stripe customer identifiers, and optional usage insights preferences.
 
 ### Hosted provider fixes
 

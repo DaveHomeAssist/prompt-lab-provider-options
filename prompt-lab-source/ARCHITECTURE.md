@@ -48,6 +48,7 @@ The main application UI is written once and reused in both targets.
 - `src/App.jsx` is the primary surface
 - `src/hooks/` manages editor, library, eval run, and test case state
 - `src/lib/` contains utilities, provider modules, platform adapters, and the PII engine
+- Billing state lives in the shared frontend and can consume hosted Clerk identity when it is provided by the web shell
 
 ### Extension path
 
@@ -73,10 +74,12 @@ The hosted web deployment is split into a landing route and an app route:
 
 - `prompt-lab-web/index.html` is the public landing page for `https://promptlab.tools/`
 - `prompt-lab-web/app/index.html` imports `../../prompt-lab-extension/src/main.jsx` and is currently served publicly at `https://promptlab.tools/app/`
+- `prompt-lab-web/app/main-web.jsx` wraps the shared app with `ClerkProvider` when `VITE_CLERK_PUBLISHABLE_KEY` is present, and falls back to unauthenticated mode when it is not
 - `prompt-lab-web/public/` provides shared static assets such as fonts and social images
 - `src/lib/desktopApi.js` detects web mode via `VITE_WEB_MODE` and injects a proxy-aware fetch wrapper
 - `src/lib/proxyFetch.js` reroutes provider API requests through `/api/proxy` to bypass CORS
 - `api/proxy.js` is a Vercel Edge Function that validates the target domain against an allowlist, injects the hosted Anthropic key only when needed, and forwards the request
+- `api/billing/` handles hosted billing routes; Clerk supplies hosted identity, while Stripe remains the payment processor underneath checkout, portal, and webhook flows
 - `vercel.json` rewrites `/app` and `/app/(.*)` to `/app/index.html`
 - Hosted web currently defaults to Anthropic and can use either the shared server key or a user-supplied Anthropic key
 - Extension and desktop continue to expose the full provider list, including direct Ollama access
@@ -114,6 +117,7 @@ Provider-specific request behavior is routed through shared provider abstraction
 - Experiment and eval data use the experiment store layer
 - Extension provider settings use `chrome.storage.local`
 - Desktop provider settings use localStorage
+- Hosted billing state is cached locally in app storage, with hosted identity attached from Clerk when available
 
 ## Safety layers
 

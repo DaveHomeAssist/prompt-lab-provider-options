@@ -46,6 +46,20 @@ describe('useBillingState', () => {
     expect(notify).toHaveBeenCalledWith('Prompt Lab Pro synced to this device.');
   });
 
+  it('syncs Clerk identity into local billing state when available', async () => {
+    const clerkUser = {
+      id: 'user_123',
+      primaryEmailAddress: { emailAddress: 'user@example.com' },
+    };
+
+    const { result } = renderHook(() => useBillingState({ notify: vi.fn(), clerkUser }));
+
+    await waitFor(() => {
+      expect(result.current.customerEmail).toBe('user@example.com');
+      expect(result.current.clerkUserId).toBe('user_123');
+    });
+  });
+
   it('keeps cached Pro access when billing validation is temporarily offline', async () => {
     localStorage.setItem('pl2-billing', JSON.stringify({
       plan: 'pro',

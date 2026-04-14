@@ -14,6 +14,8 @@ The `/app/` shell reuses the same frontend source as the extension and desktop a
 
 Provider API requests from the hosted app route through a Vercel Edge Function at `/api/proxy` to bypass CORS. The hosted surface currently supports Anthropic only: it can use the shared hosted key when configured, or a user-supplied Anthropic key. Extension and desktop remain the full multi-provider surfaces, including local Ollama access.
 
+When `VITE_CLERK_PUBLISHABLE_KEY` is present, the hosted app wraps the shared frontend in Clerk authentication. The shared billing flow can then attach Clerk identity to checkout, portal, and license validation requests while Stripe continues to handle payment processing underneath.
+
 The app can also submit structured bug reports through `/api/bug-report`. That route expects `NOTION_TOKEN` and `NOTION_BUG_REPORT_PARENT_PAGE_ID` in the Vercel project environment. `VITE_BUG_REPORT_ENDPOINT` is optional when you want the UI to post somewhere other than the default hosted endpoint during local development.
 
 ## Dev setup
@@ -31,6 +33,12 @@ Local routes:
 - `http://localhost:5174/app/` — hosted app shell
 
 For local proxy testing, install the Vercel CLI and use `vercel dev` instead of `npm run dev`.
+
+Hosted auth and billing related envs:
+
+- `VITE_CLERK_PUBLISHABLE_KEY` enables Clerk sign in on the hosted web shell
+- `NOTION_TOKEN` enables the hosted bug report endpoint
+- `NOTION_BUG_REPORT_PARENT_PAGE_ID` sets the Notion destination for hosted bug reports
 
 ## Build
 

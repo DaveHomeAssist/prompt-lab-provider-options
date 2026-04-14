@@ -7,6 +7,7 @@ Write, enhance, lint, A/B test, and manage prompts across Anthropic, OpenAI, Goo
 ## Features
 
 - Prompt enhancement via any supported LLM provider
+- Local provider key storage on extension and desktop
 - Prompt quality scoring (role, task, format, constraints, context)
 - Rule-based prompt linting with quick-fix suggestions
 - PII scanning and redaction before send
@@ -18,6 +19,8 @@ Write, enhance, lint, A/B test, and manage prompts across Anthropic, OpenAI, Goo
 - Dark/light theme with system preference detection
 - Command palette with keyboard shortcuts
 - Share via URL and JSON export/import
+
+Hosted web mode can add Clerk sign in and Clerk backed billing state when `VITE_CLERK_PUBLISHABLE_KEY` is configured. Payment processing still runs through Stripe underneath that hosted path.
 
 ## Quick Start
 
@@ -85,6 +88,23 @@ docs/                     # Published public docs/static site copy
 
 - Landing: https://promptlab.tools/
 - Web app: https://promptlab.tools/app/
+
+## Support Intake
+
+Hosted bug reports submit to `/api/bug-report` when both `NOTION_TOKEN` and
+`NOTION_BUG_REPORT_PARENT_PAGE_ID` are configured and the connected Notion
+integration can access the parent page.
+
+If the hosted bug report flow is unavailable, capture the report directly in
+Notion at `https://www.notion.so/Prompt-Lab-Bug-Reports-Inbox-342255fc8f4481cba3cded3ee263e4a7` and include:
+
+- title
+- steps to reproduce
+- expected result
+- actual result
+- page URL
+- provider and surface
+- contact details if follow up is needed
 
 ## Conventions
 

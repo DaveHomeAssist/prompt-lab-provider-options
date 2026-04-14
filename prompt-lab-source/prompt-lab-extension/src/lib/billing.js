@@ -37,6 +37,7 @@ export function createDefaultBillingState() {
   return {
     plan: PLAN_FREE,
     status: 'free',
+    clerkUserId: '',
     customerId: '',
     subscriptionId: '',
     priceId: '',
@@ -58,6 +59,7 @@ export function normalizeBillingState(value = {}) {
     ...(value && typeof value === 'object' ? value : {}),
     plan,
     status: typeof value?.status === 'string' && value.status.trim() ? value.status.trim() : fallback.status,
+    clerkUserId: typeof value?.clerkUserId === 'string' ? value.clerkUserId : '',
     customerId: typeof value?.customerId === 'string' ? value.customerId : '',
     subscriptionId: typeof value?.subscriptionId === 'string' ? value.subscriptionId : '',
     priceId: typeof value?.priceId === 'string' ? value.priceId : '',
@@ -103,21 +105,27 @@ export function getBillingApiBase() {
 }
 
 export function describeBillingStatus(state) {
+  const hasClerkIdentity = typeof state?.clerkUserId === 'string' && state.clerkUserId.trim();
+  const hasCustomerEmail = typeof state?.customerEmail === 'string' && state.customerEmail.trim();
+
   switch (state.status) {
     case 'active':
-      return 'Prompt Lab Pro is active for this Stripe billing email.';
+      if (hasClerkIdentity) return 'Prompt Lab Pro is active for this signed in account.';
+      if (hasCustomerEmail) return 'Prompt Lab Pro is active for this billing email.';
+      return 'Prompt Lab Pro is active on this device.';
     case 'trialing':
       return 'Your Prompt Lab Pro trial is active.';
     case 'past_due':
       return 'Billing needs attention, but Pro access is still available for now.';
     case 'inactive':
+      if (hasClerkIdentity) return 'This signed in account does not have an active Prompt Lab Pro subscription.';
       return 'Billing is connected, but no active Prompt Lab Pro subscription was found.';
     case 'offline':
       return 'Could not reach billing. Cached Pro access is still available.';
     case 'canceled':
       return 'This Prompt Lab Pro subscription has been canceled.';
     case 'unpaid':
-      return 'Stripe reports this subscription as unpaid.';
+      return 'The payment processor reports this subscription as unpaid.';
     case 'error':
       return state.validationError || 'Billing could not be verified.';
     default:
