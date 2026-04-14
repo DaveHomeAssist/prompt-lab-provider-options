@@ -7,7 +7,7 @@ Prompt Lab Desktop is a Tauri 2 shell around the shared Prompt Lab React fronten
 
 ## Prerequisites
 
-- Node.js 22+
+- Node.js 20.19+ or 22.12+
 - Rust toolchain with `cargo`
 - Tauri platform dependencies for your OS
   - macOS: Xcode command line tools

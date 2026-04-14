@@ -7,12 +7,14 @@ import { resolve } from 'path';
 export default defineConfig({
   plugins: [react()],
   resolve: {
-    alias: {
-      // Force shared extension source to resolve deps from desktop node_modules
-      // (in CI, only prompt-lab-desktop/node_modules is installed)
-      react: resolve(__dirname, 'node_modules/react'),
-      'react-dom': resolve(__dirname, 'node_modules/react-dom'),
-    },
+    alias: [
+      // Force shared extension source to resolve frontend deps from desktop node_modules.
+      { find: /^react$/, replacement: resolve(__dirname, 'node_modules/react/index.js') },
+      { find: /^react-dom$/, replacement: resolve(__dirname, 'node_modules/react-dom/index.js') },
+      { find: /^react-router-dom$/, replacement: resolve(__dirname, 'node_modules/react-router-dom/dist/index.mjs') },
+      { find: /^react-router$/, replacement: resolve(__dirname, 'node_modules/react-router/dist/development/index.mjs') },
+      { find: /^react-router\/dom$/, replacement: resolve(__dirname, 'node_modules/react-router/dist/development/dom-export.mjs') },
+    ],
   },
   build: {
     outDir: 'dist',
