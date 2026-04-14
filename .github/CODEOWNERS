@@ -1,0 +1,11 @@
+# Canonical public tools and routing
+/prompt-lab-source/prompt-lab-web/public/script-agent.html @DaveHomeAssist
+/prompt-lab-source/prompt-lab-web/public/prompt-explorer.html @DaveHomeAssist
+/prompt-lab-source/prompt-lab-web/public/thread-namer.html @DaveHomeAssist
+/prompt-lab-source/prompt-lab-web/public/prompt-embed.html @DaveHomeAssist
+/prompt-lab-source/prompt-lab-web/public/tools.html @DaveHomeAssist
+/prompt-lab-source/prompt-lab-web/public/templates/** @DaveHomeAssist
+/prompt-lab-source/prompt-lab-web/public/sitemap.xml @DaveHomeAssist
+/prompt-lab-source/vercel.json @DaveHomeAssist
+/prompt-lab-source/docs/CANONICAL_TOOLS.md @DaveHomeAssist
+/.github/CODEOWNERS @DaveHomeAssist

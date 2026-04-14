@@ -59,6 +59,7 @@ Updated: 2026-03-30
 | Path | Scope | Status | Notes |
 |---|---|---|---|
 | `docs/CURRENT_MENU_SYSTEM.md` | Current menu/navigation model | Active | Code-grounded reference for header layers, state mapping, and command palette/menu behavior. |
+| `docs/CANONICAL_TOOLS.md` | Canonical public tool manifest | Active | Declares shipped standalone public tools, their routes, and the retirement rules for cleanup work. |
 | `docs/create-evaluate-restructure-plan.md` | Create/Evaluate implementation brief | Active | Phase 0 implementation brief for Create compression and Evaluate unification, including acceptance criteria and initial refactor boundaries. |
 | `docs/roadmap-next-implementation-plan.md` | Near-term roadmap execution plan | Active | Bridges Horizon 0 release hardening and Horizon 1 work into phased execution, dependencies, verification, and exit criteria. |
 | `docs/CODEBASE_AUDIT_2026-03-30.md` | Codebase audit and execution plan | Active | Audit of architecture, infrastructure, stale artifacts, UX gaps, and the executed top-five remediation batch. |

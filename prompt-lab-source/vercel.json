@@ -5,6 +5,13 @@
   "framework": null,
   "rewrites": [
     { "source": "/tools", "destination": "/tools.html" },
+    { "source": "/tools/index.html", "destination": "/tools.html" },
+    { "source": "/script-agent", "destination": "/script-agent.html" },
+    { "source": "/scriptagent.html", "destination": "/script-agent.html" },
+    { "source": "/prompt-explorer", "destination": "/prompt-explorer.html" },
+    { "source": "/tools/prompt-explorer.html", "destination": "/prompt-explorer.html" },
+    { "source": "/thread-namer", "destination": "/thread-namer.html" },
+    { "source": "/tools/thread-namer.html", "destination": "/thread-namer.html" },
     { "source": "/templates", "destination": "/templates/index.html" },
     { "source": "/privacy", "destination": "/privacy.html" },
     { "source": "/guide", "destination": "/guide.html" },
@@ -12,6 +19,7 @@
     { "source": "/app", "destination": "/app/index.html" },
     { "source": "/app/(.*)", "destination": "/app/index.html" },
     { "source": "/embed", "destination": "/prompt-embed.html" },
+    { "source": "/tools/prompt-embed.html", "destination": "/prompt-embed.html" },
     { "source": "/api/(.*)", "destination": "/api/$1" }
   ],
   "headers": [
