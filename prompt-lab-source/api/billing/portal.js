@@ -7,6 +7,7 @@ import {
   optionsResponse,
   parseJsonBody,
 } from '../_lib/stripeBilling.js';
+import { resolveClerkBillingIdentity } from '../_lib/clerkBillingAuth.js';
 
 export default async function handler(request) {
   if (request.method === 'OPTIONS') return optionsResponse();
@@ -15,11 +16,17 @@ export default async function handler(request) {
   }
 
   const body = await parseJsonBody(request);
+  const clerkIdentity = await resolveClerkBillingIdentity(request);
+  if (clerkIdentity.hasBearerToken && !clerkIdentity.isAuthenticated) {
+    return jsonResponse({ error: 'Unauthorized billing request.' }, 401);
+  }
 
   try {
     const payload = await createPortalSession(buildStripeConfig(), {
-      customerId: typeof body?.customerId === 'string' ? body.customerId.trim() : '',
-      customerEmail: typeof body?.customerEmail === 'string' ? body.customerEmail.trim() : '',
+      customerId: clerkIdentity.isAuthenticated ? '' : (typeof body?.customerId === 'string' ? body.customerId.trim() : ''),
+      customerEmail: clerkIdentity.isAuthenticated
+        ? clerkIdentity.customerEmail
+        : (typeof body?.customerEmail === 'string' ? body.customerEmail.trim() : ''),
     });
 
     return jsonResponse({

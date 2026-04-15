@@ -7,6 +7,7 @@ import {
   optionsResponse,
   parseJsonBody,
 } from '../_lib/stripeBilling.js';
+import { resolveClerkBillingIdentity } from '../_lib/clerkBillingAuth.js';
 
 export default async function handler(request) {
   if (request.method === 'OPTIONS') return optionsResponse();
@@ -16,14 +17,22 @@ export default async function handler(request) {
 
   const body = await parseJsonBody(request);
   const period = body?.period === 'annual' ? 'annual' : 'monthly';
+  const clerkIdentity = await resolveClerkBillingIdentity(request);
+  if (clerkIdentity.hasBearerToken && !clerkIdentity.isAuthenticated) {
+    return jsonResponse({ error: 'Unauthorized billing request.' }, 401);
+  }
 
   try {
     const config = buildStripeConfig();
     const result = await createCheckout(config, {
       period,
-      email: typeof body?.email === 'string' ? body.email.trim() : '',
+      email: clerkIdentity.isAuthenticated
+        ? clerkIdentity.customerEmail
+        : (typeof body?.email === 'string' ? body.email.trim() : ''),
       source: typeof body?.source === 'string' && body.source.trim() ? body.source.trim() : 'app',
-      clerkUserId: typeof body?.clerkUserId === 'string' ? body.clerkUserId.trim() : '',
+      clerkUserId: clerkIdentity.isAuthenticated
+        ? clerkIdentity.userId
+        : (typeof body?.clerkUserId === 'string' ? body.clerkUserId.trim() : ''),
       deviceId: typeof body?.deviceId === 'string' ? body.deviceId.trim() : '',
       sessionId: typeof body?.sessionId === 'string' ? body.sessionId.trim() : '',
       surface: typeof body?.surface === 'string' ? body.surface.trim() : '',

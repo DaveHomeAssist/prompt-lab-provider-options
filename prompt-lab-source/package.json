@@ -23,6 +23,9 @@
     "preflight:quick": "npm run check:node && node scripts/preflight.mjs --quick",
     "dashboard:update": "npm run check:node && node scripts/notionDashboardUpdate.mjs"
   },
+  "dependencies": {
+    "@clerk/backend": "^3.2.10"
+  },
   "devDependencies": {
     "markdownlint-cli2": "^0.18.1"
   }

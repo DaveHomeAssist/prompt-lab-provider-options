@@ -194,6 +194,7 @@ export default function useBillingState({ notify, telemetry, clerkUser, clerkGet
         body: JSON.stringify({
           period,
           email: overrides?.email || state.customerEmail || telemetry?.contactEmail || '',
+          clerkUserId: state.clerkUserId || '',
           source,
           deviceId: metadata?.deviceId || telemetry?.deviceId || '',
           sessionId: metadata?.sessionId || telemetry?.sessionId || '',

@@ -23,7 +23,7 @@ export function createCorsHeaders(extraHeaders = {}) {
   return {
     'Access-Control-Allow-Origin': '*',
     'Access-Control-Allow-Methods': 'GET, POST, OPTIONS',
-    'Access-Control-Allow-Headers': 'Content-Type, Stripe-Signature',
+    'Access-Control-Allow-Headers': 'Content-Type, Authorization, Stripe-Signature',
     ...extraHeaders,
   };
 }

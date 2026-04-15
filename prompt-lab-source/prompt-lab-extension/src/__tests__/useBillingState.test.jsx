@@ -82,4 +82,48 @@ describe('useBillingState', () => {
     expect(result.current.plan).toBe('pro');
     expect(result.current.hasFeature('export')).toBe(true);
   });
+
+  it('includes Clerk identity when starting hosted checkout', async () => {
+    const clerkUser = {
+      id: 'user_123',
+      primaryEmailAddress: { emailAddress: 'user@example.com' },
+    };
+    const clerkGetToken = vi.fn(async () => 'token_123');
+    const requests = [];
+
+    global.fetch = vi.fn(async (_url, init) => {
+      requests.push({
+        headers: init.headers,
+        body: JSON.parse(init.body),
+      });
+      return new Response(JSON.stringify({
+        ok: true,
+        url: 'https://checkout.stripe.com/c/pay/cs_test_123',
+      }), {
+        status: 200,
+        headers: { 'Content-Type': 'application/json' },
+      });
+    });
+
+    const { result } = renderHook(() => useBillingState({ notify: vi.fn(), clerkUser, clerkGetToken }));
+
+    await waitFor(() => {
+      expect(result.current.clerkUserId).toBe('user_123');
+    });
+
+    await act(async () => {
+      await result.current.startCheckout('monthly');
+    });
+
+    expect(clerkGetToken).toHaveBeenCalled();
+    expect(requests).toHaveLength(1);
+    expect(requests[0].headers.Authorization).toBe('Bearer token_123');
+    expect(requests[0].body.clerkUserId).toBe('user_123');
+    expect(requests[0].body.email).toBe('user@example.com');
+    expect(window.open).toHaveBeenCalledWith(
+      'https://checkout.stripe.com/c/pay/cs_test_123',
+      '_blank',
+      'noopener,noreferrer',
+    );
+  });
 });

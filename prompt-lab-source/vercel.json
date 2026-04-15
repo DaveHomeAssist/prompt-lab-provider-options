@@ -1,6 +1,6 @@
 {
-  "buildCommand": "cd prompt-lab-web && npm install && npm run build",
-  "installCommand": "echo 'skip'",
+  "buildCommand": "cd prompt-lab-web && npm run build",
+  "installCommand": "npm install && cd prompt-lab-web && npm install",
   "outputDirectory": "prompt-lab-web/dist",
   "framework": null,
   "rewrites": [
@@ -28,7 +28,7 @@
       "headers": [
         { "key": "Access-Control-Allow-Origin", "value": "*" },
         { "key": "Access-Control-Allow-Methods", "value": "POST, OPTIONS" },
-        { "key": "Access-Control-Allow-Headers", "value": "Content-Type" }
+        { "key": "Access-Control-Allow-Headers", "value": "Content-Type, Authorization" }
       ]
     }
   ]

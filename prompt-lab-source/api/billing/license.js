@@ -7,6 +7,7 @@ import {
   optionsResponse,
   parseJsonBody,
 } from '../_lib/stripeBilling.js';
+import { resolveClerkBillingIdentity } from '../_lib/clerkBillingAuth.js';
 
 function readString(value) {
   return typeof value === 'string' ? value.trim() : '';
@@ -34,14 +35,22 @@ export default async function handler(request) {
     });
   }
 
-  if (!customerEmail && !customerId) {
+  const clerkIdentity = await resolveClerkBillingIdentity(request);
+  if (clerkIdentity.hasBearerToken && !clerkIdentity.isAuthenticated) {
+    return jsonResponse({ error: 'Unauthorized billing request.' }, 401);
+  }
+
+  const effectiveCustomerEmail = clerkIdentity.isAuthenticated ? clerkIdentity.customerEmail : customerEmail;
+  const effectiveCustomerId = clerkIdentity.isAuthenticated ? '' : customerId;
+
+  if (!effectiveCustomerEmail && !effectiveCustomerId) {
     return jsonResponse({ error: 'The Stripe billing email is required.' }, 400);
   }
 
   try {
     const payload = await lookupBilling(buildStripeConfig(), {
-      customerEmail,
-      customerId,
+      customerEmail: effectiveCustomerEmail,
+      customerId: effectiveCustomerId,
     });
 
     if (action === 'activate' && payload.plan !== 'pro') {

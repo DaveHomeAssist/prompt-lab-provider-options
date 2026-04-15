@@ -14,7 +14,7 @@ The `/app/` shell reuses the same frontend source as the extension and desktop a
 
 Provider API requests from the hosted app route through a Vercel Edge Function at `/api/proxy` to bypass CORS. The hosted surface currently supports Anthropic only: it can use the shared hosted key when configured, or a user-supplied Anthropic key. Extension and desktop remain the full multi-provider surfaces, including local Ollama access.
 
-When `VITE_CLERK_PUBLISHABLE_KEY` is present, the hosted app wraps the shared frontend in Clerk authentication. The shared billing flow can then attach Clerk identity to checkout, portal, and license validation requests while Stripe continues to handle payment processing underneath.
+When `VITE_CLERK_PUBLISHABLE_KEY` is present, the hosted app wraps the shared frontend in Clerk authentication. The shared billing flow then attaches Clerk identity to checkout, portal, and license validation requests, and the hosted billing routes verify the Clerk bearer token server side before trusting account-bound billing actions. Stripe continues to handle payment processing underneath.
 
 The app can also submit structured bug reports through `/api/bug-report`. That route expects `NOTION_TOKEN` and `NOTION_BUG_REPORT_PARENT_PAGE_ID` in the Vercel project environment. `VITE_BUG_REPORT_ENDPOINT` is optional when you want the UI to post somewhere other than the default hosted endpoint during local development.
 
@@ -37,6 +37,13 @@ For local proxy testing, install the Vercel CLI and use `vercel dev` instead of 
 Hosted auth and billing related envs:
 
 - `VITE_CLERK_PUBLISHABLE_KEY` enables Clerk sign in on the hosted web shell
+- `CLERK_SECRET_KEY` enables server side Clerk token verification for hosted billing routes
+- `CLERK_JWT_KEY` is optional when you want networkless Clerk token verification
+- `CLERK_AUTHORIZED_PARTIES` is optional comma separated origin allowlist for hosted billing bearer tokens
+- `STRIPE_SECRET_KEY` enables Stripe checkout, portal, and subscription lookup
+- `STRIPE_MONTHLY_PRICE_ID` or `STRIPE_PRICE_ID` sets the monthly Prompt Lab Pro Stripe price
+- `STRIPE_YEARLY_PRICE_ID` sets the annual Prompt Lab Pro Stripe price
+- `STRIPE_WEBHOOK_SECRET` validates the Stripe webhook endpoint at `/api/billing/webhook`
 - `NOTION_TOKEN` enables the hosted bug report endpoint
 - `NOTION_BUG_REPORT_PARENT_PAGE_ID` sets the Notion destination for hosted bug reports
 
