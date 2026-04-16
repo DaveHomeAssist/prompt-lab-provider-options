@@ -1,5 +1,41 @@
 # Claude Code — PromptLab
 
+## Project Overview
+
+Multi-shell prompt engineering workbench. Ships as a Chrome/Vivaldi extension (MV3), a Tauri 2 desktop app, and a hosted web app at promptlab.tools. All three shells share one React frontend codebase.
+
+## Stack
+
+- React + Vite (shared frontend in `prompt-lab-extension/src/`)
+- MV3 Chrome extension shell
+- Tauri 2 desktop shell
+- Vercel Edge Function CORS proxy (`api/proxy.js`) for web shell
+- Clerk for auth/billing
+- Vitest + React Testing Library + Playwright
+- markdownlint-cli2 for docs linting
+- Node 20+
+
+## Key Decisions
+
+- One shared React app consumed by three shells (extension, desktop, web). Shell-specific code is minimal.
+- `chrome.storage.local` for extension state. `background.js` is the network boundary for API calls.
+- `VITE_WEB_MODE=true` activates proxy fetch injection in the web shell.
+- PII engine in `src/lib/` strips PII before sending prompts to providers.
+- `DOCS_INVENTORY.md` and `ARCHITECTURE.md` are the canonical source for architecture and docs.
+
+## Documentation Maintenance
+
+- **Issues**: Tracked externally in Notion DB | Code Dashboard
+- **Session log**: Append to `/Users/daverobertson/Desktop/Code/95-docs-personal/today.csv` after each meaningful change
+- **Architecture**: `ARCHITECTURE.md` is authoritative
+- **Docs inventory**: `DOCS_INVENTORY.md` defines canonical source rules per doc type
+
+## Issue Tracker
+
+Issues tracked in Notion DB | Code Dashboard (ID: `42d255fc8f44830d8e7a81f940ebb474`). No inline tracker in this file.
+
+---
+
 ## Dave OS — Architecture (2026-03-28)
 
 ### Agent roster
