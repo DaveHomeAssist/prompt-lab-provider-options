@@ -26,7 +26,7 @@ Prompt Lab is a multi surface prompt engineering tool with extension, desktop, a
 |----|----------|--------|-------|-------|
 | 001 | P2 | resolved | Composer still teaches drag first interaction | Fixed all help text strings; empty state and block hints now lead with Add/Move controls |
 | 002 | P2 | resolved | Create workflow remains too vertically stacked | Phase 1 complete: extracted CreateEditorPane, collapsed scoring+lint strip, inline quick inject chips, merged status bar, compact context breadcrumb |
-| 003 | P2 | in-progress | Experiments and run history are still split | Unified under Evaluate with persistent timeline filters; compare-model toggle no longer traps active state on filtered timelines, and broader QA under Node 22 is still pending |
+| 003 | P2 | in-progress | Experiments and run history are still split | Unified under Evaluate with persistent timeline filters; compare-model toggle no longer traps active state on filtered timelines, and broader QA under Node 22 now passes locally |
 | 004 | P2 | resolved | Accessibility parity remains incomplete | Added aria-labels to theme/shortcuts/settings buttons; ThemeProvider now syncs body bg |
 | 005 | P2 | resolved | Privacy policy page missing, all nav links dead | Created docs/privacy.html, fixed all nav/footer links to relative paths |
 | 006 | P2 | resolved | No diff viewer for A/B test outputs | Added DiffEngine.js, DiffPane.jsx, and Sync View button in ABTestTab |
@@ -43,3 +43,4 @@ Prompt Lab is a multi surface prompt engineering tool with extension, desktop, a
 [2026-03-24] [PLB] [refactor] Extract CreateEditorPane, compress Create vertical stack (Phase 1 complete)
 [2026-03-31] [PLB] [fix] Keep Evaluate model-compare toggle visible when persisted state stays active on filtered timelines
 [2026-03-31] [PLB] [test] Expand Evaluate hook coverage for filters, pagination, and run patch updates
+[2026-04-14] [PLB] [test] Stabilize RunTimelinePanel timeouts so the full extension suite passes under Node 22

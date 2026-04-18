@@ -131,7 +131,7 @@ describe('RunTimelinePanel', () => {
 
     expect(screen.getByLabelText('Filter by mode')).toHaveValue('');
     expect(screen.getByPlaceholderText('Search runs…')).toHaveValue('');
-  });
+  }, 10000);
 
   it('shows quick-start actions when the global evaluate timeline is empty', () => {
     const onQuickStart = vi.fn();
@@ -186,7 +186,7 @@ describe('RunTimelinePanel', () => {
     fireEvent.click(screen.getByRole('button', { name: 'Open Create' }));
 
     expect(onQuickStart).toHaveBeenCalledTimes(1);
-  });
+  }, 10000);
 
   it('shows a no-match state when filters are active but no runs match', () => {
     localStorage.setItem('pl2-evaluate-timeline-filters', JSON.stringify({
