@@ -71,6 +71,9 @@ Use `VERSION_HISTORY.md` as the canonical changelog. Treat the others as support
 ### Internal audits and technical notes
 
 - `create-evaluate-restructure-plan.md`
+- `interaction-inventory.md`
+- `qa-test-matrix.md`
+- `qa-automation-backlog.md`
 - `UX_AUDIT_2026-03-17.md`
 - `DOCUMENTATION_SYSTEM_AUDIT_2026-03-20.md`
 - `SCRATCHPAD_SHORTCUTS.md`
@@ -101,6 +104,27 @@ These are working-context files, not canonical product documentation.
 - `CURRENT_MENU_SYSTEM.md`
 - `../prompt-lab-extension/src/lib/navigationRegistry.js`
 - `../prompt-lab-extension/src/hooks/useUiState.js`
+
+### I need the user interaction and workflow model
+
+- `interaction-inventory.md`
+- `CURRENT_MENU_SYSTEM.md`
+- `../prompt-lab-extension/src/App.jsx`
+- `../prompt-lab-extension/src/lib/navigationRegistry.js`
+
+### I need the QA execution plan
+
+- `qa-test-matrix.md`
+- `interaction-inventory.md`
+- `../prompt-lab-extension/e2e/extension-smoke.spec.js`
+- `../prompt-lab-extension/e2e/responsive-smoke.spec.js`
+
+### I need the next automation work
+
+- `qa-automation-backlog.md`
+- `qa-test-matrix.md`
+- `../prompt-lab-extension/playwright.config.js`
+- `../prompt-lab-extension/vite.config.js`
 
 ### I need scratchpad behavior
 
