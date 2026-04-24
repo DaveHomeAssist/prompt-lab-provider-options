@@ -20,3 +20,8 @@ brand-assets/
 
 # Browser automation caches
 .playwright-mcp/
+
+# Local-only archives and sandboxes — not repo history
+legacy/
+prototypes/
+patches/
