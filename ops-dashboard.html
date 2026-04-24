@@ -1,0 +1,281 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>PromptLab · Ops Dashboard</title>
+<style>
+:root {
+  --bg: #0b0f14;
+  --surface: #111826;
+  --surface-2: #0f172a;
+  --surface-3: #0a1220;
+  --border: #223047;
+  --text: #e6edf6;
+  --text-muted: #a8b3c7;
+  --text-dim: #6b7a92;
+  --accent: #60a5fa;
+  --ok: #22c55e;
+  --warn: #f59e0b;
+  --err: #ef4444;
+  --info: #60a5fa;
+  --unknown: #6b7a92;
+}
+* { box-sizing: border-box; margin: 0; padding: 0; }
+html, body { min-height: 100%; }
+body {
+  font-family: ui-sans-serif, system-ui, -apple-system, "SF Pro Text", Inter, Arial, sans-serif;
+  font-size: 14px;
+  line-height: 1.55;
+  color: var(--text);
+  background: var(--bg);
+  padding: 20px 22px;
+}
+code, pre, .mono { font-family: ui-monospace, "SF Mono", Menlo, Consolas, monospace; font-size: 0.92em; }
+.header {
+  display: flex; justify-content: space-between; align-items: flex-start; gap: 16px;
+  padding-bottom: 16px; border-bottom: 1px solid var(--border); margin-bottom: 20px;
+}
+.header-left { display: flex; flex-direction: column; gap: 4px; }
+.eyebrow { font-size: 11px; letter-spacing: 0.15em; text-transform: uppercase; color: var(--text-dim); font-weight: 600; }
+.title { font-size: 22px; font-weight: 750; letter-spacing: -0.01em; display: flex; align-items: center; gap: 10px; }
+.title::before { content: ""; width: 4px; height: 20px; background: var(--accent); border-radius: 2px; }
+.header-right { display: flex; gap: 8px; flex-wrap: wrap; justify-content: flex-end; }
+.pill {
+  display: inline-flex; align-items: center; gap: 6px;
+  padding: 4px 10px; border-radius: 12px;
+  font-size: 11px; font-weight: 650; letter-spacing: 0.06em; text-transform: uppercase;
+  background: rgba(255,255,255,0.04); border: 1px solid var(--border);
+}
+.pill .dot { width: 6px; height: 6px; border-radius: 50%; background: var(--unknown); }
+.pill.ok, .pill.fresh { color: var(--ok); border-color: rgba(34,197,94,.3); }
+.pill.ok .dot, .pill.fresh .dot { background: var(--ok); }
+.pill.warn, .pill.stale { color: var(--warn); border-color: rgba(245,158,11,.3); }
+.pill.warn .dot, .pill.stale .dot { background: var(--warn); }
+.pill.err, .pill.missing { color: var(--err); border-color: rgba(239,68,68,.3); }
+.pill.err .dot, .pill.missing .dot { background: var(--err); }
+.pill.unknown { color: var(--text-dim); }
+.summary { color: var(--text-muted); margin-bottom: 6px; }
+.meta { color: var(--text-dim); font-size: 12px; margin-bottom: 20px; }
+.section { margin: 22px 0 8px; }
+.section-label {
+  font-size: 11px; letter-spacing: 0.12em; text-transform: uppercase;
+  color: var(--text-dim); font-weight: 650; margin-bottom: 10px;
+  display: flex; align-items: baseline; gap: 8px;
+}
+.section-label .count { color: var(--text-muted); font-weight: 500; letter-spacing: 0; }
+.kpis { display: grid; grid-template-columns: repeat(auto-fill, minmax(160px, 1fr)); gap: 10px; }
+.kpi {
+  background: var(--surface); border: 1px solid var(--border); border-radius: 10px;
+  padding: 12px 14px; position: relative; overflow: hidden;
+}
+.kpi::before { content: ""; position: absolute; top: 0; left: 0; width: 3px; height: 100%; background: var(--unknown); }
+.kpi.ok::before { background: var(--ok); }
+.kpi.warn::before { background: var(--warn); }
+.kpi.err::before { background: var(--err); }
+.kpi-label { font-size: 11px; letter-spacing: 0.08em; text-transform: uppercase; color: var(--text-dim); font-weight: 650; margin-bottom: 4px; }
+.kpi-value { font-size: 18px; font-weight: 700; color: var(--text); word-break: break-word; }
+.recommendations, .issues, .links { display: flex; flex-direction: column; gap: 8px; }
+.recommendation {
+  display: grid; grid-template-columns: 54px 1fr; gap: 10px;
+  background: var(--surface); border: 1px solid var(--border); border-radius: 8px;
+  padding: 10px 12px;
+}
+.rec-priority { font-weight: 850; font-size: 11px; letter-spacing: 0.05em; color: var(--warn); }
+.rec-title { color: var(--text); font-weight: 750; margin-bottom: 2px; }
+.rec-reason, .rec-command { color: var(--text-dim); font-size: 12px; }
+.section-cards { display: grid; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); gap: 10px; }
+.section-card { background: var(--surface-2); border: 1px solid var(--border); border-radius: 10px; padding: 12px; }
+.section-card-title {
+  color: var(--text-muted); font-size: 11px; letter-spacing: 0.1em; text-transform: uppercase;
+  font-weight: 750; margin-bottom: 8px;
+}
+.section-card .kpis { grid-template-columns: 1fr; }
+.issue {
+  display: grid; grid-template-columns: 72px 56px 1fr auto; gap: 12px; align-items: center;
+  background: var(--surface); border: 1px solid var(--border); border-radius: 8px;
+  padding: 10px 12px; font-size: 13px;
+}
+.issue-id { color: var(--text-dim); font-family: ui-monospace, monospace; font-size: 11px; overflow-wrap: anywhere; }
+.sev { font-weight: 750; font-size: 11px; letter-spacing: 0.05em; text-align: center; padding: 2px 6px; border-radius: 4px; }
+.sev.P0, .sev.P1 { background: rgba(239,68,68,.15); color: var(--err); }
+.sev.P2 { background: rgba(245,158,11,.15); color: var(--warn); }
+.sev.P3 { background: rgba(96,165,250,.15); color: var(--info); }
+.issue-title { color: var(--text); }
+.issue-status { font-size: 11px; color: var(--text-dim); text-transform: uppercase; letter-spacing: 0.06em; }
+.link-row {
+  background: var(--surface); border: 1px solid var(--border); border-radius: 8px;
+  padding: 8px 12px; font-size: 13px; display: flex; justify-content: space-between; gap: 12px;
+}
+.link-row .path { color: var(--text-dim); font-family: ui-monospace, monospace; font-size: 11px; overflow-wrap: anywhere; }
+.empty {
+  background: var(--surface); border: 1px dashed var(--border); border-radius: 10px;
+  padding: 14px 16px; color: var(--text-dim); font-size: 13px; text-align: center;
+}
+.no-data {
+  background: var(--surface); border: 1px solid var(--border); border-left: 3px solid var(--warn);
+  border-radius: 10px; padding: 16px 18px; color: var(--text-muted); font-size: 13px;
+}
+.no-data h3 { color: var(--text); font-size: 14px; margin-bottom: 6px; }
+.no-data code { background: var(--surface-3); padding: 1px 6px; border-radius: 4px; color: var(--text); border: 1px solid var(--border); }
+.footer { margin-top: 28px; padding-top: 14px; border-top: 1px solid var(--border); font-size: 11px; color: var(--text-dim); display: flex; justify-content: space-between; gap: 12px; flex-wrap: wrap; }
+@media (max-width: 720px) {
+  body { padding: 14px; }
+  .header { flex-direction: column; }
+  .issue { grid-template-columns: 1fr; }
+}
+</style>
+</head>
+<body>
+
+<div class="header">
+  <div class="header-left">
+    <div class="eyebrow">Ops Dashboard</div>
+    <div class="title" id="project-name">PromptLab</div>
+  </div>
+  <div class="header-right">
+    <span class="pill unknown" id="status-pill"><span class="dot"></span><span id="status-label">loading</span></span>
+    <span class="pill unknown" id="freshness-pill"><span class="dot"></span><span id="freshness-label">loading</span></span>
+  </div>
+</div>
+
+<div id="content">
+  <div class="no-data">
+    <h3>Loading state</h3>
+    <div>Reading <code>./ops-state.json</code>.</div>
+  </div>
+</div>
+
+<div class="footer">
+  <span>Project: <code id="project-id-out">prompt-lab</code></span>
+  <span id="updated-out">updated unknown</span>
+  <span>Generator: <code>tools/ops/build-ops-state.mjs</code></span>
+</div>
+
+<script>
+(function () {
+  "use strict";
+  var PROJECT = { id: "prompt-lab", name: "PromptLab" };
+  var STATE_PATH = "./ops-state.json";
+  var ALLOWED_STATUS = { ok: 1, warn: 1, err: 1, unknown: 1 };
+  var ALLOWED_FRESH = { fresh: 1, stale: 1, missing: 1, unknown: 1 };
+  var $ = function (id) { return document.getElementById(id); };
+  var esc = function (s) { return String(s == null ? "" : s).replace(/[&<>"']/g, function (c) {
+    return ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" })[c];
+  }); };
+
+  function setPill(el, labelEl, value, allowed) {
+    var v = allowed[value] ? value : "unknown";
+    el.className = "pill " + v;
+    labelEl.textContent = v;
+  }
+
+  function renderNoData(reason) {
+    $("content").innerHTML =
+      '<div class="no-data">' +
+      '<h3>No state available</h3>' +
+      '<div>' + esc(reason) + '</div>' +
+      '<div style="margin-top:8px">Run <code>node tools/ops/build-ops-state.mjs</code> from the project root to produce <code>ops-state.json</code>.</div>' +
+      '</div>';
+    setPill($("status-pill"), $("status-label"), "unknown", ALLOWED_STATUS);
+    setPill($("freshness-pill"), $("freshness-label"), "missing", ALLOWED_FRESH);
+  }
+
+  function renderKpi(k) {
+    var status = ALLOWED_STATUS[k.status] ? k.status : "unknown";
+    return '<div class="kpi ' + status + '"><div class="kpi-label">' + esc(k.label) + '</div><div class="kpi-value">' + esc(k.value) + '</div></div>';
+  }
+
+  function renderRecommendation(r) {
+    return (
+      '<div class="recommendation">' +
+      '<div class="rec-priority">' + esc(r.priority || "P3") + '</div>' +
+      '<div><div class="rec-title">' + esc(r.title || "Recommendation") + '</div>' +
+      '<div class="rec-reason">' + esc(r.reason || "") + '</div>' +
+      (r.command ? '<div class="rec-command"><code>' + esc(r.command) + '</code></div>' : '') +
+      '</div></div>'
+    );
+  }
+
+  function renderSection(s) {
+    var items = Array.isArray(s.items) ? s.items : [];
+    return '<div class="section-card"><div class="section-card-title">' + esc(s.title || "Section") + '</div>' +
+      (items.length ? '<div class="kpis">' + items.map(renderKpi).join("") + '</div>' : '<div class="empty">No items reported.</div>') +
+      '</div>';
+  }
+
+  function renderIssue(i) {
+    var sev = (i.severity || "").toUpperCase();
+    return '<div class="issue"><div class="issue-id">' + esc(i.id || "") + '</div><div class="sev ' + esc(sev) + '">' + esc(sev || "-") + '</div><div class="issue-title">' + esc(i.title || "") + '</div><div class="issue-status">' + esc(i.status || "") + '</div></div>';
+  }
+
+  function renderLink(l) {
+    return '<div class="link-row"><span>' + esc(l.label || l.path || "link") + '</span><span class="path">' + esc(l.path || "") + '</span></div>';
+  }
+
+  function render(state) {
+    $("project-name").textContent = (state.project && state.project.name) || PROJECT.name;
+    $("project-id-out").textContent = (state.project && state.project.id) || PROJECT.id;
+    setPill($("status-pill"), $("status-label"), state.status || "unknown", ALLOWED_STATUS);
+    setPill($("freshness-pill"), $("freshness-label"), state.freshness || "unknown", ALLOWED_FRESH);
+    var updated = state.updatedAt ? new Date(state.updatedAt) : null;
+    $("updated-out").textContent = updated && !isNaN(updated) ? "Updated: " + updated.toLocaleString() : "Updated: unknown";
+
+    var parts = [];
+    if (state.summary) parts.push('<div class="summary">' + esc(state.summary) + '</div>');
+    parts.push('<div class="meta">Last build: ' + esc(state.updatedAt || "unknown") + '</div>');
+
+    var recommendations = Array.isArray(state.recommendations) ? state.recommendations : [];
+    parts.push('<div class="section"><div class="section-label">Recommendations <span class="count">(' + recommendations.length + ')</span></div>' +
+      (recommendations.length ? '<div class="recommendations">' + recommendations.map(renderRecommendation).join("") + '</div>' : '<div class="empty">No recommendations reported.</div>') +
+      '</div>');
+
+    var sections = Array.isArray(state.sections) ? state.sections : [];
+    if (sections.length) {
+      parts.push('<div class="section"><div class="section-label">Status Groups <span class="count">(' + sections.length + ')</span></div><div class="section-cards">' + sections.map(renderSection).join("") + '</div></div>');
+    }
+
+    var kpis = Array.isArray(state.kpis) ? state.kpis : [];
+    parts.push('<div class="section"><div class="section-label">All KPIs <span class="count">(' + kpis.length + ')</span></div>' +
+      (kpis.length ? '<div class="kpis">' + kpis.map(renderKpi).join("") + '</div>' : '<div class="empty">No KPIs reported.</div>') +
+      '</div>');
+
+    var issues = Array.isArray(state.issues) ? state.issues : [];
+    parts.push('<div class="section"><div class="section-label">Issues <span class="count">(' + issues.length + ')</span></div>' +
+      (issues.length ? '<div class="issues">' + issues.map(renderIssue).join("") + '</div>' : '<div class="empty">No open issues reported.</div>') +
+      '</div>');
+
+    var links = Array.isArray(state.links) ? state.links : [];
+    parts.push('<div class="section"><div class="section-label">Links <span class="count">(' + links.length + ')</span></div>' +
+      (links.length ? '<div class="links">' + links.map(renderLink).join("") + '</div>' : '<div class="empty">No links reported.</div>') +
+      '</div>');
+
+    $("content").innerHTML = parts.join("");
+  }
+
+  function load() {
+    if (typeof fetch !== "function") {
+      renderNoData("fetch is not available in this runtime.");
+      return;
+    }
+    fetch(STATE_PATH, { cache: "no-store" })
+      .then(function (r) {
+        if (!r.ok) throw new Error("HTTP " + r.status);
+        return r.json();
+      })
+      .then(function (state) {
+        try { render(state); }
+        catch (error) { renderNoData("State loaded but failed to render: " + (error && error.message || error)); }
+      })
+      .catch(function (error) {
+        var msg = error && error.message ? error.message : String(error);
+        if (location.protocol === "file:") renderNoData("Running from file:// blocked loading ops-state.json. Open via a local server or Ops Hub.");
+        else renderNoData("Could not load ops-state.json: " + msg);
+      });
+  }
+
+  load();
+}());
+</script>
+</body>
+</html>

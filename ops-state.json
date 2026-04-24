@@ -1,0 +1,265 @@
+{
+  "project": {
+    "id": "prompt-lab",
+    "name": "PromptLab"
+  },
+  "status": "warn",
+  "freshness": "stale",
+  "updatedAt": "2026-04-24T15:59:42.002Z",
+  "summary": "v1.7.0 · three shell architecture · branch canonical-tools-restore · dirty tree · 1 open issue",
+  "recommendations": [
+    {
+      "priority": "P2",
+      "title": "Stabilize working tree",
+      "reason": "PromptLab has many uncommitted changes, so ops status should be reviewed before release.",
+      "command": "git status --short"
+    },
+    {
+      "priority": "P2",
+      "title": "Refresh project activity",
+      "reason": "Latest commit activity is outside the freshness window.",
+      "command": null
+    }
+  ],
+  "sections": [
+    {
+      "title": "Shells",
+      "items": [
+        {
+          "label": "Extension shell",
+          "value": "present",
+          "status": "ok"
+        },
+        {
+          "label": "Desktop shell",
+          "value": "present",
+          "status": "ok"
+        },
+        {
+          "label": "Web shell",
+          "value": "present",
+          "status": "ok"
+        }
+      ]
+    },
+    {
+      "title": "Validation",
+      "items": [
+        {
+          "label": "Build script",
+          "value": "present",
+          "status": "ok"
+        },
+        {
+          "label": "Test script",
+          "value": "present",
+          "status": "ok"
+        },
+        {
+          "label": "Preflight",
+          "value": "configured",
+          "status": "ok"
+        },
+        {
+          "label": "Playwright",
+          "value": "configured",
+          "status": "ok"
+        },
+        {
+          "label": "Workflows",
+          "value": "5",
+          "status": "ok"
+        }
+      ]
+    },
+    {
+      "title": "Artifacts",
+      "items": [
+        {
+          "label": "Deps installed",
+          "value": "yes",
+          "status": "ok"
+        },
+        {
+          "label": "Extension dist",
+          "value": "present",
+          "status": "ok"
+        },
+        {
+          "label": "Desktop dist",
+          "value": "present",
+          "status": "ok"
+        },
+        {
+          "label": "Web dist",
+          "value": "present",
+          "status": "ok"
+        }
+      ]
+    },
+    {
+      "title": "Git and Docs",
+      "items": [
+        {
+          "label": "Branch",
+          "value": "canonical-tools-restore",
+          "status": "warn"
+        },
+        {
+          "label": "Working tree",
+          "value": "dirty",
+          "status": "warn"
+        },
+        {
+          "label": "Architecture doc",
+          "value": "present",
+          "status": "ok"
+        },
+        {
+          "label": "Docs inventory",
+          "value": "present",
+          "status": "ok"
+        }
+      ]
+    }
+  ],
+  "kpis": [
+    {
+      "label": "Root package",
+      "value": "1.7.0",
+      "status": "ok"
+    },
+    {
+      "label": "Extension shell",
+      "value": "present",
+      "status": "ok"
+    },
+    {
+      "label": "Desktop shell",
+      "value": "present",
+      "status": "ok"
+    },
+    {
+      "label": "Web shell",
+      "value": "present",
+      "status": "ok"
+    },
+    {
+      "label": "Branch",
+      "value": "canonical-tools-restore",
+      "status": "warn"
+    },
+    {
+      "label": "Working tree",
+      "value": "dirty",
+      "status": "warn"
+    },
+    {
+      "label": "Deps installed",
+      "value": "yes",
+      "status": "ok"
+    },
+    {
+      "label": "Build script",
+      "value": "present",
+      "status": "ok"
+    },
+    {
+      "label": "Test script",
+      "value": "present",
+      "status": "ok"
+    },
+    {
+      "label": "Preflight",
+      "value": "configured",
+      "status": "ok"
+    },
+    {
+      "label": "Playwright",
+      "value": "configured",
+      "status": "ok"
+    },
+    {
+      "label": "Workflows",
+      "value": "5",
+      "status": "ok"
+    },
+    {
+      "label": "Extension dist",
+      "value": "present",
+      "status": "ok"
+    },
+    {
+      "label": "Desktop dist",
+      "value": "present",
+      "status": "ok"
+    },
+    {
+      "label": "Web dist",
+      "value": "present",
+      "status": "ok"
+    },
+    {
+      "label": "Architecture doc",
+      "value": "present",
+      "status": "ok"
+    },
+    {
+      "label": "Docs inventory",
+      "value": "present",
+      "status": "ok"
+    }
+  ],
+  "issues": [
+    {
+      "id": "git-dirty",
+      "severity": "P3",
+      "status": "open",
+      "title": "Working tree has uncommitted changes",
+      "source": ".git"
+    }
+  ],
+  "links": [
+    {
+      "label": "CLAUDE.md",
+      "path": "prompt-lab-source/CLAUDE.md"
+    },
+    {
+      "label": "CODEX.md",
+      "path": "prompt-lab-source/CODEX.md"
+    },
+    {
+      "label": "ARCHITECTURE.md",
+      "path": "prompt-lab-source/ARCHITECTURE.md"
+    },
+    {
+      "label": "DOCS_INVENTORY.md",
+      "path": "prompt-lab-source/DOCS_INVENTORY.md"
+    },
+    {
+      "label": "Root package",
+      "path": "prompt-lab-source/package.json"
+    },
+    {
+      "label": "Extension package",
+      "path": "prompt-lab-source/prompt-lab-extension/package.json"
+    },
+    {
+      "label": "Desktop package",
+      "path": "prompt-lab-source/prompt-lab-desktop/package.json"
+    },
+    {
+      "label": "Web package",
+      "path": "prompt-lab-source/prompt-lab-web/package.json"
+    }
+  ],
+  "metadata": {
+    "generator": "tools/ops/build-ops-state.mjs",
+    "schemaVersion": 1,
+    "root": ".",
+    "sourceRoot": "prompt-lab-source",
+    "lastCommitAt": "2026-04-22T04:15:10-04:00",
+    "lastCommitAgeMinutes": 3345,
+    "staleAfterMinutes": 1440
+  }
+}

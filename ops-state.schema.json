@@ -1,0 +1,104 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "ops-state.schema.json",
+  "title": "Ops Hub Project State",
+  "type": "object",
+  "required": ["project", "status", "freshness", "updatedAt", "metadata"],
+  "properties": {
+    "project": {
+      "type": "object",
+      "required": ["id", "name"],
+      "properties": {
+        "id": { "type": "string", "minLength": 1 },
+        "name": { "type": "string", "minLength": 1 }
+      },
+      "additionalProperties": false
+    },
+    "status": { "type": "string", "enum": ["ok", "warn", "err", "unknown"] },
+    "freshness": { "type": "string", "enum": ["fresh", "stale", "missing", "unknown"] },
+    "updatedAt": { "type": "string", "format": "date-time" },
+    "summary": { "type": "string" },
+    "recommendations": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "required": ["priority", "title", "reason"],
+        "properties": {
+          "priority": { "type": "string", "enum": ["P0", "P1", "P2", "P3"] },
+          "title": { "type": "string", "minLength": 1 },
+          "reason": { "type": "string", "minLength": 1 },
+          "command": { "type": ["string", "null"] }
+        },
+        "additionalProperties": false
+      }
+    },
+    "sections": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "required": ["title", "items"],
+        "properties": {
+          "title": { "type": "string", "minLength": 1 },
+          "items": {
+            "type": "array",
+            "items": { "$ref": "#/definitions/kpi" }
+          }
+        },
+        "additionalProperties": false
+      }
+    },
+    "kpis": {
+      "type": "array",
+      "items": { "$ref": "#/definitions/kpi" }
+    },
+    "issues": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "required": ["id", "severity", "status", "title"],
+        "properties": {
+          "id": { "type": "string", "minLength": 1 },
+          "severity": { "type": "string", "enum": ["P0", "P1", "P2", "P3"] },
+          "status": { "type": "string", "enum": ["open", "closed", "deferred"] },
+          "title": { "type": "string", "minLength": 1 },
+          "source": { "type": "string" }
+        },
+        "additionalProperties": false
+      }
+    },
+    "links": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "required": ["label", "path"],
+        "properties": {
+          "label": { "type": "string", "minLength": 1 },
+          "path": { "type": "string", "minLength": 1 }
+        },
+        "additionalProperties": false
+      }
+    },
+    "metadata": {
+      "type": "object",
+      "required": ["generator", "schemaVersion"],
+      "properties": {
+        "generator": { "type": "string", "minLength": 1 },
+        "schemaVersion": { "type": "integer", "minimum": 1 }
+      },
+      "additionalProperties": true
+    }
+  },
+  "definitions": {
+    "kpi": {
+      "type": "object",
+      "required": ["label", "value", "status"],
+      "properties": {
+        "label": { "type": "string", "minLength": 1 },
+        "value": { "type": ["string", "number", "boolean"] },
+        "status": { "type": "string", "enum": ["ok", "warn", "err", "unknown"] }
+      },
+      "additionalProperties": false
+    }
+  },
+  "additionalProperties": false
+}
