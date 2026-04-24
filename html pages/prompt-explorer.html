@@ -1,0 +1,986 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Prompt Explorer — Garden OS</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Fraunces:ital,wght@0,600;1,400&family=DM+Sans:wght@300;400;500&family=DM+Mono:wght@400&display=swap" rel="stylesheet">
+<style>
+  :root {
+    --walnut-deep:   #1a0f08;
+    --walnut-mid:    #2c1a0e;
+    --walnut-light:  #3d2614;
+    --walnut-grain:  #4a2f18;
+    --cream:         #f0e6c8;
+    --cream-dim:     #c8b78a;
+    --cream-faint:   rgba(240,230,200,0.08);
+    --soil:          #2c1f0e;
+    --sun:           #e8c84a;
+    --leaf:          #7aaa38;
+    --leaf-dim:      #4a7a1e;
+    --leaf-faint:    rgba(122,170,56,0.15);
+    --sage:          #8aaa68;
+    --sage-glow:     rgba(138,170,104,0.25);
+    --amber:         #c8860a;
+    --amber-faint:   rgba(200,134,10,0.18);
+    --connector:     rgba(240,230,200,0.35);
+    --border-node:   rgba(240,230,200,0.18);
+    --border-hover:  rgba(240,230,200,0.35);
+    --shadow-node:   0 2px 12px rgba(0,0,0,0.4);
+    --shadow-active: 0 0 0 2px var(--sage), 0 0 18px var(--sage-glow), 0 2px 12px rgba(0,0,0,0.5);
+    --shadow-indirect: 0 0 0 1.5px var(--amber), 0 0 12px var(--amber-faint);
+    --r: 20px;
+    --r-sm: 10px;
+  }
+
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+
+  body {
+    font-family: 'DM Sans', sans-serif;
+    background: var(--walnut-deep);
+    color: var(--cream);
+    height: 100vh;
+    overflow: hidden;
+    display: flex;
+    flex-direction: column;
+  }
+
+  /* Wood grain texture overlay */
+  body::before {
+    content: '';
+    position: fixed; inset: 0;
+    background-image:
+      repeating-linear-gradient(
+        92deg,
+        transparent 0px,
+        transparent 3px,
+        rgba(255,255,255,0.012) 3px,
+        rgba(255,255,255,0.012) 4px,
+        transparent 4px,
+        transparent 9px,
+        rgba(0,0,0,0.06) 9px,
+        rgba(0,0,0,0.06) 11px
+      ),
+      repeating-linear-gradient(
+        88deg,
+        transparent 0px,
+        transparent 7px,
+        rgba(255,255,255,0.008) 7px,
+        rgba(255,255,255,0.008) 8px
+      );
+    pointer-events: none;
+    z-index: 0;
+  }
+
+  /* ── TOP BAR ── */
+  .topbar {
+    position: relative; z-index: 10;
+    display: flex; align-items: center; justify-content: space-between;
+    padding: 10px 18px;
+    background: rgba(26,15,8,0.85);
+    border-bottom: 1px solid rgba(240,230,200,0.1);
+    backdrop-filter: blur(4px);
+    flex-shrink: 0;
+    gap: 12px;
+  }
+
+  .breadcrumb {
+    display: flex; align-items: center; gap: 6px;
+    font-family: 'DM Sans', sans-serif;
+    font-size: 15px; font-weight: 300;
+    color: var(--cream-dim);
+    flex-wrap: wrap;
+  }
+  .bc-item {
+    cursor: pointer;
+    transition: color 0.15s;
+    padding: 2px 4px;
+    border-radius: 4px;
+  }
+  .bc-item:hover { color: var(--cream); }
+  .bc-item.active { color: var(--cream); font-weight: 400; }
+  .bc-sep { color: rgba(240,230,200,0.3); font-size: 14px; }
+
+  .topbar-actions { display: flex; gap: 8px; flex-shrink: 0; }
+
+  .tb-btn {
+    font-family: 'DM Sans', sans-serif;
+    font-size: 14px; font-weight: 400;
+    padding: 6px 14px;
+    border-radius: var(--r-sm);
+    border: 1px solid rgba(240,230,200,0.2);
+    background: rgba(240,230,200,0.06);
+    color: var(--cream-dim);
+    cursor: pointer;
+    transition: all 0.15s;
+    white-space: nowrap;
+  }
+  .tb-btn:hover {
+    background: rgba(240,230,200,0.12);
+    color: var(--cream);
+    border-color: rgba(240,230,200,0.35);
+  }
+  .tb-btn.active-btn {
+    background: var(--amber-faint);
+    border-color: var(--amber);
+    color: #f0b840;
+  }
+  .tb-btn.primary {
+    background: rgba(122,170,56,0.18);
+    border-color: var(--leaf);
+    color: #c8e882;
+  }
+  .tb-btn.primary:hover {
+    background: rgba(122,170,56,0.28);
+  }
+
+  /* ── MAIN LAYOUT ── */
+  .main {
+    position: relative; z-index: 1;
+    display: flex;
+    flex: 1;
+    overflow: hidden;
+  }
+
+  /* ── TREE CANVAS ── */
+  .tree-canvas {
+    flex: 1;
+    position: relative;
+    overflow: hidden;
+    padding: 24px 20px 20px;
+    display: flex;
+    flex-direction: column;
+  }
+
+  .canvas-label {
+    font-family: 'Fraunces', serif;
+    font-size: 13px;
+    letter-spacing: 0.12em;
+    text-transform: uppercase;
+    color: rgba(240,230,200,0.3);
+    margin-bottom: 16px;
+    flex-shrink: 0;
+  }
+
+  .tree-scroll {
+    flex: 1;
+    overflow: auto;
+    position: relative;
+  }
+
+  /* SVG connector layer */
+  #connector-svg {
+    position: absolute;
+    top: 0; left: 0;
+    width: 100%; height: 100%;
+    pointer-events: none;
+    z-index: 0;
+    overflow: visible;
+  }
+
+  /* Tree depth columns */
+  .tree-inner {
+    display: flex;
+    align-items: flex-start;
+    gap: 0;
+    min-height: 100%;
+    position: relative;
+    z-index: 1;
+    padding: 10px 0 40px;
+  }
+
+  .depth-col {
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+    align-items: flex-start;
+    gap: 12px;
+    padding: 0 14px;
+    min-width: 160px;
+    flex-shrink: 0;
+  }
+  .depth-col:first-child { padding-left: 4px; }
+
+  /* ── NODES ── */
+  .node {
+    position: relative;
+    background: linear-gradient(135deg, var(--walnut-light) 0%, var(--walnut-mid) 100%);
+    border: 1px solid var(--border-node);
+    border-radius: var(--r);
+    padding: 9px 16px;
+    cursor: pointer;
+    transition: all 0.18s ease;
+    box-shadow: var(--shadow-node);
+    user-select: none;
+    min-width: 150px;
+    max-width: 180px;
+  }
+  .node:hover {
+    border-color: var(--border-hover);
+    background: linear-gradient(135deg, var(--walnut-grain) 0%, var(--walnut-light) 100%);
+    transform: translateY(-1px);
+    box-shadow: 0 4px 16px rgba(0,0,0,0.5);
+  }
+  .node.selected {
+    border-color: var(--sage);
+    box-shadow: var(--shadow-active);
+    background: linear-gradient(135deg, #2a3d1a 0%, #1e2e12 100%);
+  }
+  .node.indirect-active {
+    border-color: var(--amber);
+    border-style: dashed;
+    box-shadow: var(--shadow-indirect);
+  }
+  .node.root-node {
+    background: linear-gradient(135deg, #3a2010 0%, #2c1a0e 100%);
+    border-color: rgba(240,230,200,0.28);
+    min-width: 160px;
+  }
+
+  .node-label {
+    font-family: 'DM Sans', sans-serif;
+    font-size: 15px;
+    font-weight: 400;
+    color: var(--cream);
+    line-height: 1.3;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+  }
+  .node.selected .node-label { color: #d4f0a0; }
+  .node.root-node .node-label { font-weight: 500; }
+
+  .node-axis {
+    font-family: 'DM Sans', sans-serif;
+    font-size: 12px;
+    font-weight: 300;
+    color: rgba(240,230,200,0.38);
+    margin-top: 2px;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+  }
+  .node.selected .node-axis { color: rgba(212,240,160,0.5); }
+
+  .node-badge {
+    position: absolute;
+    top: -6px; right: -6px;
+    background: var(--walnut-grain);
+    border: 1px solid rgba(240,230,200,0.25);
+    border-radius: 8px;
+    font-size: 11px;
+    font-weight: 500;
+    color: var(--cream-dim);
+    padding: 1px 5px;
+    font-family: 'DM Mono', monospace;
+  }
+
+  /* Expand button */
+  .expand-btn {
+    display: inline-flex;
+    align-items: center;
+    gap: 3px;
+    margin-top: 4px;
+    font-size: 12px;
+    color: rgba(240,230,200,0.3);
+    cursor: pointer;
+    transition: color 0.15s;
+    font-family: 'DM Mono', monospace;
+  }
+  .expand-btn:hover { color: var(--cream-dim); }
+
+  /* ── AXIS SELECTOR ── */
+  .axis-picker {
+    position: absolute;
+    background: var(--walnut-mid);
+    border: 1px solid rgba(240,230,200,0.2);
+    border-radius: 12px;
+    padding: 10px;
+    z-index: 100;
+    box-shadow: 0 8px 32px rgba(0,0,0,0.6);
+    min-width: 200px;
+    display: none;
+  }
+  .axis-picker.visible { display: block; }
+  .axis-picker-title {
+    font-size: 12px;
+    font-weight: 500;
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+    color: rgba(240,230,200,0.4);
+    margin-bottom: 8px;
+    font-family: 'DM Sans', sans-serif;
+  }
+  .axis-option {
+    padding: 8px 10px;
+    border-radius: 8px;
+    font-size: 14px;
+    cursor: pointer;
+    color: var(--cream-dim);
+    font-family: 'DM Sans', sans-serif;
+    transition: background 0.12s;
+    display: flex; align-items: center; justify-content: space-between;
+  }
+  .axis-option:hover {
+    background: rgba(240,230,200,0.08);
+    color: var(--cream);
+  }
+  .axis-option .ao-sub {
+    font-size: 12px;
+    color: rgba(240,230,200,0.3);
+    font-family: 'DM Mono', monospace;
+  }
+
+  /* ── PREVIEW PANEL ── */
+  .preview-panel {
+    width: 290px;
+    flex-shrink: 0;
+    border-left: 1px solid rgba(240,230,200,0.08);
+    background: rgba(26,15,8,0.6);
+    backdrop-filter: blur(8px);
+    display: flex;
+    flex-direction: column;
+    transition: width 0.25s ease, opacity 0.2s;
+    overflow: hidden;
+  }
+  .preview-panel.hidden {
+    width: 0;
+    opacity: 0;
+    border-left: none;
+  }
+
+  .preview-header {
+    padding: 14px 16px 10px;
+    border-bottom: 1px solid rgba(240,230,200,0.08);
+    flex-shrink: 0;
+  }
+  .preview-title {
+    font-family: 'Fraunces', serif;
+    font-size: 18px;
+    font-weight: 600;
+    color: var(--cream);
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+  }
+  .preview-axis-tag {
+    font-size: 12px;
+    color: var(--cream-dim);
+    font-family: 'DM Mono', monospace;
+    margin-top: 2px;
+    opacity: 0.6;
+  }
+
+  .preview-img-area {
+    margin: 12px 14px 0;
+    height: 150px;
+    background: rgba(240,230,200,0.04);
+    border: 1px solid rgba(240,230,200,0.1);
+    border-radius: 10px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    overflow: hidden;
+    flex-shrink: 0;
+    position: relative;
+  }
+  .preview-img-area img {
+    width: 100%; height: 100%;
+    object-fit: cover;
+    border-radius: 10px;
+  }
+  .preview-img-placeholder {
+    font-size: 13px;
+    color: rgba(240,230,200,0.2);
+    font-family: 'DM Sans', sans-serif;
+    text-align: center;
+    padding: 12px;
+    line-height: 1.5;
+  }
+  .preview-gen-btn {
+    position: absolute;
+    bottom: 8px; right: 8px;
+    font-size: 12px;
+    padding: 5px 11px;
+    border-radius: 6px;
+    background: rgba(122,170,56,0.2);
+    border: 1px solid var(--leaf-dim);
+    color: #c8e882;
+    cursor: pointer;
+    font-family: 'DM Sans', sans-serif;
+    transition: all 0.15s;
+  }
+  .preview-gen-btn:hover { background: rgba(122,170,56,0.32); }
+
+  .preview-prompt-area {
+    flex: 1;
+    padding: 10px 14px 0;
+    overflow: hidden;
+    min-height: 0;
+  }
+  .preview-prompt-label {
+    font-size: 11px;
+    font-weight: 500;
+    letter-spacing: 0.1em;
+    text-transform: uppercase;
+    color: rgba(240,230,200,0.3);
+    margin-bottom: 6px;
+    font-family: 'DM Sans', sans-serif;
+  }
+  .preview-prompt-text {
+    font-family: 'DM Mono', monospace;
+    font-size: 12px;
+    color: rgba(240,230,200,0.55);
+    line-height: 1.6;
+    overflow: hidden;
+    display: -webkit-box;
+    -webkit-line-clamp: 7;
+    -webkit-box-orient: vertical;
+  }
+
+  .preview-actions {
+    padding: 10px 14px 14px;
+    display: flex;
+    gap: 6px;
+    flex-shrink: 0;
+    border-top: 1px solid rgba(240,230,200,0.06);
+    margin-top: 10px;
+  }
+  .prev-btn {
+    flex: 1;
+    padding: 8px 0;
+    font-size: 13px;
+    font-family: 'DM Sans', sans-serif;
+    font-weight: 400;
+    background: rgba(240,230,200,0.05);
+    border: 1px solid rgba(240,230,200,0.14);
+    border-radius: 8px;
+    color: var(--cream-dim);
+    cursor: pointer;
+    text-align: center;
+    transition: all 0.15s;
+  }
+  .prev-btn:hover {
+    background: rgba(240,230,200,0.1);
+    color: var(--cream);
+  }
+  .prev-btn.success {
+    color: #c8e882;
+    border-color: var(--leaf-dim);
+    background: rgba(122,170,56,0.12);
+  }
+
+  /* ── GENERATING STATE ── */
+  .generating-indicator {
+    display: none;
+    align-items: center;
+    gap: 6px;
+    padding: 6px 14px;
+    font-size: 13px;
+    color: var(--cream-dim);
+    font-family: 'DM Mono', monospace;
+  }
+  .generating-indicator.visible { display: flex; }
+  .gen-dot {
+    width: 5px; height: 5px;
+    border-radius: 50%;
+    background: var(--leaf);
+    animation: pulse 1.2s ease-in-out infinite;
+  }
+  .gen-dot:nth-child(2) { animation-delay: 0.2s; }
+  .gen-dot:nth-child(3) { animation-delay: 0.4s; }
+  @keyframes pulse {
+    0%, 80%, 100% { opacity: 0.2; transform: scale(0.8); }
+    40% { opacity: 1; transform: scale(1); }
+  }
+
+  /* ── EMPTY STATE ── */
+  .empty-state {
+    position: absolute;
+    inset: 0;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    pointer-events: none;
+    gap: 8px;
+    opacity: 0.3;
+  }
+  .empty-state-icon { font-size: 28px; }
+  .empty-state-text {
+    font-family: 'Fraunces', serif;
+    font-size: 16px;
+    font-style: italic;
+    color: var(--cream-dim);
+  }
+
+  /* scrollbar */
+  .tree-scroll::-webkit-scrollbar { width: 4px; height: 4px; }
+  .tree-scroll::-webkit-scrollbar-track { background: transparent; }
+  .tree-scroll::-webkit-scrollbar-thumb { background: rgba(240,230,200,0.12); border-radius: 2px; }
+
+  /* fade-in for new nodes */
+  @keyframes nodeIn {
+    from { opacity: 0; transform: translateX(-8px) scale(0.96); }
+    to   { opacity: 1; transform: translateX(0) scale(1); }
+  }
+  .node-new { animation: nodeIn 0.22s ease forwards; }
+</style>
+</head>
+<body>
+
+<!-- TOP BAR -->
+<div class="topbar">
+  <div class="breadcrumb" id="breadcrumb">
+    <span class="bc-item active" data-id="root">Garden OS Bed</span>
+  </div>
+  <div class="topbar-actions">
+    <div class="generating-indicator" id="gen-indicator">
+      <div class="gen-dot"></div>
+      <div class="gen-dot"></div>
+      <div class="gen-dot"></div>
+      <span id="gen-label">Generating…</span>
+    </div>
+    <button class="tb-btn" id="indirect-btn" onclick="toggleIndirectMode()">⤢ Branch indirectly</button>
+    <button class="tb-btn primary" onclick="copySelected()">Copy prompt</button>
+  </div>
+</div>
+
+<!-- MAIN -->
+<div class="main">
+
+  <!-- TREE CANVAS -->
+  <div class="tree-canvas">
+    <div class="canvas-label">Tree Canvas</div>
+    <div class="tree-scroll" id="tree-scroll">
+      <svg id="connector-svg" xmlns="http://www.w3.org/2000/svg"></svg>
+      <div class="tree-inner" id="tree-inner"></div>
+    </div>
+  </div>
+
+  <!-- AXIS PICKER (portal) -->
+  <div class="axis-picker" id="axis-picker">
+    <div class="axis-picker-title">Branch by axis</div>
+    <div id="axis-options"></div>
+  </div>
+
+  <!-- PREVIEW PANEL -->
+  <div class="preview-panel hidden" id="preview-panel">
+    <div class="preview-header">
+      <div class="preview-title" id="preview-title">—</div>
+      <div class="preview-axis-tag" id="preview-axis"></div>
+    </div>
+    <div class="preview-img-area" id="preview-img-area">
+      <div class="preview-img-placeholder" id="preview-img-placeholder">Select a node to preview</div>
+      <img id="preview-img" src="" alt="" style="display:none">
+      <div class="preview-gen-btn" id="preview-gen-btn" onclick="generateForSelected()" style="display:none">Generate ↗</div>
+    </div>
+    <div class="preview-prompt-area">
+      <div class="preview-prompt-label">Prompt</div>
+      <div class="preview-prompt-text" id="preview-prompt-text"></div>
+    </div>
+    <div class="preview-actions">
+      <div class="prev-btn" id="prev-copy-btn" onclick="copySelected()">Copy</div>
+      <div class="prev-btn" onclick="pinSelected()">Pin</div>
+      <div class="prev-btn" onclick="saveToPromptLab()">Save</div>
+    </div>
+  </div>
+
+</div>
+
+<script>
+// ── CONSTANTS ──────────────────────────────────────────
+const AXES = [
+  { id:'art-style',    label:'Art style',     sub:'illustrated / photo / painterly / pixel',      variants:['Illustrated style','Photorealistic','Painterly loose','Pixel-adjacent'] },
+  { id:'lighting',     label:'Lighting',      sub:'overcast / golden hr / midday / moody',         variants:['Moody overcast','Golden hour','Bright midday','Candlelit dusk'] },
+  { id:'season',       label:'Season state',  sub:'bare / seedling / peak / harvest',              variants:['Bare soil setup','Seedling stage','Peak growth','Harvest ready'] },
+  { id:'wetness',      label:'Wetness',       sub:'dry / damp / rain-soaked',                      variants:['Dry summer','Post-rain damp','Rain-soaked','Morning dew'] },
+  { id:'camera',       label:'Camera angle',  sub:'isometric / top-down / 3/4',                    variants:['Isometric 3/4','Strict top-down','Low 3/4 angle','Overhead flat'] },
+  { id:'detail',       label:'Detail level',  sub:'minimal / standard / high detail',              variants:['Minimal clean','Standard detail','High detail rich','Ultra detailed'] },
+  { id:'negative',     label:'Negative space',sub:'isolated / with context / full scene',          variants:['Isolated asset','With gravel context','Garden scene','Full backyard'] },
+  { id:'grid',         label:'Grid fidelity', sub:'abstract / 4×6 / 4×8 / labeled',               variants:['Abstract grid','4×6 grid','4×8 grid (32 cells)','Labeled cells'] },
+];
+
+const ROOT_PROMPT = `Stylized 3D isometric raised garden bed, premium mobile game asset, cedar wood frame, dark rich soil, 32 planting cells (4 columns × 8 rows exactly), matte black square corner hardware brackets at all 4 corners, white pea gravel pad with organic irregular border, transparent PNG background, isolated asset.`;
+
+// ── STATE ──────────────────────────────────────────────
+let nodes = {
+  root: {
+    id: 'root', label: 'Garden OS Bed', axis: '', depth: 0, parentId: null,
+    prompt: ROOT_PROMPT,
+    children: [], expanded: true, imageURL: null,
+  }
+};
+let selectedId = null;
+let indirectMode = false;
+let axisPendingNodeId = null;
+let nodeIdCounter = 1;
+
+// ── TREE RENDER ────────────────────────────────────────
+function getDepthMap() {
+  const map = {};
+  function walk(id, depth) {
+    if (!map[depth]) map[depth] = [];
+    map[depth].push(id);
+    const node = nodes[id];
+    if (node.expanded && node.children) node.children.forEach(c => walk(c, depth+1));
+  }
+  walk('root', 0);
+  return map;
+}
+
+function renderTree() {
+  const inner = document.getElementById('tree-inner');
+  inner.innerHTML = '';
+  const depthMap = getDepthMap();
+  const maxDepth = Math.max(...Object.keys(depthMap).map(Number));
+  const nodeEls = {};
+
+  for (let d = 0; d <= maxDepth; d++) {
+    const col = document.createElement('div');
+    col.className = 'depth-col';
+    col.dataset.depth = d;
+    (depthMap[d] || []).forEach(id => {
+      const el = makeNodeEl(id);
+      nodeEls[id] = el;
+      col.appendChild(el);
+    });
+    inner.appendChild(col);
+  }
+
+  requestAnimationFrame(() => drawConnectors(nodeEls));
+}
+
+function makeNodeEl(id) {
+  const node = nodes[id];
+  const wrap = document.createElement('div');
+  wrap.dataset.nodeId = id;
+
+  const el = document.createElement('div');
+  el.className = 'node' +
+    (id === 'root' ? ' root-node' : '') +
+    (id === selectedId ? ' selected' : '') +
+    (indirectMode && id !== selectedId && node.children?.length ? ' indirect-active' : '');
+
+  el.innerHTML = `<div class="node-label">${node.label}</div>` +
+    (node.axis ? `<div class="node-axis">${node.axis}</div>` : '');
+
+  // Collapsed badge
+  if (!node.expanded && node.children?.length) {
+    const badge = document.createElement('div');
+    badge.className = 'node-badge';
+    badge.textContent = '+' + node.children.length;
+    el.appendChild(badge);
+  }
+
+  // Expand/collapse
+  if (node.children?.length || node.depth < 3) {
+    const expBtn = document.createElement('div');
+    expBtn.className = 'expand-btn';
+    if (node.children?.length) {
+      expBtn.textContent = node.expanded ? '− collapse' : '+ expand';
+      expBtn.onclick = (e) => { e.stopPropagation(); toggleExpand(id); };
+    } else {
+      expBtn.textContent = '+ branch';
+      expBtn.onclick = (e) => { e.stopPropagation(); showAxisPicker(id, el); };
+    }
+    el.appendChild(expBtn);
+  }
+
+  el.onclick = () => selectNode(id);
+  wrap.appendChild(el);
+  return wrap;
+}
+
+function drawConnectors(nodeEls) {
+  const svg = document.getElementById('connector-svg');
+  svg.innerHTML = '';
+  const scroll = document.getElementById('tree-scroll');
+  const scrollRect = scroll.getBoundingClientRect();
+
+  function getCenter(id) {
+    const wrap = nodeEls[id];
+    if (!wrap) return null;
+    const el = wrap.querySelector('.node');
+    if (!el) return null;
+    const r = el.getBoundingClientRect();
+    return {
+      x: r.left - scrollRect.left + scroll.scrollLeft + r.width / 2,
+      y: r.top - scrollRect.top + scroll.scrollTop + r.height / 2,
+      right: r.left - scrollRect.left + scroll.scrollLeft + r.width,
+      left: r.left - scrollRect.left + scroll.scrollLeft,
+    };
+  }
+
+  function drawCurve(parentId, childId) {
+    const p = getCenter(parentId);
+    const c = getCenter(childId);
+    if (!p || !c) return;
+    const x1 = p.right - 4;
+    const y1 = p.y;
+    const x2 = c.left + 4;
+    const y2 = c.y;
+    const mx = (x1 + x2) / 2;
+    const path = document.createElementNS('http://www.w3.org/2000/svg','path');
+    path.setAttribute('d', `M${x1},${y1} C${mx},${y1} ${mx},${y2} ${x2},${y2}`);
+    path.setAttribute('fill', 'none');
+    path.setAttribute('stroke', 'rgba(240,230,200,0.28)');
+    path.setAttribute('stroke-width', '1.2');
+    path.setAttribute('stroke-linecap', 'round');
+    svg.appendChild(path);
+  }
+
+  function walkConnectors(id) {
+    const node = nodes[id];
+    if (!node.expanded || !node.children) return;
+    node.children.forEach(cid => {
+      drawCurve(id, cid);
+      walkConnectors(cid);
+    });
+  }
+  walkConnectors('root');
+}
+
+// ── NODE ACTIONS ───────────────────────────────────────
+function selectNode(id) {
+  selectedId = id;
+  updateBreadcrumb();
+  updatePreview();
+  renderTree();
+}
+
+function toggleExpand(id) {
+  nodes[id].expanded = !nodes[id].expanded;
+  renderTree();
+}
+
+function toggleIndirectMode() {
+  indirectMode = !indirectMode;
+  const btn = document.getElementById('indirect-btn');
+  btn.classList.toggle('active-btn', indirectMode);
+  btn.textContent = indirectMode ? '✕ Exit indirect' : '⤢ Branch indirectly';
+  renderTree();
+}
+
+// ── AXIS PICKER ────────────────────────────────────────
+function showAxisPicker(nodeId, anchorEl) {
+  axisPendingNodeId = nodeId;
+  const picker = document.getElementById('axis-picker');
+  const opts = document.getElementById('axis-options');
+  opts.innerHTML = '';
+
+  AXES.forEach(ax => {
+    const opt = document.createElement('div');
+    opt.className = 'axis-option';
+    opt.innerHTML = `<span>${ax.label}</span><span class="ao-sub">${ax.sub.split('/')[0].trim()}…</span>`;
+    opt.onclick = () => { picker.classList.remove('visible'); expandByAxis(nodeId, ax); };
+    opts.appendChild(opt);
+  });
+
+  const rect = anchorEl.getBoundingClientRect();
+  const mainRect = document.querySelector('.main').getBoundingClientRect();
+  picker.style.top = (rect.bottom - mainRect.top + 6) + 'px';
+  picker.style.left = (rect.left - mainRect.left) + 'px';
+  picker.classList.add('visible');
+}
+
+document.addEventListener('click', (e) => {
+  if (!e.target.closest('.axis-picker') && !e.target.closest('.expand-btn')) {
+    document.getElementById('axis-picker').classList.remove('visible');
+  }
+});
+
+// ── GENERATE CHILDREN ──────────────────────────────────
+async function expandByAxis(nodeId, axis) {
+  const parentNode = nodes[nodeId];
+  showGenerating(`Branching by ${axis.label}…`);
+
+  try {
+    const children = await generateChildren(parentNode, axis);
+    children.forEach(child => {
+      const id = 'n' + (nodeIdCounter++);
+      nodes[id] = {
+        id, label: child.label, axis: axis.label,
+        depth: parentNode.depth + 1,
+        parentId: nodeId,
+        prompt: child.prompt,
+        children: [], expanded: false, imageURL: null,
+      };
+      parentNode.children.push(id);
+    });
+    parentNode.expanded = true;
+    hideGenerating();
+    renderTree();
+    // Select first child
+    if (parentNode.children.length) selectNode(parentNode.children[parentNode.children.length - children.length]);
+  } catch(e) {
+    hideGenerating();
+    console.error(e);
+    // Fallback to static variants
+    axis.variants.forEach(v => {
+      const id = 'n' + (nodeIdCounter++);
+      nodes[id] = {
+        id, label: v, axis: axis.label,
+        depth: parentNode.depth + 1, parentId: nodeId,
+        prompt: buildFallbackPrompt(parentNode.prompt, axis, v),
+        children: [], expanded: false, imageURL: null,
+      };
+      parentNode.children.push(id);
+    });
+    parentNode.expanded = true;
+    renderTree();
+    if (parentNode.children.length) selectNode(parentNode.children[0]);
+  }
+}
+
+async function generateChildren(parentNode, axis) {
+  const systemPrompt = `You are a prompt engineering assistant for an AI image generation tool called Prompt Explorer, used in Garden OS — a garden planning app.
+
+Your job: given a parent imagegen prompt and a branching axis, generate exactly 4 child prompt variants. Each child should vary ONLY along the specified axis while preserving all other details from the parent prompt.
+
+Respond with ONLY a JSON array, no markdown, no explanation:
+[
+  {"label": "short node label (2-3 words max)", "prompt": "full imagegen prompt string"},
+  ...
+]
+
+Rules:
+- Labels must be 2-3 words, specific and distinct
+- Prompts must be complete, self-contained imagegen prompts
+- Always preserve: cedar frame, isometric view, transparent PNG, game art style (unless art-style axis)
+- Always preserve: black corner hardware, pea gravel pad (unless explicitly changing these)
+- Never add people or text to the image
+- Keep prompts under 120 words`;
+
+  const userMsg = `Parent prompt: "${parentNode.prompt}"
+
+Branch axis: ${axis.label}
+Axis description: ${axis.sub}
+
+Generate 4 child variants along the "${axis.label}" axis.`;
+
+  const resp = await fetch('https://api.anthropic.com/v1/messages', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({
+      model: 'claude-sonnet-4-20250514',
+      max_tokens: 1000,
+      system: systemPrompt,
+      messages: [{ role: 'user', content: userMsg }],
+    })
+  });
+
+  const data = await resp.json();
+  const text = data.content?.[0]?.text || '[]';
+  const clean = text.replace(/```json|```/g, '').trim();
+  return JSON.parse(clean);
+}
+
+function buildFallbackPrompt(parent, axis, variant) {
+  return `${parent} Variation: ${variant.toLowerCase()} ${axis.label}.`;
+}
+
+// ── BREADCRUMB ─────────────────────────────────────────
+function getPath(id) {
+  const path = [];
+  let cur = nodes[id];
+  while (cur) { path.unshift(cur); cur = cur.parentId ? nodes[cur.parentId] : null; }
+  return path;
+}
+
+function updateBreadcrumb() {
+  const bc = document.getElementById('breadcrumb');
+  if (!selectedId) {
+    bc.innerHTML = '<span class="bc-item active" onclick="selectNode(\'root\')">Garden OS Bed</span>';
+    return;
+  }
+  const path = getPath(selectedId);
+  bc.innerHTML = path.map((n, i) => {
+    const isLast = i === path.length - 1;
+    return `<span class="bc-item${isLast?' active':''}" onclick="selectNode('${n.id}')">${n.label}</span>` +
+      (isLast ? '' : '<span class="bc-sep"> › </span>');
+  }).join('');
+}
+
+// ── PREVIEW PANEL ──────────────────────────────────────
+function updatePreview() {
+  const panel = document.getElementById('preview-panel');
+  if (!selectedId) { panel.classList.add('hidden'); return; }
+  panel.classList.remove('hidden');
+
+  const node = nodes[selectedId];
+  document.getElementById('preview-title').textContent = node.label;
+  document.getElementById('preview-axis').textContent = node.axis || 'seed prompt';
+  document.getElementById('preview-prompt-text').textContent = node.prompt;
+
+  const img = document.getElementById('preview-img');
+  const placeholder = document.getElementById('preview-img-placeholder');
+  const genBtn = document.getElementById('preview-gen-btn');
+
+  if (node.imageURL) {
+    img.src = node.imageURL;
+    img.style.display = 'block';
+    placeholder.style.display = 'none';
+    genBtn.style.display = 'none';
+  } else {
+    img.style.display = 'none';
+    placeholder.style.display = 'flex';
+    placeholder.textContent = 'No image generated';
+    genBtn.style.display = 'block';
+    genBtn.textContent = 'Generate ↗';
+  }
+}
+
+function generateForSelected() {
+  if (!selectedId) return;
+  const node = nodes[selectedId];
+  const btn = document.getElementById('preview-gen-btn');
+  btn.textContent = '…';
+  // This is a passthrough — in production this would call your imagegen API
+  // For now we show a placeholder note
+  document.getElementById('preview-img-placeholder').textContent = 'Copy the prompt above and paste into your imagegen tool';
+  btn.style.display = 'none';
+}
+
+// ── COPY / SAVE ────────────────────────────────────────
+function copySelected() {
+  const id = selectedId || 'root';
+  const node = nodes[id];
+  if (!node) return;
+  navigator.clipboard.writeText(node.prompt).then(() => {
+    const btn = document.getElementById('prev-copy-btn');
+    btn.textContent = 'Copied!';
+    btn.classList.add('success');
+    setTimeout(() => { btn.textContent = 'Copy'; btn.classList.remove('success'); }, 1800);
+  });
+}
+
+function pinSelected() {
+  if (!selectedId) return;
+  alert('Pin to comparison tray — coming soon');
+}
+
+function saveToPromptLab() {
+  if (!selectedId) return;
+  const node = nodes[selectedId];
+  // IndexedDB write would go here — matching Prompt Lab schema
+  alert(`Saved "${node.label}" to Prompt Lab`);
+}
+
+// ── GENERATING INDICATOR ───────────────────────────────
+function showGenerating(msg) {
+  const ind = document.getElementById('gen-indicator');
+  document.getElementById('gen-label').textContent = msg || 'Generating…';
+  ind.classList.add('visible');
+}
+function hideGenerating() {
+  document.getElementById('gen-indicator').classList.remove('visible');
+}
+
+// ── INIT ───────────────────────────────────────────────
+renderTree();
+updateBreadcrumb();
+</script>
+</body>
+</html>

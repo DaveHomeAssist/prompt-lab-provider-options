@@ -1,0 +1,1211 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Thread Namer</title>
+<style>
+  @import url('https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500;600&family=IBM+Plex+Sans:wght@300;400;500;600&display=swap');
+
+  *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+  :root {
+    --bg: #0d0d0f;
+    --surface: #141417;
+    --surface2: #1a1a1f;
+    --border: #252530;
+    --border-bright: #35354a;
+    --text: #c8c8d8;
+    --muted: #6a6a80;
+    --dim: #3a3a50;
+
+    /* project accent tokens */
+    --accent: #a78bfa;
+    --accent-dim: rgba(167,139,250,0.12);
+    --accent-glow: rgba(167,139,250,0.25);
+  }
+
+  body {
+    background: var(--bg);
+    color: var(--text);
+    font-family: 'IBM Plex Sans', sans-serif;
+    min-height: 100vh;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    padding: 48px 24px 80px;
+  }
+
+  /* ── header ── */
+  .header {
+    width: 100%;
+    max-width: 680px;
+    margin-bottom: 40px;
+  }
+
+  .header-eyebrow {
+    font-family: 'IBM Plex Mono', monospace;
+    font-size: 10px;
+    letter-spacing: 0.18em;
+    color: var(--muted);
+    text-transform: uppercase;
+    margin-bottom: 10px;
+  }
+
+  .header-title {
+    font-family: 'IBM Plex Mono', monospace;
+    font-size: 22px;
+    font-weight: 600;
+    color: #fff;
+    letter-spacing: -0.02em;
+  }
+
+  .header-title span {
+    color: var(--accent);
+  }
+
+  /* ── project selector ── */
+  .project-selector {
+    width: 100%;
+    max-width: 680px;
+    margin-bottom: 24px;
+  }
+
+  .section-label {
+    font-family: 'IBM Plex Mono', monospace;
+    font-size: 9px;
+    letter-spacing: 0.16em;
+    color: var(--muted);
+    text-transform: uppercase;
+    margin-bottom: 10px;
+  }
+
+  .project-tabs {
+    display: flex;
+    gap: 6px;
+    flex-wrap: wrap;
+  }
+
+  .project-tab {
+    font-family: 'IBM Plex Mono', monospace;
+    font-size: 11px;
+    font-weight: 500;
+    padding: 7px 14px;
+    border-radius: 4px;
+    border: 1px solid var(--border);
+    background: var(--surface);
+    color: var(--muted);
+    cursor: pointer;
+    transition: all 0.15s ease;
+    display: flex;
+    align-items: center;
+    gap: 7px;
+  }
+
+  .project-tab:hover {
+    border-color: var(--border-bright);
+    color: var(--text);
+  }
+
+  .project-tab.active {
+    background: var(--accent-dim);
+    border-color: var(--accent);
+    color: #fff;
+  }
+
+  .project-tab .tab-emoji {
+    font-size: 13px;
+    line-height: 1;
+  }
+
+  /* ── card ── */
+  .card {
+    width: 100%;
+    max-width: 680px;
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    overflow: hidden;
+    margin-bottom: 16px;
+  }
+
+  .card-header {
+    padding: 16px 20px;
+    border-bottom: 1px solid var(--border);
+    display: flex;
+    align-items: center;
+    gap: 10px;
+  }
+
+  .card-header-dot {
+    width: 7px;
+    height: 7px;
+    border-radius: 50%;
+    background: var(--accent);
+    flex-shrink: 0;
+  }
+
+  .card-header-label {
+    font-family: 'IBM Plex Mono', monospace;
+    font-size: 10px;
+    letter-spacing: 0.12em;
+    color: var(--muted);
+    text-transform: uppercase;
+    flex: 1;
+  }
+
+  .project-badge {
+    font-family: 'IBM Plex Mono', monospace;
+    font-size: 9px;
+    padding: 3px 8px;
+    border-radius: 3px;
+    background: var(--accent-dim);
+    color: var(--accent);
+    border: 1px solid rgba(167,139,250,0.2);
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+  }
+
+  .card-body {
+    padding: 20px;
+  }
+
+  /* ── emoji taxonomy ── */
+  .taxonomy-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(130px, 1fr));
+    gap: 6px;
+    margin-bottom: 4px;
+  }
+
+  .tax-item {
+    font-family: 'IBM Plex Mono', monospace;
+    font-size: 11px;
+    padding: 5px 8px;
+    border-radius: 4px;
+    background: var(--surface2);
+    border: 1px solid var(--border);
+    color: var(--muted);
+    display: flex;
+    align-items: center;
+    gap: 6px;
+  }
+
+  .tax-item .tax-emoji { font-size: 13px; }
+  .tax-item .tax-label { color: var(--text); font-size: 10px; }
+
+  /* ── textarea ── */
+  .input-wrapper {
+    position: relative;
+  }
+
+  textarea {
+    width: 100%;
+    min-height: 110px;
+    background: var(--surface2);
+    border: 1px solid var(--border);
+    border-radius: 6px;
+    color: var(--text);
+    font-family: 'IBM Plex Sans', sans-serif;
+    font-size: 14px;
+    line-height: 1.6;
+    padding: 14px 16px;
+    resize: vertical;
+    outline: none;
+    transition: border-color 0.15s;
+  }
+
+  textarea:focus {
+    border-color: var(--accent);
+  }
+
+  textarea::placeholder {
+    color: var(--dim);
+  }
+
+  /* ── date row ── */
+  .date-row {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    margin-top: 12px;
+  }
+
+  .date-label {
+    font-family: 'IBM Plex Mono', monospace;
+    font-size: 10px;
+    color: var(--muted);
+    letter-spacing: 0.1em;
+    white-space: nowrap;
+  }
+
+  input[type="date"] {
+    background: var(--surface2);
+    border: 1px solid var(--border);
+    border-radius: 4px;
+    color: var(--text);
+    font-family: 'IBM Plex Mono', monospace;
+    font-size: 12px;
+    padding: 6px 10px;
+    outline: none;
+    transition: border-color 0.15s;
+    color-scheme: dark;
+  }
+
+  input[type="date"]:focus {
+    border-color: var(--accent);
+  }
+
+  /* ── generate btn ── */
+  .generate-btn {
+    margin-left: auto;
+    font-family: 'IBM Plex Mono', monospace;
+    font-size: 12px;
+    font-weight: 600;
+    letter-spacing: 0.06em;
+    padding: 8px 20px;
+    border-radius: 4px;
+    border: 1px solid var(--accent);
+    background: var(--accent-dim);
+    color: var(--accent);
+    cursor: pointer;
+    transition: all 0.15s;
+    display: flex;
+    align-items: center;
+    gap: 7px;
+  }
+
+  .generate-btn:hover:not(:disabled) {
+    background: rgba(167,139,250,0.2);
+    box-shadow: 0 0 12px var(--accent-glow);
+  }
+
+  .generate-btn:disabled {
+    opacity: 0.4;
+    cursor: not-allowed;
+  }
+
+  /* ── output ── */
+  .output-card {
+    width: 100%;
+    max-width: 680px;
+    background: var(--surface);
+    border: 1px solid var(--border-bright);
+    border-radius: 8px;
+    overflow: hidden;
+    margin-bottom: 16px;
+    display: none;
+  }
+
+  .output-card.visible { display: block; }
+
+  .output-header {
+    padding: 12px 20px;
+    border-bottom: 1px solid var(--border);
+    display: flex;
+    align-items: center;
+    gap: 10px;
+  }
+
+  .output-header-label {
+    font-family: 'IBM Plex Mono', monospace;
+    font-size: 9px;
+    letter-spacing: 0.14em;
+    color: var(--muted);
+    text-transform: uppercase;
+    flex: 1;
+  }
+
+  .output-title {
+    font-family: 'IBM Plex Mono', monospace;
+    font-size: 17px;
+    font-weight: 600;
+    color: #fff;
+    padding: 20px 20px 16px;
+    line-height: 1.4;
+    letter-spacing: -0.01em;
+  }
+
+  .output-footer {
+    padding: 12px 20px;
+    border-top: 1px solid var(--border);
+    display: flex;
+    gap: 8px;
+    align-items: center;
+  }
+
+  .copy-btn {
+    font-family: 'IBM Plex Mono', monospace;
+    font-size: 11px;
+    padding: 6px 14px;
+    border-radius: 4px;
+    border: 1px solid var(--border-bright);
+    background: var(--surface2);
+    color: var(--text);
+    cursor: pointer;
+    transition: all 0.15s;
+  }
+
+  .copy-btn:hover { border-color: var(--accent); color: var(--accent); }
+  .copy-btn.copied { border-color: #4ade80; color: #4ade80; }
+
+  .regen-btn {
+    font-family: 'IBM Plex Mono', monospace;
+    font-size: 11px;
+    padding: 6px 14px;
+    border-radius: 4px;
+    border: 1px solid var(--border);
+    background: transparent;
+    color: var(--muted);
+    cursor: pointer;
+    transition: all 0.15s;
+    margin-left: auto;
+  }
+
+  .regen-btn:hover { color: var(--text); border-color: var(--border-bright); }
+
+  /* ── loading ── */
+  .loading-state {
+    display: none;
+    align-items: center;
+    gap: 10px;
+    padding: 20px;
+    font-family: 'IBM Plex Mono', monospace;
+    font-size: 12px;
+    color: var(--muted);
+  }
+
+  .loading-state.visible { display: flex; }
+
+  .spinner {
+    width: 14px;
+    height: 14px;
+    border: 2px solid var(--dim);
+    border-top-color: var(--accent);
+    border-radius: 50%;
+    animation: spin 0.7s linear infinite;
+  }
+
+  @keyframes spin { to { transform: rotate(360deg); } }
+
+  /* ── error ── */
+  .error-msg {
+    display: none;
+    font-family: 'IBM Plex Mono', monospace;
+    font-size: 11px;
+    color: #f87171;
+    padding: 10px 14px;
+    background: rgba(248,113,113,0.08);
+    border: 1px solid rgba(248,113,113,0.2);
+    border-radius: 4px;
+    width: 100%;
+    max-width: 680px;
+    margin-bottom: 12px;
+  }
+
+  .error-msg.visible { display: block; }
+
+  /* ── api key ── */
+  .key-row {
+    width: 100%;
+    max-width: 680px;
+    margin-bottom: 20px;
+    display: flex;
+    align-items: center;
+    gap: 10px;
+  }
+
+  .key-row label {
+    font-family: 'IBM Plex Mono', monospace;
+    font-size: 9px;
+    letter-spacing: 0.14em;
+    color: var(--muted);
+    text-transform: uppercase;
+    white-space: nowrap;
+  }
+
+  .key-row input {
+    flex: 1;
+    background: var(--surface2);
+    border: 1px solid var(--border);
+    border-radius: 4px;
+    color: var(--text);
+    font-family: 'IBM Plex Mono', monospace;
+    font-size: 12px;
+    padding: 7px 12px;
+    outline: none;
+    transition: border-color 0.15s;
+  }
+
+  .key-row input:focus { border-color: var(--accent); }
+
+  .key-saved {
+    font-family: 'IBM Plex Mono', monospace;
+    font-size: 9px;
+    color: #4ade80;
+    opacity: 0;
+    transition: opacity 0.3s;
+  }
+
+  .key-saved.visible { opacity: 1; }
+
+  /* ── provider selector ── */
+  .provider-row {
+    width: 100%;
+    max-width: 680px;
+    margin-bottom: 20px;
+  }
+
+  .provider-tabs {
+    display: flex;
+    gap: 6px;
+  }
+
+  .provider-tab {
+    font-family: 'IBM Plex Mono', monospace;
+    font-size: 11px;
+    font-weight: 500;
+    padding: 7px 14px;
+    border-radius: 4px;
+    border: 1px solid var(--border);
+    background: var(--surface);
+    color: var(--muted);
+    cursor: pointer;
+    transition: all 0.15s ease;
+    display: flex;
+    align-items: center;
+    gap: 7px;
+  }
+
+  .provider-tab:hover {
+    border-color: var(--border-bright);
+    color: var(--text);
+  }
+
+  .provider-tab.active {
+    background: var(--accent-dim);
+    border-color: var(--accent);
+    color: #fff;
+  }
+
+  .provider-tab .prov-dot {
+    width: 6px;
+    height: 6px;
+    border-radius: 50%;
+    flex-shrink: 0;
+  }
+
+  /* ── history ── */
+  .history-section {
+    width: 100%;
+    max-width: 680px;
+    margin-top: 8px;
+  }
+
+  .history-title {
+    font-family: 'IBM Plex Mono', monospace;
+    font-size: 9px;
+    letter-spacing: 0.14em;
+    color: var(--muted);
+    text-transform: uppercase;
+    margin-bottom: 8px;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+  }
+
+  .clear-history {
+    background: none;
+    border: none;
+    color: var(--dim);
+    font-family: 'IBM Plex Mono', monospace;
+    font-size: 9px;
+    cursor: pointer;
+    letter-spacing: 0.1em;
+    transition: color 0.15s;
+  }
+
+  .clear-history:hover { color: var(--muted); }
+
+  .history-list {
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+  }
+
+  .history-item {
+    font-family: 'IBM Plex Mono', monospace;
+    font-size: 12px;
+    padding: 9px 14px;
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 4px;
+    color: var(--text);
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    cursor: pointer;
+    transition: border-color 0.15s;
+  }
+
+  .history-item:hover { border-color: var(--border-bright); }
+
+  .history-item .h-project {
+    font-size: 9px;
+    padding: 2px 6px;
+    border-radius: 3px;
+    background: var(--accent-dim);
+    color: var(--accent);
+    letter-spacing: 0.08em;
+    white-space: nowrap;
+  }
+
+  .history-item .h-title { flex: 1; }
+
+  .history-item .h-copy {
+    font-size: 9px;
+    color: var(--dim);
+    background: none;
+    border: none;
+    cursor: pointer;
+    font-family: 'IBM Plex Mono', monospace;
+    padding: 2px 6px;
+    border-radius: 3px;
+    transition: all 0.15s;
+  }
+
+  .history-item .h-copy:hover { color: var(--accent); background: var(--accent-dim); }
+</style>
+</head>
+<body>
+
+<div class="header">
+  <div class="header-eyebrow">Developer Mode · Thread Namer</div>
+  <div class="header-title">// <span>rename</span> thread</div>
+</div>
+
+<!-- PROVIDER SELECTOR -->
+<div class="provider-row">
+  <div class="section-label">00 · Provider</div>
+  <div class="provider-tabs" id="providerTabs">
+    <button class="provider-tab active" data-provider="claude">
+      <span class="prov-dot" style="background:#d97706"></span>Claude
+    </button>
+    <button class="provider-tab" data-provider="gpt">
+      <span class="prov-dot" style="background:#10b981"></span>GPT
+    </button>
+    <button class="provider-tab" data-provider="gemini">
+      <span class="prov-dot" style="background:#818cf8"></span>Gemini
+    </button>
+  </div>
+</div>
+
+<!-- API KEY -->
+<div class="key-row">
+  <label id="keyLabel">CLAUDE KEY</label>
+  <input type="password" id="apiKeyInput" placeholder="sk-ant-…" autocomplete="off">
+  <span class="key-saved" id="keySaved">saved ✓</span>
+</div>
+
+<!-- PROJECT SELECTOR -->
+<div class="project-selector">
+  <div class="section-label">01 · Select Project</div>
+  <div class="project-tabs" id="projectTabs"></div>
+</div>
+
+<!-- EMOJI TAXONOMY -->
+<div class="card" id="taxonomyCard">
+  <div class="card-header">
+    <div class="card-header-dot"></div>
+    <div class="card-header-label">Emoji Taxonomy</div>
+    <div class="project-badge" id="activeBadge">—</div>
+  </div>
+  <div class="card-body">
+    <div class="taxonomy-grid" id="taxonomyGrid"></div>
+  </div>
+</div>
+
+<!-- INPUT -->
+<div class="card">
+  <div class="card-header">
+    <div class="card-header-dot"></div>
+    <div class="card-header-label">02 · Thread Summary</div>
+  </div>
+  <div class="card-body">
+    <textarea
+      id="summaryInput"
+      placeholder="Paste or type a brief summary of what the conversation covers…"
+    ></textarea>
+    <div class="date-row">
+      <span class="date-label">DATE</span>
+      <input type="date" id="dateInput">
+      <button class="generate-btn" id="generateBtn" onclick="generate()" disabled>
+        <span id="btnLabel">GENERATE</span>
+      </button>
+    </div>
+  </div>
+</div>
+
+<!-- ERROR -->
+<div class="error-msg" id="errorMsg"></div>
+
+<!-- LOADING -->
+<div class="output-card" id="loadingCard" style="display:none">
+  <div class="loading-state visible">
+    <div class="spinner"></div>
+    <span id="loadingText">Generating title…</span>
+  </div>
+</div>
+
+<!-- OUTPUT -->
+<div class="output-card" id="outputCard">
+  <div class="output-header">
+    <div class="output-header-label">Generated Title</div>
+  </div>
+  <div class="output-title" id="outputTitle"></div>
+  <div class="output-footer">
+    <button class="copy-btn" id="copyBtn" onclick="copyTitle()">COPY</button>
+    <button class="regen-btn" onclick="generate()">↺ REGENERATE</button>
+  </div>
+</div>
+
+<!-- HISTORY -->
+<div class="history-section" id="historySection" style="display:none">
+  <div class="history-title">
+    <span>Session History</span>
+    <button class="clear-history" onclick="clearHistory()">CLEAR</button>
+  </div>
+  <div class="history-list" id="historyList"></div>
+</div>
+
+<script>
+// ─── PROJECT DEFINITIONS ─────────────────────────────────────────────────────
+
+const PROJECTS = {
+  'garden-os': {
+    label: 'Garden OS',
+    emoji: '🌱',
+    badge: 'GARDEN-OS',
+    taxonomy: [
+      { e: '🌱', l: 'Garden OS (primary)' },
+      { e: '🧱', l: 'Structure' },
+      { e: '🔨', l: 'Building' },
+      { e: '📐', l: 'Diagrams' },
+      { e: '📊', l: 'Data' },
+      { e: '🧭', l: 'Planning' },
+      { e: '🧪', l: 'Experiments' },
+      { e: '🌐', l: 'Architecture' },
+      { e: '📋', l: 'Operations' },
+      { e: '🛠', l: 'Troubleshooting' },
+      { e: '📚', l: 'Documentation' },
+      { e: '🧠', l: 'Planning Logic' },
+      { e: '🧩', l: 'System Design' },
+    ],
+    systemPrompt: `You are a documentation organizer for the Garden OS project.
+Your job is to rename chat threads so they are short, clear, and visually scannable in a long conversation list.
+
+Garden OS is a small ecosystem of tools that includes:
+- a garden planner
+- build guides
+- operations guides
+- documentation
+- architecture discussions
+- UI experiments
+- diagrams
+- system maps
+
+Rules:
+1. Titles must follow this structure:
+[emoji][emoji] | short descriptive title – MM-DD
+
+2. Use 2 emojis that visually represent the topic.
+First emoji: 🌱 (always Garden OS primary)
+Secondary emoji from this taxonomy:
+🧱 structure / 🔨 building / 📐 diagrams / 📊 data / 🧭 planning
+🧪 experiments / 🌐 architecture / 📋 operations / 🛠 troubleshooting
+📚 documentation / 🧠 planning logic / 🧩 system design
+
+3. Title must be under 8 words, concrete, not vague.
+4. Always end with the date in MM-DD format as provided.
+5. Prefer nouns and system language.
+
+Return ONLY a single title in a markdown code block. No explanation, no alternatives.`,
+  },
+
+  'prompt-lab': {
+    label: 'Prompt Lab',
+    emoji: '🔬',
+    badge: 'PROMPT-LAB',
+    taxonomy: [
+      { e: '🔬', l: 'Prompt Lab (primary)' },
+      { e: '⚙️', l: 'Extension Config' },
+      { e: '🧩', l: 'Architecture' },
+      { e: '🎨', l: 'UI/Design' },
+      { e: '📦', l: 'Build/Deploy' },
+      { e: '🗃', l: 'Library/Storage' },
+      { e: '✏️', l: 'Editor/Prompts' },
+      { e: '🧪', l: 'Testing/A-B' },
+      { e: '🔌', l: 'API/Integration' },
+      { e: '🐛', l: 'Debug/Fix' },
+      { e: '📋', l: 'Planning/Spec' },
+      { e: '🚀', l: 'Shipping/Release' },
+    ],
+    systemPrompt: `You are a documentation organizer for the Prompt Lab project.
+Prompt Lab is a Chromium browser extension (MV3/Vivaldi) — a full AI prompt engineering workspace with prompt enhancement, library management, A/B testing, and a notepad. Built with React 18, Vite, and Tailwind.
+
+Your job is to rename chat threads so they are short, clear, and visually scannable.
+
+Rules:
+1. Titles must follow this structure:
+[emoji][emoji] | short descriptive title – MM-DD
+
+2. Use 2 emojis that visually represent the topic.
+First emoji: 🔬 (always Prompt Lab primary)
+Secondary emoji from this taxonomy:
+⚙️ extension config / 🧩 architecture / 🎨 UI design / 📦 build & deploy
+🗃 library & storage / ✏️ editor & prompts / 🧪 A-B testing / 🔌 API integration
+🐛 debug & fix / 📋 planning & spec / 🚀 shipping & release
+
+3. Title must be under 8 words, concrete, not vague.
+4. Always end with the date in MM-DD format as provided.
+5. Prefer nouns and system language.
+
+Return ONLY a single title in a markdown code block. No explanation, no alternatives.`,
+  },
+
+  'metagrid': {
+    label: 'MetaGrid',
+    emoji: '⚡',
+    badge: 'METAGRID',
+    taxonomy: [
+      { e: '⚡', l: 'MetaGrid (primary)' },
+      { e: '🌐', l: 'Architecture' },
+      { e: '📡', l: 'Wireless Tech' },
+      { e: '💼', l: 'Investor/Pitch' },
+      { e: '🗺', l: 'Site/Map' },
+      { e: '📊', l: 'Data/Stats' },
+      { e: '🔬', l: 'Tech/R&D' },
+      { e: '📋', l: 'Spec/Docs' },
+      { e: '🎨', l: 'UI/Design' },
+      { e: '🧩', l: 'System Design' },
+      { e: '🚀', l: 'Launch/Deploy' },
+      { e: '💡', l: 'Concept/Strategy' },
+    ],
+    systemPrompt: `You are a documentation organizer for the MetaGrid project.
+MetaGrid is a patent-pending wireless power transfer technology targeting remote AI data center infrastructure. The project includes an investor awareness website (React SPA), a Fig 4 Handshake Simulator (PyQt6), and supporting technical documentation.
+
+Your job is to rename chat threads so they are short, clear, and visually scannable.
+
+Rules:
+1. Titles must follow this structure:
+[emoji][emoji] | short descriptive title – MM-DD
+
+2. Use 2 emojis that visually represent the topic.
+First emoji: ⚡ (always MetaGrid primary)
+Secondary emoji from this taxonomy:
+🌐 architecture / 📡 wireless tech / 💼 investor & pitch / 🗺 site & map
+📊 data & stats / 🔬 tech R&D / 📋 spec & docs / 🎨 UI design
+🧩 system design / 🚀 launch & deploy / 💡 concept & strategy
+
+3. Title must be under 8 words, concrete, not vague.
+4. Always end with the date in MM-DD format as provided.
+5. Prefer nouns and system language.
+
+Return ONLY a single title in a markdown code block. No explanation, no alternatives.`,
+  },
+
+  'graph-explorer': {
+    label: 'Graph Explorer',
+    emoji: '🕸',
+    badge: 'GRAPH-EXPLORER',
+    taxonomy: [
+      { e: '🕸', l: 'Graph Explorer (primary)' },
+      { e: '🧩', l: 'Node/Edge Logic' },
+      { e: '🎨', l: 'UI/Canvas' },
+      { e: '📐', l: 'Layout/Algorithm' },
+      { e: '⚙️', l: 'Config/Settings' },
+      { e: '📊', l: 'Data/Schema' },
+      { e: '🔌', l: 'API/Integration' },
+      { e: '🧪', l: 'Experiment' },
+      { e: '🐛', l: 'Debug/Fix' },
+      { e: '📋', l: 'Planning/Spec' },
+      { e: '🚀', l: 'Deploy/Ship' },
+      { e: '🌐', l: 'Architecture' },
+    ],
+    systemPrompt: `You are a documentation organizer for the Graph Explorer project.
+Graph Explorer is an interactive graph visualization and exploration tool. It involves node/edge rendering, layout algorithms, Canvas 2D, and data schema work.
+
+Your job is to rename chat threads so they are short, clear, and visually scannable.
+
+Rules:
+1. Titles must follow this structure:
+[emoji][emoji] | short descriptive title – MM-DD
+
+2. Use 2 emojis that visually represent the topic.
+First emoji: 🕸 (always Graph Explorer primary)
+Secondary emoji from this taxonomy:
+🧩 node & edge logic / 🎨 UI & canvas / 📐 layout & algorithm / ⚙️ config & settings
+📊 data & schema / 🔌 API integration / 🧪 experiment / 🐛 debug & fix
+📋 planning & spec / 🚀 deploy & ship / 🌐 architecture
+
+3. Title must be under 8 words, concrete, not vague.
+4. Always end with the date in MM-DD format as provided.
+5. Prefer nouns and system language.
+
+Return ONLY a single title in a markdown code block. No explanation, no alternatives.`,
+  },
+
+  'curling-sim': {
+    label: 'Curling Sim',
+    emoji: '🥌',
+    badge: 'CURLING-SIM',
+    taxonomy: [
+      { e: '🥌', l: 'Curling Sim (primary)' },
+      { e: '🎮', l: 'Game Logic' },
+      { e: '🧊', l: 'Physics/Ice' },
+      { e: '🎨', l: 'UI/Visuals' },
+      { e: '📐', l: 'Geometry/Scoring' },
+      { e: '⚙️', l: 'Config/Rules' },
+      { e: '🧪', l: 'Experiment' },
+      { e: '🐛', l: 'Debug/Fix' },
+      { e: '📋', l: 'Planning/Spec' },
+      { e: '🚀', l: 'Deploy/Ship' },
+      { e: '🧩', l: 'Architecture' },
+      { e: '📊', l: 'Stats/Data' },
+    ],
+    systemPrompt: `You are a documentation organizer for the Curling Simulator project.
+The Curling Simulator is a browser-based physics simulation game of the sport of curling — featuring stone delivery, sweeping, scoring, and match logic.
+
+Your job is to rename chat threads so they are short, clear, and visually scannable.
+
+Rules:
+1. Titles must follow this structure:
+[emoji][emoji] | short descriptive title – MM-DD
+
+2. Use 2 emojis that visually represent the topic.
+First emoji: 🥌 (always Curling Sim primary)
+Secondary emoji from this taxonomy:
+🎮 game logic / 🧊 physics & ice / 🎨 UI & visuals / 📐 geometry & scoring
+⚙️ config & rules / 🧪 experiment / 🐛 debug & fix / 📋 planning & spec
+🚀 deploy & ship / 🧩 architecture / 📊 stats & data
+
+3. Title must be under 8 words, concrete, not vague.
+4. Always end with the date in MM-DD format as provided.
+5. Prefer nouns and system language.
+
+Return ONLY a single title in a markdown code block. No explanation, no alternatives.`,
+  },
+};
+
+// ─── STATE ───────────────────────────────────────────────────────────────────
+
+let activeProject = 'garden-os';
+let activeProvider = 'claude';
+let sessionHistory = [];
+let lastTitle = '';
+
+const PROVIDERS = {
+  claude: { label: 'CLAUDE KEY', placeholder: 'sk-ant-…', model: 'claude-sonnet-4-20250514' },
+  gpt:    { label: 'OPENAI KEY', placeholder: 'sk-proj-…', model: 'gpt-4o' },
+  gemini: { label: 'GEMINI KEY', placeholder: 'AIzaSy…', model: 'gemini-2.0-flash' },
+};
+
+// ─── INIT ────────────────────────────────────────────────────────────────────
+
+function esc(s) {
+  const d = document.createElement('div');
+  d.textContent = s;
+  return d.innerHTML;
+}
+
+function init() {
+  // Set today's date
+  const today = new Date();
+  const yyyy = today.getFullYear();
+  const mm = String(today.getMonth() + 1).padStart(2, '0');
+  const dd = String(today.getDate()).padStart(2, '0');
+  document.getElementById('dateInput').value = `${yyyy}-${mm}-${dd}`;
+
+  // Restore provider
+  const savedProvider = localStorage.getItem('thread-namer-provider');
+  if (savedProvider && PROVIDERS[savedProvider]) activeProvider = savedProvider;
+
+  // Provider tab clicks
+  document.querySelectorAll('.provider-tab').forEach(btn => {
+    btn.classList.toggle('active', btn.dataset.provider === activeProvider);
+    btn.addEventListener('click', () => {
+      // Save current key before switching
+      saveCurrentKey();
+      activeProvider = btn.dataset.provider;
+      localStorage.setItem('thread-namer-provider', activeProvider);
+      document.querySelectorAll('.provider-tab').forEach(t =>
+        t.classList.toggle('active', t.dataset.provider === activeProvider)
+      );
+      loadProviderKey();
+    });
+  });
+
+  // Restore API key from localStorage
+  const keyInput = document.getElementById('apiKeyInput');
+  loadProviderKey();
+  keyInput.addEventListener('change', () => saveCurrentKey());
+
+  // Build project tabs
+  const tabsEl = document.getElementById('projectTabs');
+  Object.entries(PROJECTS).forEach(([key, proj]) => {
+    const btn = document.createElement('button');
+    btn.className = 'project-tab' + (key === activeProject ? ' active' : '');
+    btn.dataset.key = key;
+    btn.innerHTML = `<span class="tab-emoji">${esc(proj.emoji)}</span>${esc(proj.label)}`;
+    btn.onclick = () => selectProject(key);
+    tabsEl.appendChild(btn);
+  });
+
+  renderTaxonomy();
+  setupTextarea();
+}
+
+function selectProject(key) {
+  activeProject = key;
+  document.querySelectorAll('.project-tab').forEach(t => {
+    t.classList.toggle('active', t.dataset.key === key);
+  });
+  renderTaxonomy();
+  // reset output
+  document.getElementById('outputCard').classList.remove('visible');
+  document.getElementById('errorMsg').classList.remove('visible');
+}
+
+function renderTaxonomy() {
+  const proj = PROJECTS[activeProject];
+  document.getElementById('activeBadge').textContent = proj.badge;
+  const grid = document.getElementById('taxonomyGrid');
+  grid.innerHTML = '';
+  proj.taxonomy.forEach(item => {
+    const el = document.createElement('div');
+    el.className = 'tax-item';
+    el.innerHTML = `<span class="tax-emoji">${item.e}</span><span class="tax-label">${item.l}</span>`;
+    grid.appendChild(el);
+  });
+}
+
+function setupTextarea() {
+  const ta = document.getElementById('summaryInput');
+  const btn = document.getElementById('generateBtn');
+  ta.addEventListener('input', () => {
+    btn.disabled = ta.value.trim().length < 10;
+  });
+  ta.addEventListener('keydown', e => {
+    if ((e.metaKey || e.ctrlKey) && e.key === 'Enter') generate();
+  });
+}
+
+// ─── PROVIDER KEY HELPERS ─────────────────────────────────────────────────────
+
+function saveCurrentKey() {
+  const val = document.getElementById('apiKeyInput').value.trim();
+  localStorage.setItem('thread-namer-key-' + activeProvider, val);
+  const badge = document.getElementById('keySaved');
+  badge.classList.add('visible');
+  setTimeout(() => badge.classList.remove('visible'), 1500);
+}
+
+function loadProviderKey() {
+  const prov = PROVIDERS[activeProvider];
+  const keyInput = document.getElementById('apiKeyInput');
+  document.getElementById('keyLabel').textContent = prov.label;
+  keyInput.placeholder = prov.placeholder;
+  keyInput.value = localStorage.getItem('thread-namer-key-' + activeProvider) || '';
+}
+
+// ─── PROVIDER API CALLS ──────────────────────────────────────────────────────
+
+async function callClaude(apiKey, systemPrompt, userMessage) {
+  const res = await fetch('https://api.anthropic.com/v1/messages', {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+      'x-api-key': apiKey,
+      'anthropic-version': '2023-06-01',
+      'anthropic-dangerous-direct-browser-access': 'true'
+    },
+    body: JSON.stringify({
+      model: PROVIDERS.claude.model,
+      max_tokens: 80,
+      system: systemPrompt,
+      messages: [{ role: 'user', content: userMessage }]
+    })
+  });
+  const data = await res.json();
+  if (data.error) throw new Error(data.error.message);
+  return data.content?.map(b => b.text || '').join('') || '';
+}
+
+async function callGPT(apiKey, systemPrompt, userMessage) {
+  const res = await fetch('https://api.openai.com/v1/chat/completions', {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+      'Authorization': 'Bearer ' + apiKey
+    },
+    body: JSON.stringify({
+      model: PROVIDERS.gpt.model,
+      max_tokens: 80,
+      messages: [
+        { role: 'system', content: systemPrompt },
+        { role: 'user', content: userMessage }
+      ]
+    })
+  });
+  const data = await res.json();
+  if (data.error) throw new Error(data.error.message);
+  return data.choices?.[0]?.message?.content || '';
+}
+
+async function callGemini(apiKey, systemPrompt, userMessage) {
+  const url = 'https://generativelanguage.googleapis.com/v1beta/models/'
+    + PROVIDERS.gemini.model + ':generateContent?key=' + encodeURIComponent(apiKey);
+  const res = await fetch(url, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({
+      system_instruction: { parts: [{ text: systemPrompt }] },
+      contents: [{ parts: [{ text: userMessage }] }],
+      generationConfig: { maxOutputTokens: 80 }
+    })
+  });
+  const data = await res.json();
+  if (data.error) throw new Error(data.error.message);
+  return data.candidates?.[0]?.content?.parts?.map(p => p.text || '').join('') || '';
+}
+
+// ─── GENERATE ────────────────────────────────────────────────────────────────
+
+async function generate() {
+  const summary = document.getElementById('summaryInput').value.trim();
+  const dateVal = document.getElementById('dateInput').value;
+  if (!summary || summary.length < 10) return;
+
+  // Parse MM-DD from date input
+  const dateObj = new Date(dateVal + 'T00:00:00');
+  const mmdd = String(dateObj.getMonth() + 1).padStart(2, '0') + '-' + String(dateObj.getDate()).padStart(2, '0');
+
+  const proj = PROJECTS[activeProject];
+
+  // Show loading
+  document.getElementById('outputCard').classList.remove('visible');
+  document.getElementById('errorMsg').classList.remove('visible');
+  document.getElementById('loadingCard').style.display = 'block';
+  document.getElementById('generateBtn').disabled = true;
+  document.getElementById('btnLabel').textContent = 'GENERATING…';
+
+  try {
+    const apiKey = document.getElementById('apiKeyInput').value.trim();
+    if (!apiKey) { showError('Enter your API key above.'); return; }
+
+    const userMessage = `Thread summary:\n${summary}\n\nDate: ${mmdd}\n\nReturn only ONE recommended title in a code block.`;
+
+    let raw;
+    if (activeProvider === 'claude') raw = await callClaude(apiKey, proj.systemPrompt, userMessage);
+    else if (activeProvider === 'gpt') raw = await callGPT(apiKey, proj.systemPrompt, userMessage);
+    else if (activeProvider === 'gemini') raw = await callGemini(apiKey, proj.systemPrompt, userMessage);
+
+    // Strip code fences
+    const title = (raw || '').replace(/```[^\n]*\n?/g, '').replace(/```/g, '').trim();
+
+    if (!title) throw new Error('Empty response from model');
+
+    lastTitle = title;
+    showOutput(title);
+    addToHistory(title, proj.badge);
+
+  } catch (err) {
+    showError(err.message);
+  } finally {
+    document.getElementById('loadingCard').style.display = 'none';
+    document.getElementById('generateBtn').disabled = false;
+    document.getElementById('btnLabel').textContent = 'GENERATE';
+  }
+}
+
+function showOutput(title) {
+  document.getElementById('outputTitle').textContent = title;
+  document.getElementById('outputCard').classList.add('visible');
+  document.getElementById('copyBtn').textContent = 'COPY';
+  document.getElementById('copyBtn').classList.remove('copied');
+}
+
+function showError(msg) {
+  const el = document.getElementById('errorMsg');
+  el.textContent = '⚠ ' + msg;
+  el.classList.add('visible');
+}
+
+// ─── COPY ────────────────────────────────────────────────────────────────────
+
+function copyTitle() {
+  const title = document.getElementById('outputTitle').textContent;
+  copyText(title);
+  const btn = document.getElementById('copyBtn');
+  btn.textContent = 'COPIED ✓';
+  btn.classList.add('copied');
+  setTimeout(() => { btn.textContent = 'COPY'; btn.classList.remove('copied'); }, 1800);
+}
+
+function copyText(text) {
+  try {
+    navigator.clipboard.writeText(text);
+  } catch {
+    const ta = document.createElement('textarea');
+    ta.value = text;
+    ta.style.position = 'fixed';
+    ta.style.opacity = '0';
+    document.body.appendChild(ta);
+    ta.select();
+    document.execCommand('copy');
+    document.body.removeChild(ta);
+  }
+}
+
+// ─── HISTORY ─────────────────────────────────────────────────────────────────
+
+function addToHistory(title, badge) {
+  sessionHistory.unshift({ title, badge });
+  renderHistory();
+}
+
+function renderHistory() {
+  if (!sessionHistory.length) {
+    document.getElementById('historySection').style.display = 'none';
+    return;
+  }
+  document.getElementById('historySection').style.display = 'block';
+  const list = document.getElementById('historyList');
+  list.innerHTML = '';
+  sessionHistory.forEach((item, i) => {
+    const el = document.createElement('div');
+    el.className = 'history-item';
+    el.innerHTML = `
+      <span class="h-project">${esc(item.badge)}</span>
+      <span class="h-title">${esc(item.title)}</span>
+      <button class="h-copy" onclick="copyHistoryItem(${i}, this)">COPY</button>
+    `;
+    list.appendChild(el);
+  });
+}
+
+function copyHistoryItem(i, btn) {
+  copyText(sessionHistory[i].title);
+  btn.textContent = '✓';
+  setTimeout(() => { btn.textContent = 'COPY'; }, 1400);
+}
+
+function clearHistory() {
+  sessionHistory = [];
+  renderHistory();
+}
+
+init();
+</script>
+</body>
+</html>
