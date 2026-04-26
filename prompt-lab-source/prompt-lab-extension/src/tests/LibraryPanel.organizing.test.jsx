@@ -1,6 +1,17 @@
 import { fireEvent, render, screen } from '@testing-library/react';
 import { describe, expect, it, vi } from 'vitest';
 import LibraryPanel from '../LibraryPanel.jsx';
+import { resolveLibraryTweaks } from '../lib/libraryTweaks.js';
+
+// Pre-v2 baseline (default density / cards signature) — the manual chevron
+// controls and collection-group headers that these tests depend on are
+// suppressed in gallery (grid) mode by design. Phase 5 covers gallery mode
+// in manual QA.
+const TW_BEHAVIOR_BASELINE = resolveLibraryTweaks({
+  density: 'default',
+  accent: 'violet',
+  signature: 'cards',
+});
 
 vi.mock('../icons', () => ({
   default: ({ n }) => <span>{n}</span>,
@@ -128,6 +139,7 @@ function makeProps(libOverrides = {}) {
     openSavePanel: vi.fn(),
     sendToABTest: vi.fn(),
     copy: vi.fn(),
+    tw: TW_BEHAVIOR_BASELINE,
   };
 }
 

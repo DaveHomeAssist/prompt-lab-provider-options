@@ -1,6 +1,18 @@
 import { fireEvent, render, screen } from '@testing-library/react';
 import { describe, expect, it, vi } from 'vitest';
 import LibraryPanel from '../LibraryPanel.jsx';
+import { resolveLibraryTweaks } from '../lib/libraryTweaks.js';
+
+// Behavior tests opt into the pre-v2 visual baseline (default density / cards
+// signature) so they exercise the same DOM layout as before the v2 visual port.
+// The compact-shell + gallery branch is exercised by Phase 5 manual QA, not
+// here; switching density would break role/text queries that depend on
+// non-grid layout (collection headers, manual chevrons).
+const TW_BEHAVIOR_BASELINE = resolveLibraryTweaks({
+  density: 'default',
+  accent: 'violet',
+  signature: 'cards',
+});
 
 vi.mock('../icons', () => ({
   default: ({ n }) => <span>{n}</span>,
@@ -129,6 +141,7 @@ function makeProps(overrides = {}) {
     openSavePanel: vi.fn(),
     sendToABTest: vi.fn(),
     copy: vi.fn(),
+    tw: TW_BEHAVIOR_BASELINE,
     ...overrides,
   };
 }
