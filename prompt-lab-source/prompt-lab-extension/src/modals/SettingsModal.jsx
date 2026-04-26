@@ -1,5 +1,10 @@
 import { useEffect, useState } from 'react';
 import Ic from '../icons';
+import {
+  ACCENT,
+  DENSITY,
+  SIGNATURE,
+} from '../lib/libraryTweaks.js';
 
 export default function SettingsModal({
   m,
@@ -20,6 +25,7 @@ export default function SettingsModal({
   canExportLibrary = true,
   telemetry,
   onReportBug,
+  libraryTweaks,
 }) {
   const [telemetryEnabled, setTelemetryEnabled] = useState(telemetry?.telemetryEnabled !== false);
   const [contactEmail, setContactEmail] = useState(telemetry?.contactEmail || '');
@@ -51,6 +57,37 @@ export default function SettingsModal({
             ))}
           </div>
         </div>
+        {libraryTweaks && (
+          <div className={`rounded-xl border p-3 ${m.surface} ${m.border} flex flex-col gap-3`}>
+            <div>
+              <p className={`text-xs font-semibold uppercase tracking-wider ${m.textSub}`}>Library appearance</p>
+              <p className={`mt-1 text-xs leading-relaxed ${m.textMuted}`}>
+                Layout, palette, and row grammar for the saved-prompt list. Saved per device.
+              </p>
+            </div>
+            <TweakSegment
+              m={m}
+              label="Layout"
+              value={libraryTweaks.values.density}
+              options={Object.keys(DENSITY).map((id) => ({ id, label: DENSITY[id].label }))}
+              onChange={libraryTweaks.setDensity}
+            />
+            <TweakSegment
+              m={m}
+              label="Palette"
+              value={libraryTweaks.values.accent}
+              options={Object.keys(ACCENT).map((id) => ({ id, label: ACCENT[id].label, swatch: ACCENT[id].swatch }))}
+              onChange={libraryTweaks.setAccent}
+            />
+            <TweakSegment
+              m={m}
+              label="Grammar"
+              value={libraryTweaks.values.signature}
+              options={Object.keys(SIGNATURE).map((id) => ({ id, label: SIGNATURE[id].label }))}
+              onChange={libraryTweaks.setSignature}
+            />
+          </div>
+        )}
         {billing && (
           <div className={`rounded-xl border p-3 ${m.surface} ${m.border}`}>
             <div className="flex items-center justify-between gap-3">
@@ -144,6 +181,43 @@ export default function SettingsModal({
           <label className={`flex items-center gap-2 text-sm ${m.btn} rounded-lg px-3 py-2 ${m.textBody} cursor-pointer transition-colors`}><Ic n="Upload" size={12} />Import Library<input type="file" accept=".json" onChange={importLib} className="hidden" /></label>
           <button type="button" onClick={() => { if (window.confirm('Clear all prompts from the library?')) clearLibrary(); }} className="flex items-center gap-2 text-sm bg-red-600 hover:bg-red-500 text-white rounded-lg px-3 py-2 transition-colors"><Ic n="Trash2" size={12} />Clear All Prompts</button>
         </div>
+      </div>
+    </div>
+  );
+}
+
+// Mirrors the existing density segmented control (lines 44-52) so the new
+// Library appearance section feels native to the modal — no twk-* styling
+// from the prototype.
+function TweakSegment({ m, label, value, options, onChange }) {
+  return (
+    <div>
+      <p className={`text-[11px] font-semibold ${m.textSub} uppercase tracking-wider mb-1.5`}>{label}</p>
+      <div className="flex gap-1 flex-wrap">
+        {options.map(({ id, label: lbl, swatch }) => (
+          <button
+            key={id}
+            type="button"
+            onClick={() => onChange(id)}
+            aria-pressed={value === id}
+            className={`flex-1 min-w-[60px] text-xs px-2 py-1.5 rounded-lg transition-colors font-medium flex items-center justify-center gap-1.5 ${value === id ? 'bg-violet-600 text-white' : `${m.btn} ${m.textAlt}`}`}
+          >
+            {swatch && (
+              <span
+                aria-hidden
+                style={{
+                  width: 10,
+                  height: 10,
+                  borderRadius: 3,
+                  background: swatch,
+                  border: '1px solid rgba(255,255,255,.2)',
+                  display: 'inline-block',
+                }}
+              />
+            )}
+            {lbl}
+          </button>
+        ))}
       </div>
     </div>
   );

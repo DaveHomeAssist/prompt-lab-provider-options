@@ -769,6 +769,7 @@ export default function App({ clerkUser, clerkGetToken, clerkUserButton } = {}) 
           canUseCollections={canUseCollections}
           canExportLibrary={canExportLibrary}
           telemetry={telemetry}
+          libraryTweaks={libraryTweaks}
           onReportBug={() => {
             setShowSettings(false);
             setShowBugReport(true);
