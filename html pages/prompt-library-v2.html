@@ -1,0 +1,1382 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>PromptLab · Library v2 (preview)</title>
+<script src="https://cdn.tailwindcss.com?plugins=forms"></script>
+<script>
+  tailwind.config = {
+    theme: { extend: { fontFamily: { sans: ['Inter','system-ui','sans-serif'], mono: ['ui-monospace','SFMono-Regular','Menlo','monospace'] } } }
+  };
+</script>
+<link rel="preconnect" href="https://rsms.me/">
+<link rel="stylesheet" href="https://rsms.me/inter/inter.css">
+<style>
+  html,body{background:#030712;min-height:100%;font-feature-settings:"cv11","ss01"}
+  .ui-control{transition:background-color 120ms ease,border-color 120ms ease,color 120ms ease}
+  .ui-empty-state{display:flex;flex-direction:column;align-items:center;justify-content:center;text-align:center;padding:28px 22px;border-radius:12px;min-height:240px}
+  ::-webkit-scrollbar{width:10px;height:10px}
+  ::-webkit-scrollbar-track{background:transparent}
+  ::-webkit-scrollbar-thumb{background:#1f2937;border-radius:10px;border:2px solid transparent;background-clip:padding-box}
+  ::-webkit-scrollbar-thumb:hover{background:#374151;border:2px solid transparent;background-clip:padding-box}
+  .light ::-webkit-scrollbar-thumb{background:#cbd5e1}
+  .toast{animation:toast-in 180ms cubic-bezier(.2,.8,.2,1)}
+  @keyframes toast-in{from{opacity:0;transform:translate(-50%,8px)}to{opacity:1;transform:translate(-50%,0)}}
+  /* tailwind JIT hints (safelist) */
+  /*
+    bg-gray-950 bg-gray-900 border-gray-800 hover:border-gray-700 bg-gray-800 hover:bg-gray-700
+    text-gray-100 text-gray-200 text-gray-300 text-gray-400 text-gray-500 text-gray-600
+    bg-slate-100 bg-white border-slate-300 hover:border-slate-400 bg-slate-50
+    text-slate-500 text-slate-600 text-slate-700 text-slate-900 hover:bg-slate-200
+    bg-violet-600 hover:bg-violet-500 text-violet-200 text-violet-300 text-violet-400 ring-violet-500/30
+    border-violet-500 bg-violet-500/12 border-violet-500/40 focus:border-violet-500 shadow-violet-900/40
+    bg-slate-900 hover:bg-slate-800 bg-slate-500/12 border-slate-500/40 text-slate-200 text-slate-300 text-slate-400 ring-slate-500/30 focus:border-slate-500 shadow-black/60
+    bg-yellow-500 hover:bg-yellow-400 text-yellow-950 bg-yellow-500/12 border-yellow-500/40 text-yellow-200 text-yellow-300 text-yellow-400 ring-yellow-500/30 focus:border-yellow-500 shadow-yellow-900/40
+    bg-orange-600 hover:bg-orange-500 bg-orange-500/12 border-orange-500/40 text-orange-200 text-orange-300 text-orange-400 ring-orange-500/30 focus:border-orange-500 shadow-orange-900/40
+    bg-emerald-600 hover:bg-emerald-500 bg-emerald-500/12 border-emerald-500/40 text-emerald-200 text-emerald-300 text-emerald-400 ring-emerald-500/30 focus:border-emerald-500 shadow-emerald-900/40
+    bg-slate-400 bg-slate-500 bg-yellow-400 bg-orange-500 bg-emerald-500 bg-violet-500
+    border-dashed border-dotted font-serif font-mono italic tracking-wide uppercase
+    grid-cols-1 grid-cols-2 border-l-2 border-y-0 border-r-0 border-opacity-0 hover:border-opacity-100 rounded-none rounded-md
+    text-blue-400 text-amber-400 text-green-500
+    bg-red-600 hover:bg-red-500
+    bg-amber-950/40 border-amber-900/50 text-amber-400
+  */
+</style>
+<script src="https://unpkg.com/react@18.3.1/umd/react.development.js" crossorigin="anonymous"></script>
+<script src="https://unpkg.com/react-dom@18.3.1/umd/react-dom.development.js" crossorigin="anonymous"></script>
+<script src="https://unpkg.com/@babel/standalone@7.29.0/babel.min.js" crossorigin="anonymous"></script>
+</head>
+<body class="font-sans antialiased">
+<div id="root"></div>
+
+<script type="text/babel" data-presets="react">
+/* ──────────────────────────────────────────────────────────────────────────
+   PromptLab Library v2 — single-file preview port of the design package.
+
+   Source: prompt-labs/project/Prompt Library v2.html + prompt-labs/project/src/*.jsx
+   Differences from the design bundle:
+     - Inlined into one file (Tailwind/React/Babel from CDN, no JSX externals).
+     - The Claude-Design host postMessage protocol (__activate_edit_mode etc.)
+       is replaced with a local "Tweaks" toggle button — this preview is meant
+       to be opened directly in a browser, not inside the design host iframe.
+     - All other behavior preserved: three shells, theme toggle, Pro gates,
+       density/accent/signature axes, full library state in memory.
+   ────────────────────────────────────────────────────────────────────────── */
+
+const { useEffect, useMemo, useState, useCallback, useRef } = React;
+
+/* ── icons.jsx ──────────────────────────────────────────────────────────── */
+const ICON_PATHS = {
+  Search: <><circle cx="11" cy="11" r="7"/><path d="m20 20-3.5-3.5"/></>,
+  Upload: <><path d="M12 3v12"/><path d="m7 8 5-5 5 5"/><path d="M4 17v2a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2v-2"/></>,
+  FolderOpen: <><path d="M3 7a2 2 0 0 1 2-2h4l2 2h8a2 2 0 0 1 2 2v1"/><path d="M3 9h18l-2 9a2 2 0 0 1-2 1.5H5a2 2 0 0 1-2-1.5Z"/></>,
+  Wand2: <><path d="m15 4 2 2"/><path d="M17.5 6.5 21 3"/><path d="M3 21 14 10"/><path d="m14 10 3 3"/><path d="M8 4h.01M5 8h.01M20 12h.01M17 16h.01"/></>,
+  ChevronUp: <path d="m6 15 6-6 6 6"/>,
+  ChevronDown: <path d="m6 9 6 6 6-6"/>,
+  GripVertical: <><circle cx="9" cy="6" r="1"/><circle cx="9" cy="12" r="1"/><circle cx="9" cy="18" r="1"/><circle cx="15" cy="6" r="1"/><circle cx="15" cy="12" r="1"/><circle cx="15" cy="18" r="1"/></>,
+  Clock: <><circle cx="12" cy="12" r="9"/><path d="M12 7v5l3 2"/></>,
+  Layers: <><path d="m12 3 9 5-9 5-9-5 9-5Z"/><path d="m3 13 9 5 9-5"/><path d="m3 18 9 5 9-5"/></>,
+  FlaskConical: <><path d="M10 3h4v5l5 9a2 2 0 0 1-1.8 3H6.8A2 2 0 0 1 5 17l5-9V3Z"/><path d="M8.5 13h7"/></>,
+  Share2: <><circle cx="18" cy="5" r="3"/><circle cx="6" cy="12" r="3"/><circle cx="18" cy="19" r="3"/><path d="M8.6 13.5 15.4 17.5"/><path d="M15.4 6.5 8.6 10.5"/></>,
+  Trash2: <><path d="M4 6h16"/><path d="M9 6V4a1 1 0 0 1 1-1h4a1 1 0 0 1 1 1v2"/><path d="M6 6v14a2 2 0 0 0 2 2h8a2 2 0 0 0 2-2V6"/><path d="M10 11v6M14 11v6"/></>,
+  GitBranch: <><path d="M6 3v12"/><circle cx="6" cy="18" r="3"/><circle cx="18" cy="6" r="3"/><path d="M18 9a9 9 0 0 1-9 9"/></>,
+  X: <><path d="m6 6 12 12"/><path d="m18 6-12 12"/></>,
+  Sun: <><circle cx="12" cy="12" r="4"/><path d="M12 3v2M12 19v2M3 12h2M19 12h2M5.6 5.6l1.4 1.4M17 17l1.4 1.4M5.6 18.4 7 17M17 7l1.4-1.4"/></>,
+  Moon: <path d="M21 13A9 9 0 1 1 11 3a7 7 0 0 0 10 10Z"/>,
+  Sparkles: <><path d="M12 3v4M12 17v4M3 12h4M17 12h4M5.5 5.5l2.5 2.5M16 16l2.5 2.5M5.5 18.5 8 16M16 8l2.5-2.5"/></>,
+  Menu: <><path d="M3 6h18"/><path d="M3 12h18"/><path d="M3 18h18"/></>,
+  Sliders: <><path d="M4 21v-7"/><path d="M4 10V3"/><path d="M12 21v-9"/><path d="M12 8V3"/><path d="M20 21v-5"/><path d="M20 12V3"/><path d="M2 14h4"/><path d="M10 8h4"/><path d="M18 16h4"/></>,
+};
+function Ic({ n, size = 14, className = '' }) {
+  const path = ICON_PATHS[n];
+  if (!path) return null;
+  return (
+    <svg xmlns="http://www.w3.org/2000/svg" width={size} height={size} viewBox="0 0 24 24"
+         fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"
+         className={`inline-block shrink-0 ${className}`}>
+      {path}
+    </svg>
+  );
+}
+
+/* ── theme.jsx ──────────────────────────────────────────────────────────── */
+const T = {
+  dark: {
+    bg: 'bg-gray-950', surface: 'bg-gray-900', border: 'border-gray-800', borderHov: 'hover:border-gray-700',
+    input: 'bg-gray-900 border border-gray-700', text: 'text-gray-100', textSub: 'text-gray-500', textMuted: 'text-gray-600',
+    textBody: 'text-gray-300', textAlt: 'text-gray-400', btn: 'bg-gray-800 hover:bg-gray-700',
+    header: 'bg-gray-900/95 backdrop-blur-sm border-gray-800',
+    notesBg: 'bg-amber-950/40 border-amber-900/50', notesText: 'text-amber-400', codeBlock: 'bg-gray-950',
+    pill: 'bg-gray-800 text-gray-300',
+  },
+  light: {
+    bg: 'bg-slate-100', surface: 'bg-white', border: 'border-slate-300', borderHov: 'hover:border-slate-400',
+    input: 'bg-white border border-slate-300', text: 'text-slate-900', textSub: 'text-slate-600', textMuted: 'text-slate-500',
+    textBody: 'text-slate-700', textAlt: 'text-slate-600', btn: 'bg-slate-100 hover:bg-slate-200',
+    header: 'bg-slate-50/95 backdrop-blur-sm border-slate-200',
+    notesBg: 'bg-amber-100/80 border-amber-300', notesText: 'text-amber-800', codeBlock: 'bg-slate-50',
+    pill: 'bg-slate-100 text-slate-700',
+  },
+};
+
+/* ── seed.jsx ───────────────────────────────────────────────────────────── */
+const SEED_LIBRARY = [
+  {
+    id: 'e-001', title: 'Release notes from commits', collection: 'Engineering',
+    tags: ['changelog', 'writing'],
+    original: 'Write release notes from these commits.',
+    enhanced: 'You are a senior release engineer. Given a list of git commits, produce release notes organized by **Features**, **Fixes**, and **Breaking Changes**. Each entry ≤ 1 sentence, past tense, user-facing voice. Group by area when commits share a scope. Skip refactors unless user-visible.\n\nCommits:\n{{commits}}',
+    notes: 'Works well with conventional-commit repos. Struggles with merge-commit noise.',
+    variants: [{ label: 'Terse', content: 'One bullet per commit, no grouping.' }],
+    versions: [{ savedAt: Date.now() - 1000 * 60 * 60 * 26 }, { savedAt: Date.now() - 1000 * 60 * 30 }],
+    useCount: 14, createdAt: Date.now() - 1000 * 60 * 60 * 24 * 3, metadata: {},
+  },
+  {
+    id: 'e-002', title: 'PR review — security lens', collection: 'Engineering',
+    tags: ['code-review', 'security'],
+    original: 'Review this PR for security issues.',
+    enhanced: 'You are an application security reviewer. Review the diff below and flag: injection paths, missing authz checks, secret handling, unsafe deserialization, and dependency CVEs. For each finding, include: severity (Low/Med/High/Critical), file:line, one-line impact, minimal patch suggestion. Return "No issues found" only if the diff is empty or trivial.\n\nDiff:\n{{diff}}',
+    notes: '', variants: [], versions: [], useCount: 7,
+    createdAt: Date.now() - 1000 * 60 * 60 * 48, metadata: {},
+  },
+  {
+    id: 'e-003', title: 'Incident post-mortem skeleton', collection: 'Engineering',
+    tags: ['incident', 'writing'], original: '', enhanced: '', notes: '',
+    variants: [], versions: [], useCount: 0,
+    createdAt: Date.now() - 1000 * 60 * 60 * 6, metadata: { status: 'draft' },
+  },
+  {
+    id: 'w-001', title: 'Landing-page hero rewrite', collection: 'Marketing',
+    tags: ['copy', 'landing'],
+    original: 'Rewrite this hero to be less buzzwordy.',
+    enhanced: 'You are a landing-page copywriter for developer-tools products. Rewrite the hero copy below to: (1) lead with the user outcome, not the product name; (2) remove "AI-powered", "seamless", "revolutionary"; (3) keep the headline ≤ 8 words and subhead ≤ 24 words. Return three distinct options, each in the voice given in {{voice}}.\n\nHero:\n{{hero}}',
+    notes: 'Swap {{voice}} for Basecamp / Linear / Stripe to see the range.',
+    variants: [], versions: [{ savedAt: Date.now() - 1000 * 60 * 60 * 5 }],
+    useCount: 22, createdAt: Date.now() - 1000 * 60 * 60 * 24 * 7, metadata: {},
+  },
+  {
+    id: 'w-002', title: 'Changelog → tweet thread', collection: 'Marketing',
+    tags: ['social', 'copy'],
+    original: 'Turn this changelog into a tweet thread.',
+    enhanced: 'You are a product marketer writing for developer Twitter. Convert the changelog entries into a 5–7-post thread. Post 1 hooks with the headline feature. Each subsequent post covers one capability, ≤ 240 chars, plain prose, no emoji except for a single ⚡ on the hook post. End with the docs URL.\n\nChangelog:\n{{changelog}}',
+    notes: '', variants: [], versions: [], useCount: 3,
+    createdAt: Date.now() - 1000 * 60 * 60 * 20, metadata: {},
+  },
+  {
+    id: 'r-001', title: 'Competitive teardown', collection: 'Research',
+    tags: ['analysis'],
+    original: 'Analyse this product.',
+    enhanced: 'You are a product analyst. Given the marketing site content below, produce: (1) one-sentence positioning, (2) three core jobs-to-be-done, (3) pricing summary, (4) likely ICP, (5) two plausible weaknesses grounded in what the copy omits. Cite specific phrases from the source for each claim.\n\nSource:\n{{content}}',
+    notes: '', variants: [], versions: [], useCount: 1,
+    createdAt: Date.now() - 1000 * 60 * 60 * 80, metadata: {},
+  },
+  {
+    id: 'r-002', title: 'Paper abstract → plain English', collection: 'Research',
+    tags: ['writing', 'education'],
+    original: 'Explain this paper simply.',
+    enhanced: 'You are explaining a machine-learning paper to a smart generalist engineer who has not read the paper. Paraphrase the abstract below in ≤ 120 words: what problem, what method, what result, what caveat. Avoid LaTeX. Avoid jargon unless defined inline.\n\nAbstract:\n{{abstract}}',
+    notes: 'Useful for sharing arxiv links in Slack.',
+    variants: [], versions: [], useCount: 9,
+    createdAt: Date.now() - 1000 * 60 * 60 * 24 * 11, metadata: {},
+  },
+  {
+    id: 's-001', title: 'Untitled draft', collection: '', tags: [],
+    original: '', enhanced: '', notes: '', variants: [], versions: [],
+    useCount: 0, createdAt: Date.now() - 1000 * 60 * 4, metadata: { status: 'draft' },
+  },
+];
+
+const SEED_COLLECTIONS = ['Engineering', 'Marketing', 'Research'];
+
+const STARTER_PACKS = [
+  { id: 'pack-coding', icon: '💻', name: 'Coding Starter', description: 'Reviews, release notes, incident templates, debugging rubrics.', promptCount: 12, loaded: false },
+  { id: 'pack-writing', icon: '✍️', name: 'Writing Starter', description: 'Landing copy, tweet threads, docs rewrites.', promptCount: 9, loaded: false },
+  { id: 'pack-research', icon: '🔬', name: 'Research Starter', description: 'Competitive teardowns, interview guides, paper digests.', promptCount: 7, loaded: false },
+];
+
+/* ── use-library.jsx ────────────────────────────────────────────────────── */
+function extractVars(s) {
+  if (!s) return [];
+  const m = s.match(/\{\{\s*[\w-]+\s*\}\}/g);
+  return m || [];
+}
+function looksSensitive(s) {
+  if (!s) return false;
+  if (/\b\d{3}-\d{2}-\d{4}\b/.test(s)) return true;
+  if (/\b(?:\d[ -]*?){13,19}\b/.test(s)) return true;
+  if (/sk-[A-Za-z0-9]{16,}/.test(s)) return true;
+  if (/password|api[_-]?key|secret/i.test(s)) return true;
+  return false;
+}
+
+function usePromptLibrary({ initialLibrary, initialCollections, starterPacks }) {
+  const [library, setLibrary] = useState(initialLibrary);
+  const [collections, setCollections] = useState(initialCollections);
+  const [activeCollection, setActiveCollection] = useState(null);
+  const [activeTag, setActiveTag] = useState(null);
+  const [search, setSearch] = useState('');
+  const [sortBy, setSortBy] = useState('newest');
+  const [expandedId, setExpandedId] = useState(null);
+  const [renamingId, setRenamingId] = useState(null);
+  const [renameValue, setRenameValue] = useState('');
+  const [shareId, setShareId] = useState(null);
+  const [starterLibraries, setStarterLibraries] = useState(starterPacks);
+  const [draggingLibraryId, setDraggingLibraryId] = useState(null);
+  const [dragOverLibraryId, setDragOverLibraryId] = useState(null);
+
+  const allLibTags = useMemo(() => {
+    const s = new Set();
+    library.forEach(e => (e.tags || []).forEach(t => s.add(t)));
+    return [...s].sort();
+  }, [library]);
+
+  const filtered = useMemo(() => {
+    const q = search.trim().toLowerCase();
+    let rows = library.filter(e => {
+      if (activeCollection && (e.collection || '') !== activeCollection) return false;
+      if (activeTag && !(e.tags || []).includes(activeTag)) return false;
+      if (q) {
+        const hay = `${e.title}\n${e.original || ''}\n${e.enhanced || ''}\n${e.notes || ''}\n${(e.tags || []).join(' ')}`.toLowerCase();
+        if (!hay.includes(q)) return false;
+      }
+      return true;
+    });
+    const by = sortBy;
+    if (by === 'newest') rows.sort((a, b) => b.createdAt - a.createdAt);
+    else if (by === 'oldest') rows.sort((a, b) => a.createdAt - b.createdAt);
+    else if (by === 'a-z') rows.sort((a, b) => a.title.localeCompare(b.title));
+    else if (by === 'z-a') rows.sort((a, b) => b.title.localeCompare(a.title));
+    else if (by === 'most-used') rows.sort((a, b) => (b.useCount || 0) - (a.useCount || 0));
+    else if (by === 'group') rows.sort((a, b) => (a.collection || 'zzz').localeCompare(b.collection || 'zzz') || (b.createdAt - a.createdAt));
+    else if (by === 'manual') {
+      const order = new Map(library.map((e, i) => [e.id, i]));
+      rows.sort((a, b) => order.get(a.id) - order.get(b.id));
+    }
+    return rows;
+  }, [library, activeCollection, activeTag, search, sortBy]);
+
+  const bumpUse = useCallback(id => setLibrary(L => L.map(e => e.id === id ? { ...e, useCount: (e.useCount || 0) + 1 } : e)), []);
+  const del = useCallback(id => setLibrary(L => L.filter(e => e.id !== id)), []);
+  const renameEntry = useCallback((id, newTitle) => {
+    const title = (newTitle || '').trim();
+    if (!title) { setRenamingId(null); setRenameValue(''); return; }
+    setLibrary(L => L.map(e => e.id === id ? { ...e, title } : e));
+    setRenamingId(null); setRenameValue('');
+  }, []);
+  const moveLibraryEntry = useCallback((sourceId, targetId, position) => {
+    if (!sourceId || sourceId === targetId) return;
+    setLibrary(L => {
+      const src = L.findIndex(e => e.id === sourceId);
+      const tgt = L.findIndex(e => e.id === targetId);
+      if (src < 0 || tgt < 0) return L;
+      const next = [...L];
+      const [moved] = next.splice(src, 1);
+      let insertAt = next.findIndex(e => e.id === targetId);
+      if (position === 'after') insertAt += 1;
+      next.splice(insertAt, 0, moved);
+      return next;
+    });
+  }, []);
+  const moveLibraryEntryByOffset = useCallback((id, offset, visible) => {
+    setLibrary(L => {
+      const visIds = visible.map(e => e.id);
+      const pos = visIds.indexOf(id);
+      const newPos = pos + offset;
+      if (pos < 0 || newPos < 0 || newPos >= visIds.length) return L;
+      const srcIdx = L.findIndex(e => e.id === id);
+      const destIdx = L.findIndex(e => e.id === visIds[newPos]);
+      if (srcIdx < 0 || destIdx < 0) return L;
+      const next = [...L];
+      const [m] = next.splice(srcIdx, 1);
+      next.splice(destIdx, 0, m);
+      return next;
+    });
+  }, []);
+  const exportLib = useCallback(() => {
+    if (library.length === 0) { window.__toast?.('Library is empty.'); return; }
+    const hasSensitive = library.some(e => looksSensitive(e.original) || looksSensitive(e.enhanced) || looksSensitive(e.notes));
+    if (hasSensitive && !window.confirm('Some prompts may contain sensitive content (keys, PII). Continue exporting?')) return;
+    const blob = new Blob([JSON.stringify({ library, collections }, null, 2)], { type: 'application/json' });
+    const a = document.createElement('a');
+    a.href = URL.createObjectURL(blob);
+    a.download = 'promptlab-library.json';
+    a.click();
+    URL.revokeObjectURL(a.href);
+    window.__toast?.(`Exported ${library.length} prompts.`);
+  }, [library, collections]);
+  const loadStarterPack = useCallback(id => {
+    const pack = starterLibraries.find(p => p.id === id);
+    if (!pack || pack.loaded) return;
+    const seeds = Array.from({ length: pack.promptCount }).map((_, i) => ({
+      id: `${pack.id}-${i}-${Math.random().toString(36).slice(2, 7)}`,
+      title: `${pack.name.replace(' Starter', '')} prompt ${i + 1}`,
+      collection: pack.name.replace(' Starter', ''),
+      tags: [pack.name.split(' ')[0].toLowerCase()],
+      original: `Seed ${i + 1} original.`,
+      enhanced: `You are an expert in ${pack.name.split(' ')[0].toLowerCase()}. Help the user with task #${i + 1}. Use {{context}} for context.`,
+      notes: '', variants: [], versions: [], useCount: 0,
+      createdAt: Date.now() - i * 1000 * 60, metadata: {},
+    }));
+    setLibrary(L => [...seeds, ...L]);
+    setStarterLibraries(p => p.map(s => s.id === id ? { ...s, loaded: true } : s));
+    if (!collections.includes(pack.name.replace(' Starter', ''))) {
+      setCollections(c => [...c, pack.name.replace(' Starter', '')]);
+    }
+    window.__toast?.(`Loaded ${pack.promptCount} prompts from ${pack.name}.`);
+  }, [starterLibraries, collections]);
+  const importPack = useCallback(jsonText => {
+    try {
+      const data = JSON.parse(jsonText);
+      const rows = Array.isArray(data) ? data : (data.library || []);
+      if (!Array.isArray(rows) || rows.length === 0) throw new Error('no entries');
+      const stamped = rows.map((r, i) => ({
+        id: r.id || `imp-${Date.now()}-${i}`,
+        title: r.title || 'Imported prompt',
+        collection: r.collection || '',
+        tags: r.tags || [],
+        original: r.original || '',
+        enhanced: r.enhanced || '',
+        notes: r.notes || '',
+        variants: r.variants || [],
+        versions: r.versions || [],
+        useCount: r.useCount || 0,
+        createdAt: r.createdAt || Date.now(),
+        metadata: r.metadata || {},
+      }));
+      setLibrary(L => [...stamped, ...L]);
+      window.__toast?.(`Imported ${stamped.length} prompts.`);
+      return { ok: true, count: stamped.length };
+    } catch (err) {
+      window.__toast?.('Import failed — invalid JSON.');
+      return { ok: false, error: String(err) };
+    }
+  }, []);
+  const getShareUrl = useCallback(entry => {
+    const payload = btoa(unescape(encodeURIComponent(JSON.stringify({ t: entry.title, e: entry.enhanced }))));
+    return `https://promptlab.tools/s/#${payload.slice(0, 96)}`;
+  }, []);
+
+  return {
+    library, collections, activeCollection, setActiveCollection, activeTag, setActiveTag,
+    search, setSearch, sortBy, setSortBy,
+    expandedId, setExpandedId, renamingId, setRenamingId, renameValue, setRenameValue,
+    shareId, setShareId,
+    allLibTags, filtered,
+    bumpUse, del, renameEntry,
+    moveLibraryEntry, moveLibraryEntryByOffset,
+    draggingLibraryId, setDraggingLibraryId, dragOverLibraryId, setDragOverLibraryId,
+    exportLib, importPack,
+    starterLibraries, loadStarterPack,
+    getShareUrl,
+  };
+}
+
+/* ── bits.jsx ───────────────────────────────────────────────────────────── */
+function TagChip({ tag, selected, onClick }) {
+  const base = 'ui-control px-2 py-0.5 rounded-full text-[11px] font-medium border transition-colors';
+  if (onClick) {
+    return (
+      <button type="button" onClick={onClick} aria-pressed={!!selected}
+        className={`${base} ${selected ? 'bg-violet-600 border-violet-600 text-white' : 'bg-transparent border-gray-700 text-gray-400 hover:border-gray-500 hover:text-gray-200'}`}>
+        #{tag}
+      </button>
+    );
+  }
+  return <span className={`${base} bg-gray-800 border-gray-700 text-gray-400`}>#{tag}</span>;
+}
+
+function DraftBadge({ children, tone = 'warning' }) {
+  const cls = tone === 'warning' ? 'bg-amber-950/40 border-amber-900/50 text-amber-400' : 'bg-gray-800 border-gray-700 text-gray-400';
+  return <span className={`inline-flex items-center px-1.5 py-[1px] rounded border text-[10px] uppercase tracking-wider font-semibold ${cls}`}>{children}</span>;
+}
+
+function MarkdownPreview({ text, className = '' }) {
+  if (!text) return <span className="opacity-50">(empty)</span>;
+  const esc = (s) => s.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
+  const html = esc(text)
+    .replace(/\*\*([^*]+)\*\*/g, '<strong>$1</strong>')
+    .replace(/`([^`]+)`/g, '<code class="px-1 rounded bg-gray-800 text-violet-300 font-mono text-[0.9em]">$1</code>')
+    .replace(/\{\{\s*([\w-]+)\s*\}\}/g, '<span class="text-amber-400 font-mono">{{$1}}</span>')
+    .replace(/\n/g, '<br>');
+  return <div className={className} dangerouslySetInnerHTML={{ __html: html }} />;
+}
+
+function StarterPackCard({ pack, m, onLoad }) {
+  const [loading, setLoading] = useState(false);
+  const handleClick = () => {
+    if (pack.loaded || loading) return;
+    setLoading(true);
+    window.setTimeout(() => { onLoad(pack.id); setLoading(false); }, 320);
+  };
+  return (
+    <div className={`${m.surface} border ${m.border} rounded-lg p-3 flex items-start gap-3`}>
+      <span className="text-lg shrink-0">{pack.icon}</span>
+      <div className="flex-1 min-w-0">
+        <p className={`text-sm font-semibold ${m.text}`}>{pack.name}</p>
+        <p className={`text-xs ${m.textMuted} mt-0.5 leading-relaxed`}>{pack.description}</p>
+        <span className={`text-xs ${m.textSub} mt-1 inline-block`}>{pack.promptCount} prompts</span>
+      </div>
+      <button type="button" onClick={handleClick} disabled={pack.loaded || loading}
+        className={`ui-control shrink-0 px-3 py-1.5 rounded-lg text-xs font-medium ${
+          pack.loaded ? `${m.btn} text-green-500 cursor-default`
+            : loading ? `${m.btn} ${m.textMuted} cursor-wait`
+            : 'bg-violet-600 hover:bg-violet-500 text-white'
+        }`}>
+        {pack.loaded ? 'Loaded ✓' : loading ? 'Loading…' : 'Load'}
+      </button>
+    </div>
+  );
+}
+
+function PresetImportPanel({ m, lib, onClose }) {
+  const [json, setJson] = useState('');
+  const [step, setStep] = useState('idle');
+  const [parsed, setParsed] = useState(null);
+
+  const sample = JSON.stringify({
+    library: [
+      { title: 'Bug triage rubric', collection: 'Engineering', tags: ['triage'],
+        enhanced: 'You are a triage lead. Given a bug report, decide: severity, owner area, and whether it needs a repro. Use {{report}}.' },
+      { title: 'Weekly standup template', collection: 'Engineering', tags: ['meeting'],
+        enhanced: 'Summarize this week\'s work as: **Shipped**, **Blocked**, **Next**. Source: {{log}}.' },
+    ]
+  }, null, 2);
+
+  const preview = () => {
+    try {
+      const data = JSON.parse(json || '{}');
+      const rows = Array.isArray(data) ? data : (data.library || []);
+      if (rows.length === 0) throw new Error('no entries');
+      setParsed(rows);
+      setStep('preview');
+    } catch {
+      window.__toast?.('Invalid JSON.');
+    }
+  };
+  const apply = () => {
+    const result = lib.importPack(json);
+    if (result.ok) { setStep('applied'); setTimeout(() => onClose(), 900); }
+  };
+
+  return (
+    <div className={`border-b ${m.border} px-3 py-3`}>
+      <div className="flex items-center justify-between mb-2">
+        <div>
+          <p className={`text-sm font-semibold ${m.text}`}>Import preset pack</p>
+          <p className={`text-[11px] ${m.textMuted}`}>Paste a library JSON export. Local merge — no network.</p>
+        </div>
+        <button type="button" onClick={onClose} aria-label="Close import panel"
+          className={`ui-control p-1.5 rounded ${m.btn} ${m.textAlt}`}>
+          <Ic n="X" size={12} />
+        </button>
+      </div>
+      {step === 'idle' && (
+        <>
+          <textarea
+            value={json} onChange={e => setJson(e.target.value)}
+            placeholder={sample}
+            rows={6}
+            className={`w-full ${m.input} rounded-lg px-2.5 py-2 text-[11px] font-mono leading-snug focus:outline-none focus:border-violet-500 ${m.text}`} />
+          <div className="flex gap-2 mt-2">
+            <button type="button" onClick={preview}
+              className="ui-control px-3 py-1.5 rounded-lg text-xs font-medium bg-violet-600 hover:bg-violet-500 text-white">
+              Preview
+            </button>
+            <button type="button" onClick={() => setJson(sample)}
+              className={`ui-control px-3 py-1.5 rounded-lg text-xs font-medium ${m.btn} ${m.textAlt}`}>
+              Use sample
+            </button>
+          </div>
+        </>
+      )}
+      {step === 'preview' && (
+        <div>
+          <div className={`${m.codeBlock} border ${m.border} rounded-lg p-2.5 max-h-40 overflow-auto`}>
+            {parsed.map((r, i) => (
+              <div key={i} className="flex items-start gap-2 py-1 text-xs">
+                <span className={`${m.textMuted} font-mono w-4`}>{i + 1}</span>
+                <div className="flex-1 min-w-0">
+                  <p className={`${m.text} font-medium truncate`}>{r.title || 'Untitled'}</p>
+                  <p className={`${m.textMuted} truncate`}>{r.collection || 'No collection'} · {(r.tags || []).join(', ') || 'no tags'}</p>
+                </div>
+              </div>
+            ))}
+          </div>
+          <div className="flex gap-2 mt-2">
+            <button type="button" onClick={apply}
+              className="ui-control px-3 py-1.5 rounded-lg text-xs font-medium bg-violet-600 hover:bg-violet-500 text-white">
+              Import {parsed.length} prompts
+            </button>
+            <button type="button" onClick={() => setStep('idle')}
+              className={`ui-control px-3 py-1.5 rounded-lg text-xs font-medium ${m.btn} ${m.textAlt}`}>
+              Back
+            </button>
+          </div>
+        </div>
+      )}
+      {step === 'applied' && (
+        <p className="text-xs text-green-400">Imported ✓</p>
+      )}
+    </div>
+  );
+}
+
+/* ── tweaks.jsx (presets + tweak panel UI) ─────────────────────────────── */
+const DENSITY = {
+  compact: {
+    label: 'Compact',
+    toolbarPad: 'px-2.5 py-2', toolbarGap: 'gap-1.5',
+    listPad: 'p-2', listGap: 'gap-1', rowPad: 'px-2.5 py-1.5',
+    titleSize: 'text-[12.5px]', metaSize: 'text-[10.5px]',
+    actionSize: 'text-[10.5px] px-2 py-0.5',
+    metaVisible: { collection: false, date: true, useCount: true, versions: false, vars: true },
+    showToolbarHint: false, showTagFilters: false, grid: false,
+  },
+  default: {
+    label: 'Default',
+    toolbarPad: 'p-3', toolbarGap: 'gap-2',
+    listPad: 'p-3', listGap: 'gap-2', rowPad: 'px-3 py-2.5',
+    titleSize: 'text-sm', metaSize: 'text-xs', actionSize: 'text-xs px-2.5 py-1',
+    metaVisible: { collection: true, date: true, useCount: true, versions: true, vars: true },
+    showToolbarHint: true, showTagFilters: true, grid: false,
+  },
+  expanded: {
+    label: 'Expanded',
+    toolbarPad: 'p-4', toolbarGap: 'gap-3',
+    listPad: 'p-4', listGap: 'gap-3', rowPad: 'px-4 py-3.5',
+    titleSize: 'text-[15px]', metaSize: 'text-[12px]', actionSize: 'text-xs px-3 py-1.5',
+    metaVisible: { collection: true, date: true, useCount: true, versions: true, vars: true },
+    showToolbarHint: true, showTagFilters: true, showInlinePreview: true, grid: false,
+  },
+  gallery: {
+    label: 'Gallery',
+    toolbarPad: 'p-4', toolbarGap: 'gap-3',
+    listPad: 'p-3', listGap: 'gap-2', rowPad: 'p-3',
+    titleSize: 'text-sm', metaSize: 'text-[11px]', actionSize: 'text-[11px] px-2 py-1',
+    metaVisible: { collection: true, date: false, useCount: true, versions: true, vars: false },
+    showToolbarHint: true, showTagFilters: true, showInlinePreview: true,
+    previewLines: 3, grid: true,
+  },
+};
+
+const ACCENT = {
+  violet: {
+    label: 'Violet', swatch: '#7c3aed',
+    solid: 'bg-violet-600 hover:bg-violet-500', solidText: 'text-white',
+    subtle: 'bg-violet-500/12 border-violet-500/40 text-violet-200',
+    text: 'text-violet-400', textSoft: 'text-violet-300',
+    ring: 'ring-violet-500/30', focusBorder: 'focus:border-violet-500',
+    active: 'bg-violet-600 text-white',
+    brandBg: 'bg-violet-600', brandShadow: 'shadow-violet-900/40',
+    stripe: 'bg-violet-500',
+  },
+  ink: {
+    label: 'Ink', swatch: '#0f172a',
+    solid: 'bg-slate-900 hover:bg-slate-800', solidText: 'text-white',
+    subtle: 'bg-slate-500/12 border-slate-500/40 text-slate-200',
+    text: 'text-slate-300', textSoft: 'text-slate-400',
+    ring: 'ring-slate-500/30', focusBorder: 'focus:border-slate-500',
+    active: 'bg-slate-900 text-white',
+    brandBg: 'bg-slate-900', brandShadow: 'shadow-black/60',
+    stripe: 'bg-slate-400',
+  },
+  citrus: {
+    label: 'Citrus', swatch: '#eab308',
+    solid: 'bg-yellow-500 hover:bg-yellow-400', solidText: 'text-yellow-950',
+    subtle: 'bg-yellow-500/12 border-yellow-500/40 text-yellow-200',
+    text: 'text-yellow-400', textSoft: 'text-yellow-300',
+    ring: 'ring-yellow-500/30', focusBorder: 'focus:border-yellow-500',
+    active: 'bg-yellow-500 text-yellow-950',
+    brandBg: 'bg-yellow-500', brandShadow: 'shadow-yellow-900/40',
+    stripe: 'bg-yellow-400',
+  },
+  sunset: {
+    label: 'Sunset', swatch: '#f97316',
+    solid: 'bg-orange-600 hover:bg-orange-500', solidText: 'text-white',
+    subtle: 'bg-orange-500/12 border-orange-500/40 text-orange-200',
+    text: 'text-orange-400', textSoft: 'text-orange-300',
+    ring: 'ring-orange-500/30', focusBorder: 'focus:border-orange-500',
+    active: 'bg-orange-600 text-white',
+    brandBg: 'bg-orange-600', brandShadow: 'shadow-orange-900/40',
+    stripe: 'bg-orange-500',
+  },
+  forest: {
+    label: 'Forest', swatch: '#059669',
+    solid: 'bg-emerald-600 hover:bg-emerald-500', solidText: 'text-white',
+    subtle: 'bg-emerald-500/12 border-emerald-500/40 text-emerald-200',
+    text: 'text-emerald-400', textSoft: 'text-emerald-300',
+    ring: 'ring-emerald-500/30', focusBorder: 'focus:border-emerald-500',
+    active: 'bg-emerald-600 text-white',
+    brandBg: 'bg-emerald-600', brandShadow: 'shadow-emerald-900/40',
+    stripe: 'bg-emerald-500',
+  },
+};
+
+const SIGNATURE = {
+  cards: {
+    label: 'Cards',
+    rowFrame: (m, accent) =>
+      `${m.surface} border ${m.border} ${m.borderHov} rounded-lg overflow-hidden`,
+    stripe: false, titleFont: '', titleWeight: 'font-semibold',
+    metaFont: '', metaTracking: '',
+    divider: m => `border-t ${m.border}`,
+    uppercaseMeta: false,
+  },
+  rail: {
+    label: 'Rail',
+    rowFrame: (m, accent) =>
+      `${m.surface}/60 rounded-none border-l-2 border-y-0 border-r-0 ${accent.stripe} border-opacity-0 hover:border-opacity-100 transition-colors`,
+    stripe: true, titleFont: '', titleWeight: 'font-semibold',
+    metaFont: '', metaTracking: '',
+    divider: m => `border-t ${m.border}`,
+    uppercaseMeta: false,
+  },
+  ticket: {
+    label: 'Ticket',
+    rowFrame: (m, accent) =>
+      `${m.surface} border border-dashed ${m.border} rounded-md overflow-hidden`,
+    stripe: false, titleFont: '', titleWeight: 'font-bold',
+    metaFont: 'font-mono', metaTracking: 'tracking-wide',
+    divider: m => `border-t border-dashed ${m.border}`,
+    uppercaseMeta: true,
+  },
+  manuscript: {
+    label: 'Manuscript',
+    rowFrame: (m, accent) =>
+      `${m.surface}/40 border-0 rounded-none`,
+    stripe: false, titleFont: 'font-serif', titleWeight: 'font-medium',
+    metaFont: 'italic', metaTracking: '',
+    divider: m => `border-t ${m.border}`,
+    uppercaseMeta: false,
+  },
+};
+
+const DEFAULT_TWEAKS = { density: 'gallery', accent: 'ink', signature: 'ticket' };
+
+function resolveTweaks(t) {
+  return {
+    density: DENSITY[t.density] || DENSITY.default,
+    accent: ACCENT[t.accent] || ACCENT.violet,
+    signature: SIGNATURE[t.signature] || SIGNATURE.cards,
+    raw: t,
+  };
+}
+
+/* ── Local tweaks panel — host postMessage protocol stripped ──────────── */
+function useTweaks(defaults) {
+  const [values, setValues] = useState(defaults);
+  const setTweak = useCallback((key, val) => {
+    setValues(prev => ({ ...prev, [key]: val }));
+  }, []);
+  return [values, setTweak];
+}
+
+const __TWEAKS_STYLE = `
+  .twk-panel{position:fixed;right:16px;bottom:16px;z-index:2147483646;width:280px;
+    max-height:calc(100vh - 32px);display:flex;flex-direction:column;
+    background:rgba(250,249,247,.92);color:#29261b;
+    -webkit-backdrop-filter:blur(24px) saturate(160%);backdrop-filter:blur(24px) saturate(160%);
+    border:.5px solid rgba(255,255,255,.6);border-radius:14px;
+    box-shadow:0 1px 0 rgba(255,255,255,.5) inset,0 12px 40px rgba(0,0,0,.35);
+    font:11.5px/1.4 ui-sans-serif,system-ui,-apple-system,sans-serif;overflow:hidden}
+  .twk-hd{display:flex;align-items:center;justify-content:space-between;
+    padding:10px 8px 10px 14px;user-select:none}
+  .twk-hd b{font-size:12px;font-weight:600;letter-spacing:.01em}
+  .twk-x{appearance:none;border:0;background:transparent;color:rgba(41,38,27,.55);
+    width:22px;height:22px;border-radius:6px;cursor:pointer;font-size:13px;line-height:1}
+  .twk-x:hover{background:rgba(0,0,0,.06);color:#29261b}
+  .twk-body{padding:2px 14px 14px;display:flex;flex-direction:column;gap:10px;
+    overflow-y:auto;overflow-x:hidden;min-height:0}
+  .twk-row{display:flex;flex-direction:column;gap:5px}
+  .twk-row-h{flex-direction:row;align-items:center;justify-content:space-between;gap:10px}
+  .twk-lbl{display:flex;justify-content:space-between;align-items:baseline;color:rgba(41,38,27,.72)}
+  .twk-lbl>span:first-child{font-weight:500}
+  .twk-sect{font-size:10px;font-weight:600;letter-spacing:.06em;text-transform:uppercase;
+    color:rgba(41,38,27,.45);padding:10px 0 0}
+  .twk-sect:first-child{padding-top:0}
+  .twk-seg{position:relative;display:flex;padding:2px;border-radius:8px;
+    background:rgba(0,0,0,.06);user-select:none}
+  .twk-seg-thumb{position:absolute;top:2px;bottom:2px;border-radius:6px;
+    background:rgba(255,255,255,.95);box-shadow:0 1px 2px rgba(0,0,0,.12);
+    transition:left .15s cubic-bezier(.3,.7,.4,1),width .15s}
+  .twk-seg button{appearance:none;position:relative;z-index:1;flex:1;border:0;
+    background:transparent;color:inherit;font:inherit;font-weight:500;height:22px;
+    border-radius:6px;cursor:pointer;padding:0}
+  .twk-launch{position:fixed;right:16px;bottom:16px;z-index:2147483645;
+    appearance:none;border:0;cursor:pointer;
+    background:rgba(15,23,42,.92);color:#fff;
+    font:600 11.5px/1 ui-sans-serif,system-ui,sans-serif;
+    padding:9px 11px;border-radius:999px;display:inline-flex;align-items:center;gap:6px;
+    box-shadow:0 8px 24px rgba(0,0,0,.35),0 0 0 1px rgba(255,255,255,.05) inset;
+    letter-spacing:.02em}
+  .twk-launch:hover{background:rgba(15,23,42,1)}
+`;
+
+function TweaksLaunchButton({ onOpen }) {
+  return (
+    <button type="button" className="twk-launch" onClick={onOpen} aria-label="Open library tweaks">
+      <Ic n="Sliders" size={12} />Tweaks
+    </button>
+  );
+}
+
+function TweakSection({ label, children }) {
+  return (<><div className="twk-sect">{label}</div>{children}</>);
+}
+function TweakRow({ label, children }) {
+  return (
+    <div className="twk-row">
+      <div className="twk-lbl"><span>{label}</span></div>
+      {children}
+    </div>
+  );
+}
+function TweakRadio({ label, value, options, onChange }) {
+  const opts = options.map(o => (typeof o === 'object' ? o : { value: o, label: o }));
+  const idx = Math.max(0, opts.findIndex(o => o.value === value));
+  const n = opts.length;
+  return (
+    <TweakRow label={label}>
+      <div role="radiogroup" className="twk-seg">
+        <div className="twk-seg-thumb"
+          style={{ left: `calc(2px + ${idx} * (100% - 4px) / ${n})`,
+                   width: `calc((100% - 4px) / ${n})` }} />
+        {opts.map(o => (
+          <button key={o.value} type="button" role="radio"
+            aria-checked={o.value === value}
+            onClick={() => onChange(o.value)}>
+            {o.label}
+          </button>
+        ))}
+      </div>
+    </TweakRow>
+  );
+}
+
+function LibraryTweaks({ values, setTweak }) {
+  const [open, setOpen] = useState(true);
+  const accentOpts = Object.entries(ACCENT).map(([value, v]) => ({ value, label: v.label }));
+  const signatureHints = {
+    cards: 'Bordered cards with rounded corners. The stock grammar.',
+    rail: 'Flush rows, hairline dotted dividers, accent stripe on hover.',
+    ticket: 'Dashed borders, monospace metadata — reads like a log.',
+    manuscript: 'Serif titles, quiet metadata — reads like an outline.',
+  };
+  return (
+    <>
+      <style>{__TWEAKS_STYLE}</style>
+      {!open && <TweaksLaunchButton onOpen={() => setOpen(true)} />}
+      {open && (
+        <div className="twk-panel">
+          <div className="twk-hd">
+            <b>Library tweaks</b>
+            <button className="twk-x" aria-label="Close tweaks" onClick={() => setOpen(false)}>✕</button>
+          </div>
+          <div className="twk-body">
+            <TweakSection label="Density" />
+            <TweakRadio label="Layout" value={values.density}
+              options={Object.keys(DENSITY).map(k => ({ value: k, label: DENSITY[k].label }))}
+              onChange={v => setTweak('density', v)} />
+
+            <TweakSection label="Accent" />
+            <TweakRadio label="Palette" value={values.accent} options={accentOpts}
+              onChange={v => setTweak('accent', v)} />
+            <div style={{ display: 'flex', gap: 6, marginTop: -2 }}>
+              {accentOpts.map(opt => (
+                <button key={opt.value} type="button" aria-label={opt.label}
+                  onClick={() => setTweak('accent', opt.value)}
+                  style={{
+                    flex: 1, height: 18, borderRadius: 5,
+                    border: values.accent === opt.value
+                      ? '1.5px solid rgba(0,0,0,.55)'
+                      : '0.5px solid rgba(0,0,0,.1)',
+                    background: ACCENT[opt.value].swatch,
+                    cursor: 'pointer', padding: 0,
+                  }} />
+              ))}
+            </div>
+
+            <TweakSection label="Row signature" />
+            <TweakRadio label="Grammar" value={values.signature}
+              options={Object.keys(SIGNATURE).map(k => ({ value: k, label: SIGNATURE[k].label }))}
+              onChange={v => setTweak('signature', v)} />
+            <p style={{ fontSize: 10.5, lineHeight: 1.45, color: 'rgba(41,38,27,.55)',
+                        margin: '2px 0 4px', fontStyle: 'italic' }}>
+              {signatureHints[values.signature]}
+            </p>
+          </div>
+        </div>
+      )}
+    </>
+  );
+}
+
+/* ── library-panel.jsx ──────────────────────────────────────────────────── */
+function LibraryPanel({
+  m, lib, compact, isWeb, tw,
+  canUseCollections = true, canExportLibrary = true,
+  openBilling, loadEntry, copy, sendToABTest, openSavePanel, addToComposer,
+}) {
+  const d = tw.density;
+  const a = tw.accent;
+  const s = tw.signature;
+
+  const [searchDraft, setSearchDraft] = useState(lib.search);
+  const [showImportPanel, setShowImportPanel] = useState(false);
+  const unloadedStarterPacks = (lib.starterLibraries || []).filter(p => !p.loaded);
+  const primaryStarterPack = unloadedStarterPacks[0] || null;
+  const hasLibraryFilters = Boolean(lib.search || lib.activeTag || lib.activeCollection);
+
+  useEffect(() => { setSearchDraft(lib.search); }, [lib.search]);
+  useEffect(() => {
+    const id = window.setTimeout(() => { if (searchDraft !== lib.search) lib.setSearch(searchDraft); }, 250);
+    return () => window.clearTimeout(id);
+  }, [searchDraft, lib.search]);
+
+  const clearLibraryFilters = () => {
+    setSearchDraft(''); lib.setSearch('');
+    lib.setActiveTag(null); lib.setActiveCollection(null);
+  };
+
+  const metaCase = s.uppercaseMeta ? 'uppercase tracking-wider' : '';
+  const metaClass = `${d.metaSize} ${m.textMuted} ${s.metaFont} ${s.metaTracking} ${metaCase}`;
+
+  const listLayoutClass = d.grid
+    ? `flex-1 min-h-0 overflow-y-auto ${d.listPad} grid grid-cols-2 ${d.listGap} content-start`
+    : `flex-1 min-h-0 overflow-y-auto ${d.listPad} flex flex-col ${d.listGap}`;
+
+  return (
+    <div className="w-full flex min-h-0 flex-col overflow-hidden h-full">
+      <div className={`${d.toolbarPad} border-b ${m.border} flex flex-col ${d.toolbarGap} shrink-0`}>
+        <div className={`flex gap-2 ${compact ? 'flex-col' : ''}`}>
+          <div className="relative flex-1">
+            <Ic n="Search" size={11} className={`absolute left-2.5 top-1/2 -translate-y-1/2 ${m.textMuted}`} />
+            <input className={`w-full ${m.input} rounded-lg pl-7 pr-3 py-1.5 text-xs focus:outline-none ${a.focusBorder} ${m.text}`}
+              placeholder="Search…" value={searchDraft} onChange={e => setSearchDraft(e.target.value)} aria-label="Search prompts" />
+          </div>
+          <div className={`flex gap-2 ${compact ? 'w-full' : ''}`}>
+            <select value={lib.sortBy} onChange={e => lib.setSortBy(e.target.value)}
+              className={`ui-control ${m.input} rounded-lg px-2 py-1.5 text-xs ${m.textBody} focus:outline-none ${compact ? 'flex-1' : ''}`}>
+              <option value="newest">Newest</option>
+              <option value="oldest">Oldest</option>
+              <option value="a-z">A → Z</option>
+              <option value="z-a">Z → A</option>
+              <option value="group">By collection</option>
+              <option value="most-used">Most Used</option>
+              <option value="manual">Manual</option>
+            </select>
+            <button type="button"
+              onClick={canExportLibrary ? lib.exportLib : () => openBilling?.('export')}
+              className={`ui-control px-2.5 rounded-lg text-xs ${compact ? 'flex-1 py-1.5' : ''} ${canExportLibrary ? `${m.btn} ${m.textAlt}` : `border ${a.subtle}`}`}>
+              {canExportLibrary ? 'Export' : 'Export Pro'}
+            </button>
+            {isWeb && (
+              <button type="button" onClick={() => window.__toast?.('No legacy web library found.')}
+                className={`ui-control px-2.5 rounded-lg text-xs ${m.btn} ${m.textAlt} ${compact ? 'flex-1 py-1.5' : ''}`}>
+                Recover
+              </button>
+            )}
+            <button type="button" onClick={() => setShowImportPanel(p => !p)} aria-label="Import preset pack"
+              className={`ui-control px-2.5 rounded-lg text-xs ${showImportPanel ? a.active : `${m.btn} ${m.textAlt}`} ${compact ? 'flex-1 py-1.5' : ''}`}>
+              <span className="flex items-center gap-1"><Ic n="Upload" size={11} />Import Pack</span>
+            </button>
+          </div>
+        </div>
+        {d.showToolbarHint && lib.sortBy === 'manual' && (
+          <p className={`text-[11px] ${m.textMuted}`}>Manual order is live. Drag cards or use the arrow controls to move them.</p>
+        )}
+        {canUseCollections && lib.collections.length > 0 && (
+          <div className="flex gap-1 flex-wrap">
+            <button type="button" onClick={() => lib.setActiveCollection(null)}
+              className={`ui-control px-2 py-0.5 rounded-full text-xs font-medium ${!lib.activeCollection ? a.active : `${m.btn} ${m.textAlt}`}`}>All</button>
+            {lib.collections.map(c => (
+              <button key={c} type="button" onClick={() => lib.setActiveCollection(p => p === c ? null : c)}
+                className={`ui-control px-2 py-0.5 rounded-full text-xs font-medium flex items-center gap-1 ${lib.activeCollection === c ? a.active : `${m.btn} ${m.textAlt}`}`}>
+                <Ic n="FolderOpen" size={9} />{c}
+              </button>
+            ))}
+          </div>
+        )}
+        {!canUseCollections && lib.collections.length > 0 && (
+          <div className={`rounded-lg border px-3 py-2 text-xs leading-relaxed ${m.codeBlock} ${m.border} ${m.textMuted}`}>
+            Collection filters are available on Prompt Lab Pro.
+            <button type="button" onClick={() => openBilling?.('collections')} className={`ml-2 ${a.text} hover:${a.textSoft}`}>Unlock</button>
+          </div>
+        )}
+        {d.showTagFilters && lib.allLibTags.length > 0 && (
+          <div className="flex flex-wrap gap-1">
+            {lib.allLibTags.map(t => (
+              <TagChip key={t} tag={t} selected={lib.activeTag === t} onClick={() => lib.setActiveTag(p => p === t ? null : t)} />
+            ))}
+          </div>
+        )}
+      </div>
+
+      {showImportPanel && <PresetImportPanel m={m} lib={lib} onClose={() => setShowImportPanel(false)} />}
+
+      <div className={listLayoutClass}>
+        {lib.filtered.length === 0 && !showImportPanel && (
+          <div className={`ui-empty-state h-full ${m.codeBlock} border ${m.border} ${d.grid ? 'col-span-2' : ''}`}>
+            <Ic n="Wand2" size={24} className={m.textMuted} />
+            <p className={`text-sm font-semibold ${m.textSub} mt-2`}>
+              {lib.library.length === 0 ? 'No saved prompts yet.' : 'No results found.'}
+            </p>
+            <p className={`mt-1 max-w-sm text-xs leading-relaxed ${m.textMuted}`}>
+              {lib.library.length === 0
+                ? 'Load a starter library, import a pack, or save your current draft to seed the workspace.'
+                : 'Your current search, tag, or collection filters are hiding every saved prompt.'}
+            </p>
+            <div className="mt-3 flex flex-wrap items-center justify-center gap-2">
+              {lib.library.length === 0 && primaryStarterPack && (
+                <button type="button" onClick={() => lib.loadStarterPack(primaryStarterPack.id)}
+                  className={`ui-control rounded-lg ${a.solid} px-3 py-1.5 text-xs font-semibold ${a.solidText}`}>
+                  Load {primaryStarterPack.name}
+                </button>
+              )}
+              {lib.library.length > 0 && hasLibraryFilters && (
+                <button type="button" onClick={clearLibraryFilters}
+                  className={`ui-control rounded-lg ${a.solid} px-3 py-1.5 text-xs font-semibold ${a.solidText}`}>
+                  Clear Filters
+                </button>
+              )}
+              <button type="button" onClick={() => setShowImportPanel(true)}
+                className={`ui-control rounded-lg px-3 py-1.5 text-xs font-semibold ${m.btn} ${m.textAlt}`}>
+                Import Pack
+              </button>
+            </div>
+          </div>
+        )}
+
+        {lib.filtered.map((entry, index) => {
+          const manual = lib.sortBy === 'manual';
+          const shareUrl = lib.shareId === entry.id ? lib.getShareUrl(entry) : null;
+          const collectionLabel = entry.collection || 'Unassigned';
+          const previousCollectionLabel = index > 0 ? (lib.filtered[index - 1].collection || 'Unassigned') : null;
+          const showCollectionHeader = lib.sortBy === 'group' && collectionLabel !== previousCollectionLabel;
+          const isDraft = entry.metadata?.status === 'draft' || (!entry.enhanced?.trim() && !entry.original?.trim());
+          const vars = extractVars(entry.enhanced);
+          const isExpanded = lib.expandedId === entry.id;
+
+          const previewText = entry.enhanced?.trim() || entry.original?.trim() || '';
+          const showPreview = (d.showInlinePreview && previewText && !isExpanded);
+          const previewLines = d.previewLines || 2;
+
+          return (
+            <div key={entry.id} className={showCollectionHeader && !d.grid ? 'contents' : ''}>
+              {showCollectionHeader && !d.grid && (
+                <div className={`shrink-0 flex items-center gap-2 ${index === 0 ? '' : 'pt-2'}`}>
+                  <span className={`text-[11px] font-semibold uppercase tracking-wider ${m.textSub}`}>{collectionLabel}</span>
+                  <div className={`flex-1 border-t ${m.border}`} />
+                </div>
+              )}
+              <div
+                draggable={manual}
+                onDragStart={e => { if (!manual) return; e.dataTransfer.setData('libraryEntryId', entry.id); lib.setDraggingLibraryId(entry.id); }}
+                onDragEnd={() => { lib.setDraggingLibraryId(null); lib.setDragOverLibraryId(null); }}
+                onDragOver={e => { if (!manual) return; e.preventDefault(); lib.setDragOverLibraryId(entry.id); }}
+                onDrop={e => {
+                  if (!manual) return;
+                  e.preventDefault();
+                  const sourceId = e.dataTransfer.getData('libraryEntryId');
+                  const rect = e.currentTarget.getBoundingClientRect();
+                  const position = e.clientY > rect.top + rect.height / 2 ? 'after' : 'before';
+                  lib.moveLibraryEntry(sourceId, entry.id, position);
+                  lib.setDragOverLibraryId(null);
+                }}
+                className={`shrink-0 ${s.rowFrame(m, a)} transition-colors ${manual ? 'cursor-grab active:cursor-grabbing' : ''} ${lib.dragOverLibraryId === entry.id ? '!border-violet-500' : ''} ${lib.draggingLibraryId === entry.id ? 'opacity-50' : ''}`}>
+                <div className={`flex items-start justify-between ${d.rowPad} gap-2`}>
+                  <div className="flex-1 min-w-0">
+                    {lib.renamingId === entry.id ? (
+                      <div className="flex gap-1.5">
+                        <input autoFocus value={lib.renameValue} onChange={e => lib.setRenameValue(e.target.value)}
+                          onKeyDown={e => { if (e.key === 'Enter') lib.renameEntry(entry.id, lib.renameValue); if (e.key === 'Escape') { lib.setRenamingId(null); lib.setRenameValue(''); } }}
+                          className={`flex-1 ${m.input} rounded-lg px-2 py-1 text-xs focus:outline-none ${a.focusBorder} ${m.text}`} />
+                        <button type="button" onClick={() => lib.renameEntry(entry.id, lib.renameValue)}
+                          className={`ui-control px-2 py-1 text-xs ${a.solid} ${a.solidText} rounded-lg`}>Save</button>
+                        <button type="button" onClick={() => { lib.setRenamingId(null); lib.setRenameValue(''); }}
+                          className={`ui-control px-2 py-1 text-xs ${m.btn} ${m.textAlt} rounded-lg`}>Cancel</button>
+                      </div>
+                    ) : (
+                      <p className={`${d.titleSize} ${s.titleWeight} ${s.titleFont} ${m.text} truncate flex items-center gap-1.5`}>
+                        {entry.title || 'Untitled'}
+                        {isDraft && <DraftBadge tone="warning">draft</DraftBadge>}
+                      </p>
+                    )}
+                    <div className={`flex items-center gap-2 ${metaClass} mt-0.5 flex-wrap`}>
+                      {d.metaVisible.collection && entry.collection && (
+                        <span className="flex items-center gap-1"><Ic n="FolderOpen" size={8} />{entry.collection}</span>
+                      )}
+                      {d.metaVisible.date && <span>{new Date(entry.createdAt).toLocaleDateString()}</span>}
+                      {d.metaVisible.useCount && entry.useCount > 0 && (
+                        <span className={a.text}>{entry.useCount}×</span>
+                      )}
+                      {d.metaVisible.versions && (entry.versions || []).length > 0 && (
+                        <span className="flex items-center gap-0.5 text-blue-400">
+                          <Ic n="Clock" size={8} />{entry.versions.length}v
+                        </span>
+                      )}
+                      {d.metaVisible.vars && vars.length > 0 && <span className="text-amber-400 font-mono">{'{{vars}}'}</span>}
+                    </div>
+                    {showPreview && (
+                      <p className={`${d.metaSize} ${m.textAlt} mt-1.5 leading-relaxed`}
+                         style={{ display: '-webkit-box', WebkitLineClamp: previewLines, WebkitBoxOrient: 'vertical', overflow: 'hidden' }}>
+                        {previewText}
+                      </p>
+                    )}
+                  </div>
+                  <div className={`flex items-center gap-1 shrink-0 ${d.grid ? 'flex-col' : ''}`}>
+                    {manual && !d.grid && (
+                      <>
+                        <Ic n="GripVertical" size={12} className={m.textMuted} />
+                        <button type="button" aria-label={`Move ${entry.title} up`} disabled={index === 0}
+                          onClick={() => lib.moveLibraryEntryByOffset(entry.id, -1, lib.filtered)}
+                          className={`ui-control px-1.5 py-1 rounded ${m.btn} ${m.textAlt} text-xs disabled:opacity-40`}>
+                          <Ic n="ChevronUp" size={11} />
+                        </button>
+                        <button type="button" aria-label={`Move ${entry.title} down`} disabled={index === lib.filtered.length - 1}
+                          onClick={() => lib.moveLibraryEntryByOffset(entry.id, 1, lib.filtered)}
+                          className={`ui-control px-1.5 py-1 rounded ${m.btn} ${m.textAlt} text-xs disabled:opacity-40`}>
+                          <Ic n="ChevronDown" size={11} />
+                        </button>
+                      </>
+                    )}
+                    <button type="button" onClick={() => loadEntry(entry)}
+                      className={`ui-control rounded ${m.btn} ${a.text} ${d.actionSize} font-semibold`}>Use</button>
+                    <button type="button" onClick={() => { copy(entry.enhanced); lib.bumpUse(entry.id); }}
+                      className={`ui-control rounded ${m.btn} ${m.textAlt} ${d.actionSize} font-semibold hover:${a.text}`}>Copy</button>
+                    <button type="button" onClick={() => lib.setExpandedId(p => p === entry.id ? null : entry.id)}
+                      className={`ui-control rounded ${m.btn} ${m.textAlt} ${d.actionSize} font-semibold flex items-center gap-1`}>
+                      More <Ic n={isExpanded ? 'ChevronUp' : 'ChevronDown'} size={11} />
+                    </button>
+                  </div>
+                </div>
+
+                {(entry.tags || []).length > 0 && (
+                  <div className={`flex flex-wrap gap-1 px-3 pb-2 ${d.grid ? 'pt-0' : ''}`}>
+                    {entry.tags.slice(0, d.grid ? 3 : 99).map(t => <TagChip key={t} tag={t} />)}
+                    {d.grid && entry.tags.length > 3 && (
+                      <span className={`text-[10px] ${m.textMuted} self-center`}>+{entry.tags.length - 3}</span>
+                    )}
+                  </div>
+                )}
+
+                {lib.shareId === entry.id && (
+                  <div className={`${s.divider(m)} px-3 py-2 flex gap-2`}>
+                    <input readOnly className={`flex-1 ${m.input} rounded-lg px-2 py-1 text-xs focus:outline-none ${m.text} font-mono`}
+                      value={shareUrl || ''} onFocus={e => e.target.select()} />
+                    <button type="button" onClick={() => copy(shareUrl || '')}
+                      className={`ui-control px-2 py-1 ${a.solid} ${a.solidText} rounded-lg text-xs font-medium`}>Copy URL</button>
+                  </div>
+                )}
+
+                {isExpanded && (
+                  <div className={`${s.divider(m)} px-3 py-3 flex flex-col gap-3`}>
+                    <div className="flex flex-wrap gap-2">
+                      <button type="button" onClick={() => openSavePanel(entry)} className={`ui-control px-2 py-1 rounded ${m.btn} ${m.textAlt} text-xs`}>Edit details</button>
+                      <button type="button" onClick={() => addToComposer(entry)} className={`ui-control px-2 py-1 rounded ${m.btn} ${m.textAlt} text-xs flex items-center gap-1`}><Ic n="Layers" size={11} />Build Sequence</button>
+                      <button type="button" onClick={() => sendToABTest(entry, 'a')} className={`ui-control px-2 py-1 rounded ${m.btn} ${m.textAlt} text-xs flex items-center gap-1`}><Ic n="FlaskConical" size={11} />A/B A</button>
+                      <button type="button" onClick={() => sendToABTest(entry, 'b')} className={`ui-control px-2 py-1 rounded ${m.btn} ${m.textAlt} text-xs flex items-center gap-1`}><Ic n="FlaskConical" size={11} />A/B B</button>
+                      <button type="button" onClick={() => {
+                        if ((looksSensitive(entry.original) || looksSensitive(entry.enhanced) || looksSensitive(entry.notes))
+                          && !window.confirm('This shared link may include sensitive content. Continue?')) return;
+                        lib.setShareId(p => p === entry.id ? null : entry.id);
+                      }} className={`ui-control px-2 py-1 rounded ${m.btn} ${m.textAlt} text-xs flex items-center gap-1`}>
+                        <Ic n="Share2" size={11} />Share link
+                      </button>
+                      <button type="button" onClick={() => { lib.setRenamingId(entry.id); lib.setRenameValue(entry.title); }}
+                        className={`ui-control px-2 py-1 rounded ${m.btn} ${m.textAlt} text-xs`}>Rename</button>
+                    </div>
+
+                    {[['Original', m.textSub, entry.original], ['Enhanced', a.text, entry.enhanced]].map(([lbl, col, txt]) => (
+                      <div key={lbl}>
+                        <p className={`text-xs ${col} font-semibold mb-1 uppercase tracking-wider`}>{lbl}</p>
+                        <div className={`text-xs ${m.textBody} leading-relaxed ${m.codeBlock} rounded-lg p-2 border ${m.border}`}>
+                          <MarkdownPreview text={txt || ''} className="text-xs whitespace-pre-wrap" />
+                        </div>
+                      </div>
+                    ))}
+
+                    {entry.notes && (
+                      <div>
+                        <p className={`text-xs ${m.notesText} font-semibold mb-1 uppercase tracking-wider`}>Notes</p>
+                        <p className={`text-xs ${m.textAlt} leading-relaxed`}>{entry.notes}</p>
+                      </div>
+                    )}
+
+                    {(entry.variants || []).length > 0 && (
+                      <div>
+                        <p className={`text-xs ${m.textSub} font-semibold mb-1.5 uppercase tracking-wider`}>Variants</p>
+                        {entry.variants.map((v, i) => (
+                          <div key={i} className="mb-1.5">
+                            <span className={`text-xs ${a.text} font-bold`}>{v.label}: </span>
+                            <span className={`text-xs ${m.textAlt}`}>{v.content}</span>
+                          </div>
+                        ))}
+                      </div>
+                    )}
+
+                    {(entry.versions || []).length > 0 && (
+                      <div>
+                        <div className="flex items-center justify-between mb-1">
+                          <p className="text-xs text-blue-400 font-semibold uppercase tracking-wider flex items-center gap-1">
+                            <Ic n="Clock" size={9} />Version History ({entry.versions.length})
+                          </p>
+                          <button type="button" onClick={() => window.__toast?.('Version history modal (stub).')}
+                            className={`text-xs ${m.textSub} hover:text-white flex items-center gap-1 rounded-lg px-1.5 py-0.5`}>
+                            <Ic n="GitBranch" size={9} />Open History
+                          </button>
+                        </div>
+                        <div className={`${m.codeBlock} border ${m.border} rounded-lg p-2.5 text-xs ${m.textAlt}`}>
+                          <div className="flex items-center justify-between gap-3">
+                            <span>Latest snapshot: {new Date(entry.versions[entry.versions.length - 1].savedAt).toLocaleString()}</span>
+                            <span className={m.textMuted}>Restore and compare in modal</span>
+                          </div>
+                        </div>
+                      </div>
+                    )}
+
+                    <div className={`pt-1 ${s.divider(m)}`}>
+                      <button type="button" onClick={() => { if (window.confirm(`Delete "${entry.title}"?`)) lib.del(entry.id); }}
+                        className="ui-control px-2.5 py-1.5 rounded bg-red-600 hover:bg-red-500 text-white text-xs font-semibold flex items-center gap-1">
+                        <Ic n="Trash2" size={11} />Delete Prompt
+                      </button>
+                    </div>
+                  </div>
+                )}
+              </div>
+            </div>
+          );
+        })}
+
+        {lib.starterLibraries && lib.starterLibraries.some(p => !p.loaded) && (
+          <div className={`mt-4 pt-4 border-t ${m.border} ${d.grid ? 'col-span-2' : ''}`}>
+            <p className={`text-xs ${m.textSub} uppercase tracking-widest font-semibold mb-3`}>Starter Libraries</p>
+            <div className="flex flex-col gap-2">
+              {lib.starterLibraries.map(pack => (
+                <StarterPackCard key={pack.id} pack={pack} m={m} onLoad={lib.loadStarterPack} />
+              ))}
+            </div>
+          </div>
+        )}
+      </div>
+    </div>
+  );
+}
+
+/* ── app.jsx ────────────────────────────────────────────────────────────── */
+function Toast() {
+  const [msg, setMsg] = useState(null);
+  useEffect(() => {
+    window.__toast = (t) => {
+      setMsg(t);
+      clearTimeout(window.__toastTimer);
+      window.__toastTimer = setTimeout(() => setMsg(null), 2000);
+    };
+  }, []);
+  if (!msg) return null;
+  return (
+    <div className="toast fixed left-1/2 -translate-x-1/2 bottom-6 z-50
+      bg-gray-900 border border-gray-700 text-gray-100 text-[12.5px]
+      px-3.5 py-2 rounded-lg shadow-2xl shadow-black/60">
+      {msg}
+    </div>
+  );
+}
+
+function EditorPreview({ m, entry, onClear, tw }) {
+  return (
+    <div className={`h-full flex flex-col min-h-0 ${m.surface}`}>
+      <div className={`px-4 py-2.5 border-b ${m.border} flex items-center justify-between`}>
+        <div>
+          <p className={`text-[11px] uppercase tracking-wider font-semibold ${m.textSub}`}>Editor</p>
+          <p className={`text-sm font-semibold ${m.text} truncate`}>{entry ? entry.title : 'Nothing loaded'}</p>
+        </div>
+        {entry && (
+          <button onClick={onClear} className={`ui-control px-2.5 py-1 rounded ${m.btn} ${m.textAlt} text-xs`}>Clear</button>
+        )}
+      </div>
+      <div className="flex-1 min-h-0 overflow-y-auto p-4 flex flex-col gap-3">
+        {!entry && (
+          <div className={`ui-empty-state ${m.codeBlock} border ${m.border} h-full`}>
+            <Ic n="Sparkles" size={20} className={m.textMuted} />
+            <p className={`text-sm font-semibold ${m.textSub} mt-2`}>Pick a prompt from the library</p>
+            <p className={`mt-1 max-w-sm text-xs leading-relaxed ${m.textMuted}`}>
+              Click <span className={`${tw.accent.text} font-semibold`}>Use</span> on any entry to load it into the editor.
+            </p>
+          </div>
+        )}
+        {entry && (
+          <>
+            <div>
+              <p className={`text-[11px] uppercase tracking-wider font-semibold ${m.textSub} mb-1`}>Title</p>
+              <input defaultValue={entry.title} className={`w-full ${m.input} rounded-lg px-2.5 py-1.5 text-sm ${m.text} focus:outline-none ${tw.accent.focusBorder}`} />
+            </div>
+            <div>
+              <p className={`text-[11px] uppercase tracking-wider font-semibold ${tw.accent.text} mb-1`}>Enhanced</p>
+              <textarea defaultValue={entry.enhanced}
+                className={`w-full ${m.input} rounded-lg px-2.5 py-2 text-[13px] ${m.textBody} leading-relaxed font-mono focus:outline-none ${tw.accent.focusBorder}`}
+                rows={16} />
+            </div>
+            <div className="flex gap-2">
+              <button className={`ui-control px-3 py-1.5 rounded-lg text-xs font-medium ${tw.accent.solid} ${tw.accent.solidText}`}>Run</button>
+              <button className={`ui-control px-3 py-1.5 rounded-lg text-xs font-medium ${m.btn} ${m.textAlt}`}>Save version</button>
+              <button className={`ui-control px-3 py-1.5 rounded-lg text-xs font-medium ${m.btn} ${m.textAlt}`}>Send to A/B</button>
+            </div>
+          </>
+        )}
+      </div>
+    </div>
+  );
+}
+
+function LibrarySectionHeader({ m, count, total }) {
+  return (
+    <div className={`px-4 h-9 flex items-center justify-between border-b ${m.border}`}>
+      <p className={`text-xs font-semibold uppercase tracking-wider ${m.textSub}`}>Prompt Library</p>
+      <p className={`text-[11px] ${m.textMuted} font-mono`}>{count} / {total}</p>
+    </div>
+  );
+}
+
+function App() {
+  const [theme, setTheme] = useState('dark');
+  const [shell, setShell] = useState('extension');
+  const [canUseCollections, setCanUseCollections] = useState(true);
+  const [canExportLibrary, setCanExportLibrary] = useState(true);
+  const [loadedEntry, setLoadedEntry] = useState(null);
+
+  const [tweakValues, setTweak] = useTweaks(DEFAULT_TWEAKS);
+  const tw = resolveTweaks(tweakValues);
+
+  const m = T[theme];
+  const lib = usePromptLibrary({
+    initialLibrary: SEED_LIBRARY,
+    initialCollections: SEED_COLLECTIONS,
+    starterPacks: STARTER_PACKS,
+  });
+
+  const copy = (txt) => { navigator.clipboard?.writeText(txt || ''); window.__toast?.('Copied to clipboard.'); };
+  const loadEntry = (entry) => { setLoadedEntry(entry); lib.bumpUse(entry.id); window.__toast?.(`Loaded "${entry.title}".`); };
+  const sendToABTest = (entry, slot) => window.__toast?.(`Sent to A/B slot ${slot.toUpperCase()}: ${entry.title}`);
+  const openSavePanel = (entry) => window.__toast?.(`Edit details for "${entry.title}" (stub).`);
+  const addToComposer = (entry) => window.__toast?.(`Added "${entry.title}" to composer sequence.`);
+  const openBilling = (ctx) => window.__toast?.(`Billing modal (${ctx}) — upgrade to Pro.`);
+
+  const compact = shell === 'extension';
+  const isWeb = shell === 'web';
+
+  useEffect(() => {
+    document.documentElement.classList.toggle('light', theme === 'light');
+  }, [theme]);
+
+  const frameW = shell === 'extension' ? 420 : shell === 'desktop' ? 1120 : 1280;
+  const frameH = 720;
+
+  return (
+    <div className="min-h-screen w-full flex flex-col items-center justify-start py-8 px-4"
+      style={{ background: theme === 'dark' ? '#030712' : '#e2e8f0' }}>
+      <div className="w-full max-w-[1280px] mb-5 flex items-center gap-3 flex-wrap">
+        <div className={`flex items-center gap-2 ${m.text}`}>
+          <div className={`w-8 h-8 rounded-lg ${tw.accent.brandBg} grid place-items-center shadow-lg ${tw.accent.brandShadow}`}>
+            <Ic n="Sparkles" size={16} className={tw.accent.solidText} />
+          </div>
+          <div>
+            <p className="text-sm font-semibold leading-tight">PromptLab</p>
+            <p className={`text-[11px] ${m.textMuted} leading-tight`}>Library v2 · interactive preview</p>
+          </div>
+        </div>
+        <div className="flex-1" />
+        <div className={`flex gap-1 p-1 rounded-lg ${m.surface} border ${m.border}`}>
+          {['extension', 'desktop', 'web'].map(s => (
+            <button key={s} onClick={() => setShell(s)}
+              className={`ui-control px-3 py-1 rounded-md text-xs font-medium ${shell === s ? tw.accent.active : `${m.textAlt}`}`}>
+              {s[0].toUpperCase() + s.slice(1)}
+            </button>
+          ))}
+        </div>
+        <label className={`flex items-center gap-2 ${m.textAlt} text-xs`}>
+          <input type="checkbox" checked={canUseCollections} onChange={e => setCanUseCollections(e.target.checked)}
+            className="rounded border-gray-600" />
+          Pro: Collections
+        </label>
+        <label className={`flex items-center gap-2 ${m.textAlt} text-xs`}>
+          <input type="checkbox" checked={canExportLibrary} onChange={e => setCanExportLibrary(e.target.checked)}
+            className="rounded border-gray-600" />
+          Pro: Export
+        </label>
+        <button onClick={() => setTheme(t => t === 'dark' ? 'light' : 'dark')}
+          className={`ui-control p-2 rounded-lg ${m.surface} border ${m.border} ${m.textAlt}`} aria-label="Toggle theme">
+          <Ic n={theme === 'dark' ? 'Sun' : 'Moon'} size={14} />
+        </button>
+      </div>
+
+      <div className={`${m.bg} ${m.text} rounded-2xl border ${m.border} shadow-2xl shadow-black/40 overflow-hidden flex`}
+        style={{ width: frameW, maxWidth: '100%', height: frameH }}>
+        {shell !== 'extension' ? (
+          <div className="flex flex-col w-full">
+            <div className={`flex items-center gap-2 px-4 h-10 border-b ${m.border} ${m.header}`}>
+              {shell === 'desktop' ? (
+                <>
+                  <span className="w-3 h-3 rounded-full bg-red-500/80" />
+                  <span className="w-3 h-3 rounded-full bg-amber-400/80" />
+                  <span className="w-3 h-3 rounded-full bg-emerald-500/80" />
+                  <span className={`ml-3 text-xs font-semibold ${m.textSub}`}>PromptLab — Desktop</span>
+                </>
+              ) : (
+                <div className={`flex items-center gap-2 px-3 py-1 rounded-md ${m.codeBlock} border ${m.border} text-xs ${m.textMuted} font-mono`}>
+                  promptlab.tools/app/#/library
+                </div>
+              )}
+            </div>
+            <div className="flex-1 flex min-h-0">
+              <div className={`w-[420px] border-r ${m.border} flex flex-col min-h-0`}>
+                <LibrarySectionHeader m={m} count={lib.filtered.length} total={lib.library.length} />
+                <LibraryPanel
+                  m={m} lib={lib} compact={false} isWeb={isWeb} tw={tw}
+                  canUseCollections={canUseCollections} canExportLibrary={canExportLibrary}
+                  openBilling={openBilling}
+                  loadEntry={loadEntry} copy={copy} sendToABTest={sendToABTest}
+                  openSavePanel={openSavePanel} addToComposer={addToComposer}
+                />
+              </div>
+              <div className="flex-1 min-w-0">
+                <EditorPreview m={m} entry={loadedEntry} onClear={() => setLoadedEntry(null)} tw={tw} />
+              </div>
+            </div>
+          </div>
+        ) : (
+          <div className="flex flex-col w-full">
+            <div className={`flex items-center gap-2 px-3 h-10 border-b ${m.border} ${m.header}`}>
+              <Ic n="Menu" size={14} className={m.textMuted} />
+              <p className={`text-xs font-semibold ${m.text}`}>Library</p>
+              <div className="flex-1" />
+              <p className={`text-[11px] ${m.textMuted}`}>{lib.filtered.length} of {lib.library.length}</p>
+            </div>
+            <div className="flex-1 flex min-h-0">
+              <LibraryPanel
+                m={m} lib={lib} compact={true} isWeb={isWeb} tw={tw}
+                canUseCollections={canUseCollections} canExportLibrary={canExportLibrary}
+                openBilling={openBilling}
+                loadEntry={loadEntry} copy={copy} sendToABTest={sendToABTest}
+                openSavePanel={openSavePanel} addToComposer={addToComposer}
+              />
+            </div>
+          </div>
+        )}
+      </div>
+
+      <p className={`mt-4 text-[11px] ${theme === 'dark' ? 'text-gray-600' : 'text-slate-500'}`}>
+        Toggle shell, theme, and Pro gates above. All interactions are local state — no backend.
+      </p>
+
+      <Toast />
+      <LibraryTweaks values={tweakValues} setTweak={setTweak} />
+    </div>
+  );
+}
+
+ReactDOM.createRoot(document.getElementById('root')).render(<App />);
+</script>
+</body>
+</html>

@@ -9,6 +9,9 @@ export const storageKeys = Object.freeze({
   experimentHistory: 'pl2-experiment-history',
   billing: 'pl2-billing',
   telemetry: 'pl2-telemetry',
+  libraryDensity: 'pl2-density',
+  libraryAccent: 'pl2-accent',
+  librarySignature: 'pl2-signature',
 });
 
 export function loadJson(key, fallback = null) {

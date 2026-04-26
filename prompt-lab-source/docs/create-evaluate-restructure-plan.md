@@ -23,7 +23,7 @@ This brief is grounded in:
 
 - `../ARCHITECTURE.md`
 - `../../AGENTS.md`
-- `../../CURRENT_PROJECT_REPORT.md`
+- `../../docs/CURRENT_PROJECT_REPORT.md`
 - `UX_AUDIT_2026-03-17.md`
 - `CURRENT_MENU_SYSTEM.md`
 
