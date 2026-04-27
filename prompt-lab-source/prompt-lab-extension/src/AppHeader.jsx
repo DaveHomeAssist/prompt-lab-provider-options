@@ -44,13 +44,14 @@ export default function AppHeader({
               {utilityCopy}
             </span>
           </div>
-          <span className={`text-[11px] ${m.textMuted}`}>{libraryCount} saved</span>
+          <span data-testid="library-count" className={`text-[11px] ${m.textMuted}`}>{libraryCount} saved</span>
           <span className={`rounded-full px-2 py-0.5 text-[10px] font-semibold ${billingPlan === 'pro' ? 'pl-brand-chip' : `${m.btn} ${m.textAlt}`}`}>
             {billingLabel}
           </span>
           {billingPlan !== 'pro' && (
             <button
               type="button"
+              data-testid="upgrade-trigger"
               onClick={() => openBilling()}
               className="ui-control rounded-full bg-orange-500/90 px-2.5 py-1 text-[10px] font-semibold text-white transition-colors hover:bg-orange-400"
             >
@@ -76,7 +77,7 @@ export default function AppHeader({
               ['library', 'Library'],
               ['evaluate', 'Evaluate'],
             ].map(([id, label]) => (
-              <button key={id} type="button" onClick={() => openSection(id)} role="tab" aria-selected={activeSection === id}
+              <button key={id} type="button" data-testid={`nav-${id}`} onClick={() => openSection(id)} role="tab" aria-selected={activeSection === id}
                 className={`pl-tab-btn ui-control px-3 py-1.5 text-xs font-semibold rounded-lg transition-colors whitespace-nowrap ${activeSection === id ? activeTabClass : inactiveTabClass}`}>
                 {label}
               </button>

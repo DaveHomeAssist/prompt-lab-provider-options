@@ -318,6 +318,7 @@ export default function CreateEditorPane({
             </div>
           ) : (
             <textarea
+              data-testid="prompt-input"
               ref={rawInputRef}
               rows={8}
               className={inp}
@@ -614,7 +615,7 @@ export default function CreateEditorPane({
               </div>
             )}
             {enhanced && <>
-              <div className={`${m.surface} border ${m.border} rounded-xl p-3`}>
+              <div data-testid="output-panel" className={`${m.surface} border ${m.border} rounded-xl p-3`}>
                 <div className={`flex justify-between items-start gap-3 mb-3 ${compact ? 'flex-col' : ''}`}>
                   <div className="min-w-0">
                     <div className="flex items-center gap-2 flex-wrap">
@@ -706,6 +707,7 @@ export default function CreateEditorPane({
                       <div className="flex items-center gap-2 shrink-0">
                         <button
                           type="button"
+                          data-testid="save-to-library"
                           onClick={quickSave}
                           disabled={!canSavePanel}
                           className="ui-control rounded-lg bg-green-600 px-3 py-1.5 text-xs font-semibold text-white transition-colors hover:bg-green-500 disabled:opacity-40"
@@ -730,7 +732,7 @@ export default function CreateEditorPane({
                       <MarkdownPreview text={enhanced} />
                     </div>
                   ) : (
-                    <textarea rows={5} className={`${inp} ${accentFieldClass}`} value={enhanced} onChange={e => setEnhanced(e.target.value)} />
+                    <textarea data-testid="output-textarea" rows={5} className={`${inp} ${accentFieldClass}`} value={enhanced} onChange={e => setEnhanced(e.target.value)} />
                   )
                 )}
 

@@ -99,7 +99,7 @@ const LibraryPanel = memo(function LibraryPanel({
         <div className={`flex gap-2 ${compact ? 'flex-col' : ''}`}>
           <div className="relative flex-1">
             <Ic n="Search" size={11} className={`absolute left-2.5 top-1/2 -translate-y-1/2 ${m.textMuted}`} />
-            <input className={`w-full ${m.input} border rounded-lg pl-7 pr-3 py-1.5 text-xs focus:outline-none ${accentFocusClass} ${m.text}`}
+            <input data-testid="library-search" className={`w-full ${m.input} border rounded-lg pl-7 pr-3 py-1.5 text-xs focus:outline-none ${accentFocusClass} ${m.text}`}
               placeholder="Search…" value={searchDraft} onChange={e => setSearchDraft(e.target.value)} />
           </div>
           <div className={`flex gap-2 ${compact ? 'w-full' : ''}`}>

@@ -11,7 +11,7 @@ const landingHtml = fs.readFileSync(landingPath, 'utf8');
 
 test('landing hero and navigation frame Prompt Lab around the workflow', () => {
   assert.match(landingHtml, /Open PromptLab/);
-  assert.match(landingHtml, /Install extension/);
+  assert.match(landingHtml, /Extension setup/);
   assert.match(landingHtml, /Write sharper prompts\./);
   assert.match(landingHtml, /Keep the winners\./);
   assert.doesNotMatch(landingHtml, /Every prompt,\s*<\/span>/);

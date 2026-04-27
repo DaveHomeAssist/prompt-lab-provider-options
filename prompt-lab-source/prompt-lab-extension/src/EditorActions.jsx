@@ -41,6 +41,7 @@ export default function EditorActions({
       </select>
       <button
         type="button"
+        data-testid="refine-action"
         onClick={onEnhance}
         disabled={loading || !hasInput}
         aria-busy={loading}
@@ -72,6 +73,7 @@ export default function EditorActions({
       )}
       <button
         type="button"
+        data-testid={runCasesLocked ? 'pro-gated-action' : undefined}
         onClick={onRunCases}
         disabled={loading || runningCases || testCaseCount === 0}
         aria-busy={runningCases}
