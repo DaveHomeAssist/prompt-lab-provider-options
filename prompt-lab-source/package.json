@@ -24,7 +24,7 @@
     "dashboard:update": "npm run check:node && node scripts/notionDashboardUpdate.mjs"
   },
   "devDependencies": {
-    "markdownlint-cli2": "^0.22.1"
+    "markdownlint-cli2": "^0.18.1"
   },
   "dependencies": {
     "jsonwebtoken": "^9.0.3",
