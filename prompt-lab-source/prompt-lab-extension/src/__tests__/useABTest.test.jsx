@@ -99,6 +99,8 @@ describe('useABTest', () => {
     });
     expect(result.current.abA.response).toBe('Response for A');
     expect(result.current.abB.response).toBe('Response for B');
+    expect(result.current.abA.status).toBe('success');
+    expect(result.current.abB.status).toBe('success');
     expect(saveEvalRun).toHaveBeenCalledTimes(2);
     expect(saveEvalRun).toHaveBeenNthCalledWith(1, expect.objectContaining({
       promptTitle: 'A/B Variant A',
@@ -131,8 +133,8 @@ describe('useABTest', () => {
 
     expect(callModel).not.toHaveBeenCalled();
     expect(saveEvalRun).not.toHaveBeenCalled();
-    expect(result.current.abA.loading).toBe(false);
-    expect(result.current.abA.response).toBe('');
+    expect(result.current.abA.status).toBe('idle');
+    expect(result.current.abA.response).toBeUndefined();
   });
 
   it('retries one transient failure before succeeding', async () => {
@@ -154,9 +156,28 @@ describe('useABTest', () => {
     });
 
     expect(callModel).toHaveBeenCalledTimes(2);
-    expect(result.current.abA.error).toBe(false);
+    expect(result.current.abA.status).toBe('success');
     expect(result.current.abA.response).toBe('Recovered response');
     expect(saveEvalRun).toHaveBeenCalledTimes(1);
+  });
+
+  it('loading state cannot coexist with error state', async () => {
+    callModel.mockRejectedValueOnce(new Error('Request exploded'));
+
+    const { result } = renderHook(() => useABTest({ notify: vi.fn() }));
+
+    await act(async () => {
+      result.current.setAbA((prev) => ({ ...prev, prompt: 'Break me' }));
+    });
+
+    await act(async () => {
+      await result.current.runAB('a');
+    });
+
+    expect(result.current.abA.status).toBe('error');
+    expect(result.current.abA.error).toBe('Request exploded');
+    expect(result.current.abA.response).toBe('');
+    expect(result.current.abA).not.toHaveProperty('loading');
   });
 
   it('ignores stale responses when a newer request for the same side wins', async () => {
@@ -189,8 +210,8 @@ describe('useABTest', () => {
       await firstRun;
     });
 
-    expect(result.current.abA.response).toBe('');
-    expect(result.current.abA.loading).toBe(true);
+    expect(result.current.abA.response).toBeUndefined();
+    expect(result.current.abA.status).toBe('loading');
     expect(saveEvalRun).not.toHaveBeenCalled();
 
     second.resolve(anthropicResponse('Fresh response'));
@@ -199,7 +220,7 @@ describe('useABTest', () => {
     });
 
     expect(result.current.abA.response).toBe('Fresh response');
-    expect(result.current.abA.loading).toBe(false);
+    expect(result.current.abA.status).toBe('success');
     expect(saveEvalRun).toHaveBeenCalledTimes(1);
     expect(saveEvalRun).toHaveBeenCalledWith(expect.objectContaining({
       input: 'Second prompt',
@@ -223,8 +244,8 @@ describe('useABTest', () => {
     const { result } = renderHook(() => useABTest({ notify }));
 
     await act(async () => {
-      result.current.setAbA({ prompt: 'Prompt A', response: 'Answer A', loading: false, error: false });
-      result.current.setAbB({ prompt: 'Prompt B', response: 'Answer B', loading: false, error: false });
+      result.current.setAbA({ status: 'success', prompt: 'Prompt A', response: 'Answer A' });
+      result.current.setAbB({ status: 'success', prompt: 'Prompt B', response: 'Answer B' });
     });
 
     await act(async () => {
@@ -249,8 +270,8 @@ describe('useABTest', () => {
     const { result } = renderHook(() => useABTest({ notify: vi.fn() }));
 
     await act(async () => {
-      result.current.setAbA({ prompt: 'Prompt A', response: 'Answer A', loading: false, error: false });
-      result.current.setAbB({ prompt: 'Prompt B', response: 'Answer B', loading: false, error: false });
+      result.current.setAbA({ status: 'success', prompt: 'Prompt A', response: 'Answer A' });
+      result.current.setAbB({ status: 'success', prompt: 'Prompt B', response: 'Answer B' });
     });
     await act(async () => {
       await result.current.pickWinner('B');
@@ -260,8 +281,8 @@ describe('useABTest', () => {
       result.current.resetAB();
     });
 
-    expect(result.current.abA).toEqual({ prompt: '', response: '', loading: false, error: false });
-    expect(result.current.abB).toEqual({ prompt: '', response: '', loading: false, error: false });
+    expect(result.current.abA).toEqual({ status: 'idle', prompt: '' });
+    expect(result.current.abB).toEqual({ status: 'idle', prompt: '' });
     expect(result.current.abWinner).toBe(null);
   });
 
@@ -269,8 +290,8 @@ describe('useABTest', () => {
     const { result } = renderHook(() => useABTest({ notify: vi.fn() }));
 
     await act(async () => {
-      result.current.setAbA({ prompt: 'Old A', response: 'Old response', loading: false, error: false });
-      result.current.setAbB({ prompt: 'Old B', response: 'Other response', loading: false, error: false });
+      result.current.setAbA({ status: 'success', prompt: 'Old A', response: 'Old response' });
+      result.current.setAbB({ status: 'success', prompt: 'Old B', response: 'Other response' });
     });
 
     await act(async () => {
@@ -282,16 +303,13 @@ describe('useABTest', () => {
     });
 
     expect(result.current.abA).toEqual({
+      status: 'idle',
       prompt: 'Fresh prompt from library',
-      response: '',
-      loading: false,
-      error: false,
     });
     expect(result.current.abB).toEqual({
+      status: 'success',
       prompt: 'Old B',
       response: 'Other response',
-      loading: false,
-      error: false,
     });
     expect(result.current.abWinner).toBe(null);
     expect(result.current.activeSide).toBe('A');

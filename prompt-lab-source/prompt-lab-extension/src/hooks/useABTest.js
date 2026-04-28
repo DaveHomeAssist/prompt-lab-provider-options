@@ -5,7 +5,7 @@ import { listEvalRuns, listExperiments, saveEvalRun, saveExperiment } from '../e
 import { logWarn } from '../lib/logger.js';
 import { hashText } from '../lib/utils.js';
 
-const EMPTY_VARIANT = { prompt: '', response: '', loading: false, error: false };
+const EMPTY_VARIANT = { status: 'idle', prompt: '' };
 
 export default function useABTest({ notify }) {
   const [abA, setAbA] = useState(EMPTY_VARIANT);
@@ -60,7 +60,7 @@ export default function useABTest({ notify }) {
     abReqRef.current = { ...abReqRef.current, [side]: reqId };
     if (!state.prompt.trim()) return;
     const startedAt = nowMs();
-    setter(prev => ({ ...prev, loading: true, response: '', error: false }));
+    setter({ status: 'loading', prompt: state.prompt });
     try {
       const data = await callWithRetry({
         model: 'claude-sonnet-4-20250514',
@@ -69,7 +69,7 @@ export default function useABTest({ notify }) {
       });
       if (abReqRef.current[side] !== reqId) return;
       const responseText = extractTextFromAnthropic(data);
-      setter(prev => ({ ...prev, response: responseText, loading: false, error: false }));
+      setter({ status: 'success', prompt: state.prompt, response: responseText });
       await saveEvalRun({
         promptTitle: `A/B Variant ${side.toUpperCase()}`,
         mode: 'ab',
@@ -83,7 +83,7 @@ export default function useABTest({ notify }) {
       refreshEvalRuns();
     } catch (error) {
       if (abReqRef.current[side] !== reqId) return;
-      setter(prev => ({ ...prev, response: error.message || 'Request failed.', loading: false, error: true }));
+      setter({ status: 'error', prompt: state.prompt, response: '', error: error.message || 'Request failed.' });
     }
   };
 
@@ -98,13 +98,7 @@ export default function useABTest({ notify }) {
     const setter = side === 'a' ? setAbA : setAbB;
     const nextPrompt = typeof prompt === 'string' ? prompt : '';
     abReqRef.current = { ...abReqRef.current, [side]: abReqRef.current[side] + 1 };
-    setter((prev) => ({
-      ...prev,
-      prompt: nextPrompt,
-      response: '',
-      loading: false,
-      error: false,
-    }));
+    setter({ status: 'idle', prompt: nextPrompt });
     setAbWinner(null);
     setActiveSide(side.toUpperCase());
   };
@@ -112,14 +106,16 @@ export default function useABTest({ notify }) {
   const pickWinner = async (side) => {
     const winnerLabel = `Variant ${side}`;
     setAbWinner(winnerLabel);
+    const abAResponse = abA.response ?? '';
+    const abBResponse = abB.response ?? '';
     try {
       const record = {
         id: crypto.randomUUID(),
         createdAt: new Date().toISOString(),
         label: `A/B: ${abA.prompt.slice(0, 40) || 'Untitled'}`,
         variants: [
-          { id: 'A', promptHash: hashText(abA.prompt), prompt: abA.prompt, response: abA.response },
-          { id: 'B', promptHash: hashText(abB.prompt), prompt: abB.prompt, response: abB.response },
+          { id: 'A', promptHash: hashText(abA.prompt), prompt: abA.prompt, response: abAResponse },
+          { id: 'B', promptHash: hashText(abB.prompt), prompt: abB.prompt, response: abBResponse },
         ],
         keyInputSnapshot: JSON.stringify({ aPrompt: abA.prompt.slice(0, 280), bPrompt: abB.prompt.slice(0, 280) }),
         outcome: { winnerVariantId: side },
@@ -133,6 +129,7 @@ export default function useABTest({ notify }) {
     }
   };
 
+  // Consumers keep the raw setters for prompt edits; status transitions belong to the hook actions.
   return {
     abA,
     setAbA,

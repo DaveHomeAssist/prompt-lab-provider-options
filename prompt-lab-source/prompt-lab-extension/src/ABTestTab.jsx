@@ -26,8 +26,9 @@ export default function ABTestTab({
 }) {
   const inp = `w-full ${m.input} border rounded-lg p-3 text-sm resize-none focus:outline-none focus:border-violet-500 transition-colors placeholder-gray-400 ${m.text}`;
   const [showDiff, setShowDiff] = useState(false);
-  const bothReady = Boolean(abA.response && !abA.error && abB.response && !abB.error);
-  const runBothTitle = abA.loading || abB.loading ? 'A run is already in progress' : undefined;
+  const bothReady = Boolean(abA.status === 'success' && abA.response && abB.status === 'success' && abB.response);
+  const runBothLoading = abA.status === 'loading' || abB.status === 'loading';
+  const runBothTitle = runBothLoading ? 'A run is already in progress' : undefined;
 
   return (
     <div className={pageScroll ? 'flex flex-col' : 'flex flex-1 flex-col overflow-hidden'}>
@@ -35,7 +36,7 @@ export default function ABTestTab({
         <p className={`text-xs font-semibold ${m.textSub} uppercase tracking-wider`}>A/B Prompt Testing</p>
         <div className={`flex items-center gap-3 ${compact ? 'flex-wrap justify-end' : ''}`}>
           {abWinner && <span className="text-xs font-bold text-green-400 flex items-center gap-1"><Ic n="Check" size={11} />Winner: {abWinner}</span>}
-          <button type="button" onClick={() => { runAB('a'); runAB('b'); }} disabled={abA.loading || abB.loading} title={runBothTitle}
+          <button type="button" onClick={() => { runAB('a'); runAB('b'); }} disabled={runBothLoading} title={runBothTitle}
             className="ui-control flex items-center gap-1.5 bg-violet-600 hover:bg-violet-500 disabled:opacity-40 text-white px-3 py-1.5 rounded-lg text-xs font-semibold transition-colors">
             <Ic n="FlaskConical" size={12} />Run Both
           </button>
@@ -64,14 +65,19 @@ export default function ABTestTab({
           {[['A', abA], ['B', abB]].map(([side, state]) => (
             <button key={side} type="button" onClick={() => setActiveSide(side)}
               className={`ui-control px-2.5 py-1 rounded-lg text-xs font-semibold whitespace-nowrap transition-colors ${activeSide === side ? 'bg-violet-600 text-white' : `${m.btn} ${m.textAlt}`}`}>
-              Variant {side}{state.response ? ' Ready' : ''}
+              Variant {side}{state.status === 'success' && state.response ? ' Ready' : ''}
             </button>
           ))}
         </div>
       )}
       <div className={`flex ${pageScroll ? '' : 'flex-1 overflow-hidden'} ${compact ? 'flex-col' : ''}`}>
         {([['A', abA, setAbA], ['B', abB, setAbB]]).filter(([side]) => !compact || side === activeSide).map(([side, state, setter]) => {
-          const runTitle = state.loading
+          const isLoading = state.status === 'loading';
+          const isError = state.status === 'error';
+          const isSuccess = state.status === 'success';
+          const hasSuccessfulResponse = isSuccess && state.response;
+          const showResponse = isLoading || isSuccess || isError;
+          const runTitle = isLoading
             ? 'A run is already in progress'
             : !state.prompt.trim()
               ? 'Type a prompt to enable'
@@ -82,11 +88,11 @@ export default function ABTestTab({
             <div className={`px-3 py-2 border-b ${m.border} flex items-center justify-between shrink-0`}>
               <span className="text-xs font-bold text-violet-400 uppercase">Variant {side}</span>
               <div className="flex gap-2">
-                <button type="button" onClick={() => runAB(side.toLowerCase())} disabled={state.loading || !state.prompt.trim()} title={runTitle}
+                <button type="button" onClick={() => runAB(side.toLowerCase())} disabled={isLoading || !state.prompt.trim()} title={runTitle}
                   className="ui-control flex items-center gap-1 text-xs bg-violet-600 hover:bg-violet-500 disabled:opacity-40 text-white px-2 py-1 rounded-lg transition-colors">
-                  {state.loading ? <span className="w-3 h-3 border-2 border-white border-t-transparent rounded-full animate-spin" /> : <Ic n="Wand2" size={10} />}Run {side}
+                  {isLoading ? <span className="w-3 h-3 border-2 border-white border-t-transparent rounded-full animate-spin" /> : <Ic n="Wand2" size={10} />}Run {side}
                 </button>
-                {state.response && !abWinner && (
+                {hasSuccessfulResponse && !abWinner && (
                   <button type="button" onClick={() => pickWinner(side)} className="ui-control flex items-center gap-1 text-xs bg-green-600 hover:bg-green-500 text-white px-2 py-1 rounded-lg transition-colors"><Ic n="Check" size={10} />Pick {side}</button>
                 )}
               </div>
@@ -96,24 +102,24 @@ export default function ABTestTab({
                 <span className={`text-xs ${m.textSub} font-semibold uppercase tracking-wider block mb-1.5`}>Prompt</span>
                 <textarea rows={5} className={inp} placeholder={`Prompt variant ${side}…`} value={state.prompt} onChange={e => setter(p => ({ ...p, prompt: e.target.value }))} />
               </div>
-              {(state.response || state.loading) && (
+              {showResponse && (
                 <div>
                   <div className="flex items-center justify-between mb-1.5">
                     <span className="text-xs text-violet-400 font-semibold uppercase tracking-wider">Response</span>
-                    {state.response && !state.error && <span className={`text-xs ${m.textMuted}`}>~{Math.round(state.response.length / 4)} tokens</span>}
+                    {hasSuccessfulResponse && <span className={`text-xs ${m.textMuted}`}>~{Math.round(state.response.length / 4)} tokens</span>}
                   </div>
-                  {state.loading
+                  {isLoading
                     ? <div className={`${m.codeBlock} border ${m.border} rounded-lg p-3 flex items-center gap-2`}><span className="w-3 h-3 border-2 border-violet-500 border-t-transparent rounded-full animate-spin shrink-0" /><span className={`text-xs ${m.textSub}`}>Generating…</span></div>
-                    : state.error
-                      ? <div className={`${m.surface} border border-red-500/40 rounded-lg p-3 text-xs text-red-400 leading-relaxed`}>{state.response}</div>
+                    : isError
+                      ? <div className={`${m.surface} border border-red-500/40 rounded-lg p-3 text-xs text-red-400 leading-relaxed`}>{state.error}</div>
                       : <div className={`${m.codeBlock} border ${m.border} rounded-lg p-3 text-xs ${m.textBody} leading-relaxed whitespace-pre-wrap max-h-72 overflow-y-auto`}>{state.response}</div>
                   }
-                  {state.error && (
+                  {isError && (
                     <div className="flex gap-3 mt-2">
                       <button type="button" onClick={() => runAB(side.toLowerCase())} className="text-xs text-violet-400 hover:text-violet-300 transition-colors">Retry</button>
                     </div>
                   )}
-                  {state.response && !state.error && <button type="button" onClick={() => copy(state.response)} className={`flex items-center gap-1 text-xs ${m.textSub} hover:text-white transition-colors mt-1`}><Ic n="Copy" size={10} />Copy response</button>}
+                  {hasSuccessfulResponse && <button type="button" onClick={() => copy(state.response)} className={`flex items-center gap-1 text-xs ${m.textSub} hover:text-white transition-colors mt-1`}><Ic n="Copy" size={10} />Copy response</button>}
                 </div>
               )}
             </div>
