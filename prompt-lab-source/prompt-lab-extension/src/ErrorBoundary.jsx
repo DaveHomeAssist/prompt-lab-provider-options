@@ -1,4 +1,7 @@
 import React from 'react';
+import { detectSensitiveData, redactSensitiveData } from './redactionEngine.js';
+
+const URL_OR_PATH = /(?:file:\/\/[^\s)]+|https?:\/\/[^\s)]+|\/Users\/[^\s)]+|\/home\/[^\s)]+|[A-Z]:\\[^\s)]+)/g;
 
 export default class ErrorBoundary extends React.Component {
   constructor(props) {
@@ -16,6 +19,11 @@ export default class ErrorBoundary extends React.Component {
 
   render() {
     if (!this.state.error) return this.props.children;
+
+    const rawMessage = this.state.error?.message || String(this.state.error || '');
+    const matches = detectSensitiveData(rawMessage);
+    const { redactedText } = redactSensitiveData(rawMessage, matches);
+    const safeText = redactedText.replace(URL_OR_PATH, '[path]');
 
     return (
       <div style={{
@@ -53,7 +61,7 @@ export default class ErrorBoundary extends React.Component {
         <details style={{ marginTop: '1.5rem', color: '#64748b', fontSize: '0.75rem', maxWidth: '360px', textAlign: 'left' }}>
           <summary style={{ cursor: 'pointer' }}>Error details</summary>
           <pre style={{ whiteSpace: 'pre-wrap', wordBreak: 'break-all', marginTop: '0.5rem' }}>
-            {this.state.error?.message || String(this.state.error)}
+            {safeText || 'No additional details available.'}
           </pre>
         </details>
       </div>
