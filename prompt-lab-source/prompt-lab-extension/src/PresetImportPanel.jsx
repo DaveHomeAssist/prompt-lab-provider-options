@@ -1,4 +1,4 @@
-import { useMemo, useRef, useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import Ic from './icons';
 import DraftBadge from './DraftBadge.jsx';
 import {
@@ -36,11 +36,19 @@ function readFileAsText(file) {
 
 export default function PresetImportPanel({ m, lib, compact = false, onClose }) {
   const fileInputRef = useRef(null);
+  const abortRef = useRef(null);
+  const mountedRef = useRef(true);
   const [sourceText, setSourceText] = useState('');
   const [sourceLabel, setSourceLabel] = useState('');
   const [dragActive, setDragActive] = useState(false);
   const [importing, setImporting] = useState(false);
   const [importResult, setImportResult] = useState(null);
+  const isPristine = !sourceText.trim();
+
+  useEffect(() => () => {
+    mountedRef.current = false;
+    abortRef.current?.abort?.();
+  }, []);
 
   const preview = useMemo(() => {
     const text = sourceText.trim();
@@ -115,12 +123,20 @@ export default function PresetImportPanel({ m, lib, compact = false, onClose }) 
       },
     };
 
+    const controller = new AbortController();
+    abortRef.current = controller;
     setImporting(true);
     try {
-      const result = await importPresetPack(preview.pack, adapter);
-      setImportResult(result);
+      // TODO: presetImport signal support
+      const result = await importPresetPack(preview.pack, adapter, controller.signal);
+      if (controller.signal.aborted) return;
+      if (mountedRef.current) setImportResult(result);
+    } catch (error) {
+      if (controller.signal.aborted) return;
+      console.error('[PromptLab] Preset import failed:', error);
     } finally {
-      setImporting(false);
+      if (abortRef.current === controller) abortRef.current = null;
+      if (mountedRef.current) setImporting(false);
     }
   };
 
@@ -171,6 +187,27 @@ export default function PresetImportPanel({ m, lib, compact = false, onClose }) 
           }}
         />
       </div>
+
+      {isPristine && (
+        <div className={`${m.codeBlock} border ${m.border} rounded-xl px-3 py-3`}>
+          <div className={`flex items-center justify-between gap-3 ${compact ? 'flex-col items-start' : ''}`}>
+            <div>
+              <p className={`text-sm font-semibold ${m.text}`}>Paste or drop a pack JSON to begin</p>
+              <p className={`mt-1 text-xs ${m.textMuted}`}>
+                A valid pack lists presets with id, title, and prompt fields. Validation runs automatically as you type.
+              </p>
+            </div>
+            <button
+              type="button"
+              onClick={() => fileInputRef.current?.click()}
+              className={`ui-control inline-flex items-center justify-center gap-1 rounded-lg px-3 py-2 text-xs font-semibold transition-colors ${m.btn} ${m.textAlt} ${compact ? 'w-full' : ''}`}
+            >
+              <Ic n="Upload" size={12} />
+              Choose File
+            </button>
+          </div>
+        </div>
+      )}
 
       <div
         className={`rounded-xl border border-dashed px-3 py-4 text-center transition-colors ${dragActive ? 'border-violet-400 bg-violet-500/10' : `${m.border} ${m.codeBlock}`}`}
